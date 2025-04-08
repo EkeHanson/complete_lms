@@ -51,6 +51,7 @@ import ReportsDashboard from './ReportsDashboard';
 import AdminProfileSettings from './AdminProfileSettings';
 import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
+import WebsiteSettings from './WebsiteSettings';
 
 const drawerWidth = 240;
 
@@ -96,8 +97,12 @@ function Admin() {
     { 
       name: 'Website Settings', 
       icon: <WebsiteIcon sx={{ mr: 2 }} />, 
-      onClick: () => console.log('Website Settings clicked')
+      onClick: () => {
+        window.location.href = '/admin/website-Settings'; // Navigate to new route
+        handleSettingsClose();
+      }
     },
+
     { 
       name: 'Website Notification', 
       icon: <NotificationsIcon sx={{ mr: 2 }} />, 
@@ -347,6 +352,7 @@ function Admin() {
             <Route path="/profile" element={<AdminProfileSettings />} />
             <Route path="/payment-settings" element={<PaymentSettings />} /> {/* New Route */}
             <Route path="/website-notifications" element={<WebsiteNotificationSettings />} />
+            <Route path="/website-settings" element={<WebsiteSettings />} />
           </Routes>
         </Box>
       </Box>
