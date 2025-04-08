@@ -21,6 +21,13 @@ import Advertorial from '../components/common/Advertorial/Advertorial';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import './Home.css';
+import logo7 from '../assets/history.png'
+import logo6 from '../assets/power.png'
+import logo5 from '../assets/renting.jpg'
+import logo4 from '../assets/facebook.png'
+import logo2 from '../assets/tesla.png'
+import logo3 from '../assets/toyota.png'
+import logo1 from '../assets/amazon.png'
 
 const Home = () => {
   const [value, setValue] = useState(0);
@@ -399,11 +406,13 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
         <Container maxWidth="lg">
           <Grid container spacing={4} justifyContent="center" alignItems="center">
             {[
-              'https://via.placeholder.com/150x60?text=Google',
-              'https://via.placeholder.com/150x60?text=Microsoft',
-              'https://via.placeholder.com/150x60?text=Amazon',
-              'https://via.placeholder.com/150x60?text=IBM',
-              'https://via.placeholder.com/150x60?text=Facebook'
+              {logo1},
+              {logo2},
+              {logo3},
+              {logo4},
+              {logo5},
+              {logo6},
+              {logo7}
             ].map((logo, index) => (
               <Grid item key={index} xs={6} sm={4} md={2}>
                 <Box 

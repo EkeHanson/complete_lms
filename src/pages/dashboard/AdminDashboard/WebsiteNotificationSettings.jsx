@@ -370,6 +370,7 @@ const WebsiteNotificationSettings = () => {
                 <InfoIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
                 About Us Page
               </Typography>
+
               <Editor
                 apiKey={api_key}
                 onInit={(evt, editor) => editorRefs.aboutUs.current = editor}
@@ -391,6 +392,9 @@ const WebsiteNotificationSettings = () => {
                   content_css: settings.branding.darkMode ? 'dark' : 'default',
                 }}
               />
+
+
+              
               <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                 <Button 
                   variant="outlined" 
