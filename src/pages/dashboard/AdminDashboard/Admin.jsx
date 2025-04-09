@@ -1,45 +1,23 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Box,
-  AppBar,
-  Toolbar,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  CssBaseline,
-  Typography,
-  IconButton,
-  Avatar,
-  Divider,
-  Badge,
-  useTheme,
-  useMediaQuery,
-  Menu,
-  MenuItem
+  Box,  AppBar,  Toolbar,
+  Drawer,  List,  ListItem,  ListItemButton,  ListItemIcon,
+  ListItemText,  CssBaseline,
+  Typography,  IconButton,  Avatar,  Divider,  Badge,  useTheme,
+  useMediaQuery,  Menu,  MenuItem
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  People as UsersIcon,
-  Security as SecurityIcon,
-  AttachMoney as FinanceIcon,
+  Dashboard as DashboardIcon,  People as UsersIcon,
+  Security as SecurityIcon,  AttachMoney as FinanceIcon,
   Menu as MenuIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  Notifications as NotificationsIcon,
-  Settings as SettingsIcon,
-  Logout as LogoutIcon,
-  Analytics as AnalyticsIcon,
-  NotificationsActive as AlertsIcon,
-  Chat as ChatIcon,
-  Assessment as ReportsIcon,
-  Computer as SystemSettingsIcon,
-  Web as WebsiteIcon,
-  Payment as PaymentIcon
+  ChevronLeft as ChevronLeftIcon,  ChevronRight as ChevronRightIcon,
+  Notifications as NotificationsIcon,  Settings as SettingsIcon,
+  Logout as LogoutIcon,  Analytics as AnalyticsIcon,  NotificationsActive as AlertsIcon,  Chat as ChatIcon,
+  Assessment as ReportsIcon,  Computer as SystemSettingsIcon,  Web as WebsiteIcon,
+  Payment as PaymentIcon,   Checklist as ChecklistIcon
 } from '@mui/icons-material';
+
 import AdminDashboard from './AdminDashboard';
 import AdminFinancialDashboard from './AdminFinancialDashboard';
 import AdminUserManagement from './AdminUserManagement';
@@ -52,6 +30,7 @@ import AdminProfileSettings from './AdminProfileSettings';
 import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
+import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
 
 const drawerWidth = 240;
 
@@ -81,6 +60,7 @@ function Admin() {
     { path: '/admin/users', name: 'User Management', icon: <UsersIcon /> },
     { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },
     { path: '/admin/finance', name: 'Financial Dashboard', icon: <FinanceIcon /> },
+    { path: '/admin/quality-assurance', name: 'Quality Assurance', icon: <ChecklistIcon /> },
     { path: '/admin/analytics', name: 'Content & Analytics', icon: <AnalyticsIcon /> },
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
@@ -353,6 +333,7 @@ function Admin() {
             <Route path="/payment-settings" element={<PaymentSettings />} /> {/* New Route */}
             <Route path="/website-notifications" element={<WebsiteNotificationSettings />} />
             <Route path="/website-settings" element={<WebsiteSettings />} />
+            <Route path="/quality-assurance" element={<QualityDashbaord />} />
           </Routes>
         </Box>
       </Box>
