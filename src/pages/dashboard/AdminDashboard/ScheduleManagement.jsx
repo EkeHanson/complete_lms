@@ -5,7 +5,8 @@ import {
   DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
   Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
   FormGroup, Divider, useMediaQuery, IconButton, Stack, 
-  Collapse, Card, CardContent, CardActions
+  Collapse, Card, CardContent, CardActions, TablePagination,
+  Grid, Avatar
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import {
@@ -13,12 +14,14 @@ import {
   CalendarToday as CalendarIcon, Person as PersonIcon,
   Group as GroupIcon, Email as EmailIcon, Videocam as VideocamIcon, 
   Groups as TeamsIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon, Search as SearchIcon,
+  FilterList as FilterIcon, Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { initGoogleAPI, createCalendarEvent } from '../../../components/common/googleCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 // Mock data for users and groups
 const mockUsers = [
@@ -42,7 +45,6 @@ const ScheduleManagement = () => {
     message: '',
     severity: 'success'
   });
-
 
   const [events, setEvents] = useState([
     { 
@@ -112,6 +114,18 @@ const ScheduleManagement = () => {
     }
   ]);
 
+  // Filters state
+  const [filters, setFilters] = useState({
+    type: 'all',
+    search: '',
+    dateFrom: null,
+    dateTo: null
+  });
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
   const [openDialog, setOpenDialog] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -123,6 +137,39 @@ const ScheduleManagement = () => {
   useEffect(() => {
     initGoogleAPI();
   }, []);
+
+  // Handle filter changes
+  const handleFilterChange = (name, value) => {
+    setFilters({
+      ...filters,
+      [name]: value
+    });
+    setPage(0); // Reset to first page when filters change
+  };
+
+  // Filter events based on current filters
+  const filteredEvents = events.filter(event => {
+    return (
+      (filters.type === 'all' || event.type === filters.type) &&
+      (filters.search === '' || 
+        event.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+        event.invitees.some(invitee => 
+          invitee.name.toLowerCase().includes(filters.search.toLowerCase())
+        )) &&
+      (!filters.dateFrom || new Date(event.date) >= new Date(filters.dateFrom)) &&
+      (!filters.dateTo || new Date(event.date) <= new Date(filters.dateTo))
+    );
+  });
+
+  // Handle pagination
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Helper function to truncate URLs
   const truncateUrl = (url, maxLength = 10) => {
@@ -262,94 +309,96 @@ const ScheduleManagement = () => {
   // Mobile view for events
   const renderMobileEventCards = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {events.map((event) => (
-        <Card key={event.id} elevation={3}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" component="div">
-                {event.title}
-              </Typography>
-              <IconButton onClick={() => toggleExpandEvent(event.id)}>
-                {expandedEvent === event.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </IconButton>
-            </Box>
-            <Typography color="text.secondary" gutterBottom>
-              {event.type} • {formatDate(event.date)}
-            </Typography>
-            <Typography variant="body2">
-              {formatTime(event.date)} - {formatTime(event.endDate)}
-            </Typography>
-            
-            <Collapse in={expandedEvent === event.id}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2">Location:</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  {getPlatformIcon(event.location)}
-                  <Link 
-                    href={event.location} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    sx={{
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      '&:hover': { textDecoration: 'underline' }
-                    }}
-                  >
-                    {truncateUrl(event.location, 30)}
-                  </Link>
-                </Box>
-                
-                <Typography variant="subtitle2">Invitees:</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                  {event.invitees.map((invitee, i) => (
-                    <Chip 
-                      key={i} 
-                      label={invitee.name} 
-                      size="small" 
-                      icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-                    />
-                  ))}
-                  {event.additionalEmails.length > 0 && (
-                    <Chip 
-                      label={`${event.additionalEmails.length} email(s)`} 
-                      size="small" 
-                      icon={<EmailIcon />}
-                    />
-                  )}
-                </Box>
+      {filteredEvents
+        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+        .map((event) => (
+          <Card key={event.id} elevation={3}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" component="div">
+                  {event.title}
+                </Typography>
+                <IconButton onClick={() => toggleExpandEvent(event.id)}>
+                  {expandedEvent === event.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
               </Box>
-            </Collapse>
-          </CardContent>
-          <CardActions sx={{ justifyContent: 'space-between' }}>
-            <Button 
-              size="small" 
-              startIcon={<CalendarIcon />}
-              onClick={() => handleAddToCalendar(event)}
-              color="secondary"
-            >
-              Add to Calendar
-            </Button>
-            <Box>
+              <Typography color="text.secondary" gutterBottom>
+                {event.type} • {formatDate(event.date)}
+              </Typography>
+              <Typography variant="body2">
+                {formatTime(event.date)} - {formatTime(event.endDate)}
+              </Typography>
+              
+              <Collapse in={expandedEvent === event.id}>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2">Location:</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    {getPlatformIcon(event.location)}
+                    <Link 
+                      href={event.location} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        '&:hover': { textDecoration: 'underline' }
+                      }}
+                    >
+                      {truncateUrl(event.location, 30)}
+                    </Link>
+                  </Box>
+                  
+                  <Typography variant="subtitle2">Invitees:</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                    {event.invitees.map((invitee, i) => (
+                      <Chip 
+                        key={i} 
+                        label={invitee.name} 
+                        size="small" 
+                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                      />
+                    ))}
+                    {event.additionalEmails.length > 0 && (
+                      <Chip 
+                        label={`${event.additionalEmails.length} email(s)`} 
+                        size="small" 
+                        icon={<EmailIcon />}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              </Collapse>
+            </CardContent>
+            <CardActions sx={{ justifyContent: 'space-between' }}>
               <Button 
                 size="small" 
-                startIcon={<EditIcon />}
-                onClick={() => handleOpenDialog(event)}
-                sx={{ mr: 1 }}
+                startIcon={<CalendarIcon />}
+                onClick={() => handleAddToCalendar(event)}
+                color="secondary"
               >
-                Edit
+                Add to Calendar
               </Button>
-              <Button 
-                size="small" 
-                startIcon={<DeleteIcon />}
-                onClick={() => handleDeleteEvent(event.id)}
-                color="error"
-              >
-                Delete
-              </Button>
-            </Box>
-          </CardActions>
-        </Card>
-      ))}
+              <Box>
+                <Button 
+                  size="small" 
+                  startIcon={<EditIcon />}
+                  onClick={() => handleOpenDialog(event)}
+                  sx={{ mr: 1 }}
+                >
+                  Edit
+                </Button>
+                <Button 
+                  size="small" 
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleDeleteEvent(event.id)}
+                  color="error"
+                >
+                  Delete
+                </Button>
+              </Box>
+            </CardActions>
+          </Card>
+        ))}
     </Box>
   );
 
@@ -369,94 +418,105 @@ const ScheduleManagement = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {events.map((event) => (
-            <TableRow key={event.id}>
-              <TableCell>{event.title}</TableCell>
-              <TableCell>{event.type}</TableCell>
-              <TableCell>{formatDate(event.date)}</TableCell>
-              <TableCell>
-                {formatTime(event.date)} - {formatTime(event.endDate)}
-              </TableCell>
-              <TableCell>
-                <Tooltip title={event.location} placement="top">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {getPlatformIcon(event.location)}
-                    <Link 
-                      href={event.location} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      sx={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': { textDecoration: 'underline' },
-                        maxWidth: '200px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: 'inline-block'
-                      }}
-                    >
-                      {truncateUrl(event.location)}
-                    </Link>
+          {filteredEvents
+            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+            .map((event) => (
+              <TableRow key={event.id}>
+                <TableCell>{event.title}</TableCell>
+                <TableCell>{event.type}</TableCell>
+                <TableCell>{formatDate(event.date)}</TableCell>
+                <TableCell>
+                  {formatTime(event.date)} - {formatTime(event.endDate)}
+                </TableCell>
+                <TableCell>
+                  <Tooltip title={event.location} placement="top">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getPlatformIcon(event.location)}
+                      <Link 
+                        href={event.location} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        sx={{
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          '&:hover': { textDecoration: 'underline' },
+                          maxWidth: '200px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'inline-block'
+                        }}
+                      >
+                        {truncateUrl(event.location)}
+                      </Link>
+                    </Box>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {event.invitees.slice(0, 3).map((invitee, i) => (
+                      <Chip 
+                        key={i} 
+                        label={invitee.name} 
+                        size="small" 
+                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                      />
+                    ))}
+                    {event.invitees.length > 3 && (
+                      <Chip label={`+${event.invitees.length - 3}`} size="small" />
+                    )}
+                    {event.additionalEmails.length > 0 && (
+                      <Chip 
+                        label={`${event.additionalEmails.length} email(s)`} 
+                        size="small" 
+                        icon={<EmailIcon />}
+                      />
+                    )}
                   </Box>
-                </Tooltip>
-              </TableCell>
-              <TableCell>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {event.invitees.slice(0, 3).map((invitee, i) => (
-                    <Chip 
-                      key={i} 
-                      label={invitee.name} 
-                      size="small" 
-                      icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-                    />
-                  ))}
-                  {event.invitees.length > 3 && (
-                    <Chip label={`+${event.invitees.length - 3}`} size="small" />
-                  )}
-                  {event.additionalEmails.length > 0 && (
-                    <Chip 
-                      label={`${event.additionalEmails.length} email(s)`} 
-                      size="small" 
-                      icon={<EmailIcon />}
-                    />
-                  )}
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <Tooltip title="Edit">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleOpenDialog(event)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleDeleteEvent(event.id)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Add to Calendar">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleAddToCalendar(event)}
-                      color="secondary"
-                    >
-                      <CalendarIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Edit">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpenDialog(event)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Add to Calendar">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleAddToCalendar(event)}
+                        color="secondary"
+                      >
+                        <CalendarIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={filteredEvents.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
     </TableContainer>
   );
 
@@ -466,6 +526,68 @@ const ScheduleManagement = () => {
         <Typography variant="h4" gutterBottom>
           Schedule Management
         </Typography>
+        
+        {/* Filters Section */}
+        <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Search events..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                InputProps={{
+                  startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
+                }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={3} md={2}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Type"
+                value={filters.type}
+                onChange={(e) => handleFilterChange('type', e.target.value)}
+              >
+                <MenuItem value="all">All Types</MenuItem>
+                <MenuItem value="class">Class</MenuItem>
+                <MenuItem value="event">Event</MenuItem>
+                <MenuItem value="meeting">Meeting</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <DatePicker
+                label="From"
+                value={filters.dateFrom}
+                onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    size="small"
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <DatePicker
+                label="To"
+                value={filters.dateTo}
+                onChange={(newValue) => handleFilterChange('dateTo', newValue)}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    size="small"
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
         
         <Button 
           variant="contained" 

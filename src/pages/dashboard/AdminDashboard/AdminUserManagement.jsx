@@ -16,8 +16,11 @@ import {
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { useNavigate } from 'react-router-dom';
 
 const AdminUserManagement = () => {
+  const navigate = useNavigate();
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
@@ -360,7 +363,7 @@ const AdminUserManagement = () => {
                               mr: 2,
                               bgcolor: theme.palette.primary.light,
                               color: theme.palette.primary.main
-                            }}
+                            }} onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
                           >
                             {user.name.charAt(0)}
                           </Avatar>

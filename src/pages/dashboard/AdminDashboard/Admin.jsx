@@ -15,7 +15,7 @@ import {
   Notifications as NotificationsIcon, Settings as SettingsIcon,
   Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
   Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon,
-  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon
+  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Mail as MessagesIcon
 } from '@mui/icons-material';
 
 import AdminDashboard from './AdminDashboard';
@@ -36,6 +36,8 @@ import CourseForm from './courses/CourseForm';
 import CourseView  from './courses/CourseView ';
 import ScheduleManagement from './ScheduleManagement';
 import ActivityFeed from './ActivityFeed'; // Add this import
+import Messaging from './Messaging';
+import LearnerProfile from './LearnerProfile';
 
 const drawerWidth = 240;
 
@@ -61,6 +63,7 @@ function Admin() {
   };
 
   const menuItems = [
+
     { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> },
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/admin/users', name: 'User Management', icon: <UsersIcon /> },
@@ -147,6 +150,23 @@ function Admin() {
                 }}
               >
                 <ScheduleIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Messages">
+              <IconButton 
+                component={Link}
+                to="/admin/messaging"
+                size="large" 
+                color="inherit"
+                aria-label="schedule"
+                sx={{
+                  color: location.pathname === '/admin/messaging' ? 
+                    theme.palette.primary.main : 'inherit'
+                }}
+              >
+                {/* <MessagesIcon /> */}
+                <ChatIcon />
               </IconButton>
             </Tooltip>
 
@@ -379,6 +399,9 @@ function Admin() {
             <Route path="/courses/view/:id" element={<CourseView />} />
             <Route path="/schedule" element={<ScheduleManagement />} />
             <Route path="/activity-feed" element={<ActivityFeed />} />
+            <Route path="/messaging" element={<Messaging />} /> 
+
+            <Route path="/learner-profile/:id" element={<LearnerProfile />} />
           </Routes>
         </Box>
       </Box>
