@@ -3,12 +3,12 @@ import {
   Box, Typography, TextField, Button, Grid, Paper, Divider,
   FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
   IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
-  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions
+  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, ListItemIcon
 } from '@mui/material';
 import {
   Save, Cancel, CloudUpload, AddCircle, Delete,
   Link as LinkIcon, PictureAsPdf, VideoLibrary,
-  InsertDriveFile, Edit, MoreVert
+  InsertDriveFile, Edit, MoreVert, 
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import ModuleForm from './ModuleForm';
