@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,  Typography,  TextField,  Button,  Grid,  Paper,  Divider,  FormControl,  InputLabel,
-  Select,  MenuItem,  Chip,  FormHelperText,  useTheme,  InputAdornment,  IconButton
+  Box, Typography, TextField, Button, Grid, Paper, Divider,
+  FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
+  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
+  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { 
-  Save,   Cancel,   CloudUpload,   AddCircle,   Delete,  Add
+import {
+  Save, Cancel, CloudUpload, AddCircle, Delete,
+  Link as LinkIcon, PictureAsPdf, VideoLibrary,
+  InsertDriveFile, Edit, MoreVert
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import ModuleForm from './ModuleForm';
-import ContentUpload from './ContentUpload';
+
+const resourceTypes = [
+  { value: 'link', label: 'Web Link', icon: <LinkIcon /> },
+  { value: 'pdf', label: 'PDF Document', icon: <PictureAsPdf /> },
+  { value: 'video', label: 'Video', icon: <VideoLibrary /> },
+  { value: 'file', label: 'File', icon: <InsertDriveFile /> }
+];
 
 const CourseForm = () => {
   const theme = useTheme();
@@ -30,33 +40,34 @@ const CourseForm = () => {
     learningOutcomes: [],
     prerequisites: [],
     thumbnail: null,
-    modules: []
+    modules: [],
+    resources: []
   });
 
   const [newOutcome, setNewOutcome] = useState('');
   const [newPrerequisite, setNewPrerequisite] = useState('');
   const [errors, setErrors] = useState({});
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [currentResource, setCurrentResource] = useState({
+    id: null,
+    title: '',
+    type: 'link',
+    url: '',
+    file: null
+  });
 
-  // Dummy categories for demo
   const categories = [
-    'Web Development',
-    'Mobile Development',
-    'Data Science',
-    'Design',
-    'Business',
-    'Marketing',
-    'Photography'
+    'Web Development', 'Mobile Development', 'Data Science',
+    'Design', 'Business', 'Marketing', 'Photography'
   ];
 
-  // Dummy course data for editing
   useEffect(() => {
     if (isEdit) {
-      // Simulate API call with dummy data
       setTimeout(() => {
         setCourse({
           title: 'Advanced React Development',
           code: 'REACT-401',
-          description: 'Master advanced React concepts including hooks, context, and performance optimization',
+          description: 'Master advanced React concepts',
           category: 'Web Development',
           level: 'Advanced',
           status: 'Published',
@@ -64,25 +75,29 @@ const CourseForm = () => {
           price: 199,
           discountPrice: 149,
           currency: 'NGN',
-          learningOutcomes: [
-            'Build complex React applications',
-            'Optimize React performance',
-            'Implement advanced state management'
-          ],
-          prerequisites: [
-            'Basic JavaScript knowledge',
-            'React fundamentals'
-          ],
+          learningOutcomes: ['Build complex React apps', 'Optimize performance'],
+          prerequisites: ['Basic JavaScript', 'React fundamentals'],
           thumbnail: null,
-          modules: [
+          modules: [{
+            id: 1,
+            title: 'React Hooks Deep Dive',
+            description: 'Learn about hooks',
+            lessons: [
+              { id: 1, title: 'Introduction to Hooks', duration: '30 min' }
+            ]
+          }],
+          resources: [
             {
               id: 1,
-              title: 'React Hooks Deep Dive',
-              description: 'Learn all about useState, useEffect, and custom hooks',
-              lessons: [
-                { id: 1, title: 'Introduction to Hooks', duration: '30 min' },
-                { id: 2, title: 'useState in Depth', duration: '45 min' }
-              ]
+              title: 'React Documentation',
+              type: 'link',
+              url: 'https://reactjs.org/docs'
+            },
+            {
+              id: 2,
+              title: 'Performance Guide',
+              type: 'pdf',
+              file: 'performance-guide.pdf'
             }
           ]
         });
@@ -139,22 +154,51 @@ const CourseForm = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Validate form
-    const newErrors = {};
-    if (!course.title) newErrors.title = 'Title is required';
-    if (!course.code) newErrors.code = 'Course code is required';
-    if (!course.description) newErrors.description = 'Description is required';
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+  const openResourceDialog = (resource = null) => {
+    setCurrentResource(resource || {
+      id: null,
+      title: '',
+      type: 'link',
+      url: '',
+      file: null
+    });
+    setResourceDialogOpen(true);
+  };
+
+  const handleResourceChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentResource(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleResourceFileChange = (e) => {
+    setCurrentResource(prev => ({ ...prev, file: e.target.files[0] }));
+  };
+
+  const saveResource = () => {
+    if (!currentResource.title.trim()) return;
+
+    const updatedResources = [...course.resources];
+    if (currentResource.id) {
+      // Update existing resource
+      const index = updatedResources.findIndex(r => r.id === currentResource.id);
+      updatedResources[index] = currentResource;
+    } else {
+      // Add new resource
+      updatedResources.push({
+        ...currentResource,
+        id: Date.now()
+      });
     }
 
-    // Submit logic - would be API call in real app
-    console.log('Submitting course:', course);
-    navigate('/admin/courses');
+    setCourse(prev => ({ ...prev, resources: updatedResources }));
+    setResourceDialogOpen(false);
+  };
+
+  const deleteResource = (id) => {
+    setCourse(prev => ({
+      ...prev,
+      resources: prev.resources.filter(r => r.id !== id)
+    }));
   };
 
   const addModule = () => {
@@ -167,6 +211,27 @@ const CourseForm = () => {
         lessons: []
       }]
     }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newErrors = {};
+    if (!course.title) newErrors.title = 'Title is required';
+    if (!course.code) newErrors.code = 'Course code is required';
+    if (!course.description) newErrors.description = 'Description is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    console.log('Submitting course:', course);
+    navigate('/admin/courses');
+  };
+
+  const getResourceIcon = (type) => {
+    const resourceType = resourceTypes.find(t => t.value === type);
+    return resourceType ? resourceType.icon : <InsertDriveFile />;
   };
 
   return (
@@ -285,6 +350,43 @@ const CourseForm = () => {
                   Add
                 </Button>
               </Box>
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Course Resources
+              </Typography>
+
+              <List dense>
+                {course.resources.map((resource) => (
+                  <ListItem key={resource.id}>
+                    <ListItemIcon>
+                      {getResourceIcon(resource.type)}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={resource.title}
+                      secondary={resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton onClick={() => openResourceDialog(resource)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => deleteResource(resource.id)}>
+                        <Delete />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+
+              <Button
+                variant="outlined"
+                startIcon={<AddCircle />}
+                onClick={() => openResourceDialog()}
+                sx={{ mt: 1 }}
+              >
+                Add Resource
+              </Button>
             </Grid>
 
             <Grid item xs={12} md={4}>
@@ -379,10 +481,32 @@ const CourseForm = () => {
 
               <Divider sx={{ my: 2 }} />
 
-              <ContentUpload 
-                label="Course Thumbnail"
-                onFileChange={(file) => setCourse(prev => ({ ...prev, thumbnail: file }))}
-              />
+              <Button
+                fullWidth
+                variant="contained"
+                component="label"
+                startIcon={<CloudUpload />}
+                sx={{ mb: 2 }}
+              >
+                Upload Thumbnail
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => setCourse(prev => ({ ...prev, thumbnail: e.target.files[0] }))}
+                  accept="image/*"
+                />
+              </Button>
+
+              {course.thumbnail && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                    {course.thumbnail.name || 'Thumbnail selected'}
+                  </Typography>
+                  <IconButton onClick={() => setCourse(prev => ({ ...prev, thumbnail: null }))}>
+                    <Delete />
+                  </IconButton>
+                </Box>
+              )}
             </Grid>
           </Grid>
 
@@ -437,6 +561,92 @@ const CourseForm = () => {
           </Box>
         </form>
       </Paper>
+
+      {/* Resource Dialog */}
+      <Dialog open={resourceDialogOpen} onClose={() => setResourceDialogOpen(false)}>
+        <DialogTitle>
+          {currentResource.id ? 'Edit Resource' : 'Add Resource'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Resource Title"
+            fullWidth
+            name="title"
+            value={currentResource.title}
+            onChange={handleResourceChange}
+            sx={{ mb: 2 }}
+          />
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Resource Type</InputLabel>
+            <Select
+              name="type"
+              value={currentResource.type}
+              onChange={handleResourceChange}
+              label="Resource Type"
+            >
+              {resourceTypes.map(type => (
+                <MenuItem key={type.value} value={type.value}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {type.icon}
+                    {type.label}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {currentResource.type === 'link' && (
+            <TextField
+              margin="dense"
+              label="URL"
+              fullWidth
+              name="url"
+              value={currentResource.url}
+              onChange={handleResourceChange}
+            />
+          )}
+
+          {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
+            <Button
+              fullWidth
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUpload />}
+              sx={{ mt: 1 }}
+            >
+              Upload File
+              <input
+                type="file"
+                hidden
+                onChange={handleResourceFileChange}
+                accept={
+                  currentResource.type === 'pdf' ? 'application/pdf' : 
+                  currentResource.type === 'video' ? 'video/*' : '*'
+                }
+              />
+            </Button>
+          )}
+
+          {currentResource.file && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Selected: {currentResource.file.name || currentResource.file}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResourceDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={saveResource} 
+            disabled={!currentResource.title.trim()}
+            variant="contained"
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

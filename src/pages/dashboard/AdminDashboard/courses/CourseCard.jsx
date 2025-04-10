@@ -1,15 +1,6 @@
 import React from 'react';
-import {
-  Card,
-  CardMedia,
-  CardContent,
-  CardActions,
-  Typography,
-  Button,
-  Chip,
-  Box,
-  Avatar,
-  useTheme
+import {  Card,  CardMedia,  CardContent,  CardActions,
+  Typography,  Button,  Chip,  Box,  Avatar,  useTheme
 } from '@mui/material';
 import { School, People, AccessTime, Star } from '@mui/icons-material';
 
