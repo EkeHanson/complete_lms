@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Box,  AppBar,  Toolbar,
-  Drawer,  List,  ListItem,  ListItemButton,  ListItemIcon,
-  ListItemText,  CssBaseline,
-  Typography,  IconButton,  Avatar,  Divider,  Badge,  useTheme,
-  useMediaQuery,  Menu,  MenuItem
+  Box, AppBar, Toolbar,
+  Drawer, List, ListItem, ListItemButton, ListItemIcon,
+  ListItemText, CssBaseline,
+  Typography, IconButton, Avatar, Divider, Badge, useTheme,
+  useMediaQuery, Menu, MenuItem, Tooltip
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,  People as UsersIcon,
-  Security as SecurityIcon,  AttachMoney as FinanceIcon,
-  Menu as MenuIcon,CalendarToday as ScheduleIcon,
-  ChevronLeft as ChevronLeftIcon,  ChevronRight as ChevronRightIcon,
-  Notifications as NotificationsIcon,  Settings as SettingsIcon,
-  Logout as LogoutIcon,  Analytics as AnalyticsIcon,  NotificationsActive as AlertsIcon,  Chat as ChatIcon,
-  Assessment as ReportsIcon,  Computer as SystemSettingsIcon,  Web as WebsiteIcon,
-  Payment as PaymentIcon,   Checklist as ChecklistIcon, School as SchoolIcon
+  Dashboard as DashboardIcon, People as UsersIcon,
+  Security as SecurityIcon, AttachMoney as FinanceIcon,
+  Menu as MenuIcon, CalendarToday as ScheduleIcon,
+  ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
+  Notifications as NotificationsIcon, Settings as SettingsIcon,
+  Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
+  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon,
+  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon
 } from '@mui/icons-material';
 
 import AdminDashboard from './AdminDashboard';
@@ -31,11 +31,9 @@ import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
-
 import CourseManagement from './courses/CourseManagement';
 import CourseForm from './courses/CourseForm';
 import CourseView  from './courses/CourseView ';
-
 import ScheduleManagement from './ScheduleManagement';
 
 const drawerWidth = 240;
@@ -62,7 +60,6 @@ function Admin() {
   };
 
   const menuItems = [
-
     { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> },
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/admin/users', name: 'User Management', icon: <UsersIcon /> },
@@ -73,8 +70,7 @@ function Admin() {
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
-    { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> },
-    { path: '/admin/schedule', name: 'Schedule', icon: <ScheduleIcon /> }, // Add this line
+    { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
   ];
 
   const settingsMenuItems = [
@@ -87,11 +83,10 @@ function Admin() {
       name: 'Website Settings', 
       icon: <WebsiteIcon sx={{ mr: 2 }} />, 
       onClick: () => {
-        window.location.href = '/admin/website-Settings'; // Navigate to new route
+        window.location.href = '/admin/website-Settings';
         handleSettingsClose();
       }
     },
-
     { 
       name: 'Website Notification', 
       icon: <NotificationsIcon sx={{ mr: 2 }} />, 
@@ -103,8 +98,8 @@ function Admin() {
     { 
       name: 'Setup Payment Information', 
       icon: <PaymentIcon sx={{ mr: 2 }} />, 
-      onClick: () => navigate('/admin/payment-settings') // Add useNavigate hook at top
-    },,
+      onClick: () => navigate('/admin/payment-settings')
+    }
   ];
 
   return (
@@ -137,6 +132,23 @@ function Admin() {
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Schedule Icon with Tooltip */}
+            <Tooltip title="Schedule Management">
+              <IconButton 
+                component={Link}
+                to="/admin/schedule"
+                size="large" 
+                color="inherit"
+                aria-label="schedule"
+                sx={{
+                  color: location.pathname === '/admin/schedule' ? 
+                    theme.palette.primary.main : 'inherit'
+                }}
+              >
+                <ScheduleIcon />
+              </IconButton>
+            </Tooltip>
+
             <IconButton size="large" color="inherit">
               <Badge badgeContent={4} color="error">
                 <NotificationsIcon />
@@ -319,7 +331,7 @@ function Admin() {
           overflowX: 'hidden'
         }}
       >
-        <Toolbar /> {/* Spacer for AppBar */}
+        <Toolbar />
         <Box
           sx={{
             backgroundColor: theme.palette.background.paper,
@@ -330,8 +342,6 @@ function Admin() {
           }}
         >
           <Routes>
-
-
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/finance" element={<AdminFinancialDashboard />} />
             <Route path="/users" element={<AdminUserManagement />} />
@@ -341,18 +351,15 @@ function Admin() {
             <Route path="/communication" element={<CommunicationSupportDashboard />} />
             <Route path="/reports" element={<ReportsDashboard />} />
             <Route path="/profile" element={<AdminProfileSettings />} />
-            <Route path="/payment-settings" element={<PaymentSettings />} /> {/* New Route */}
+            <Route path="/payment-settings" element={<PaymentSettings />} />
             <Route path="/website-notifications" element={<WebsiteNotificationSettings />} />
             <Route path="/website-settings" element={<WebsiteSettings />} />
             <Route path="/quality-assurance" element={<QualityDashbaord />} />
-
             <Route path="/courses" element={<CourseManagement />} />
             <Route path="/courses/new" element={<CourseForm />} />
             <Route path="/courses/edit/:id" element={<CourseForm />} />
             <Route path="/courses/view/:id" element={<CourseView />} />
             <Route path="/schedule" element={<ScheduleManagement />} />
-
-
           </Routes>
         </Box>
       </Box>
