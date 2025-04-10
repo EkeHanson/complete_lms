@@ -21,11 +21,9 @@ const AdminProfileSettings = () => {
     lastName: 'Hanson',
     email: 'ekenehanson@gmail.com',
     facebookLink: '',
-    twitterLink: '',
-    linkedinLink: '',
+    twitterLink: 'https://x.com/EkeneHanso34391',
+    linkedinLink: 'https://www.linkedin.com/in/ekene-onwon-abraham-4370a0228/',
     title: '',
-    skills: [],
-    biography: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -170,7 +168,7 @@ const AdminProfileSettings = () => {
                   onChange={handleProfileChange}
                 />
               </Grid>
-              <Grid item xs={12}>
+              {/* <Grid item xs={12}>
                 <TextField
                   fullWidth
                   label="Skills (write your skill and click the enter button)"
@@ -216,7 +214,7 @@ const AdminProfileSettings = () => {
                   multiline
                   rows={4}
                 />
-              </Grid>
+              </Grid> */}
             </Grid>
           </Paper>
 

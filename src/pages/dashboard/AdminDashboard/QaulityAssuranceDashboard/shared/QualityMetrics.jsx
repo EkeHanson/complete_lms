@@ -26,7 +26,7 @@ function QualityMetrics() {
   return (
     <Box sx={{ mb: 4 }}>
       <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-        Quality Metrics Overview QWERTY 
+        Quality Metrics Overview  
       </Typography>
       
       <Grid container spacing={3} sx={{ mb: 4 }}>

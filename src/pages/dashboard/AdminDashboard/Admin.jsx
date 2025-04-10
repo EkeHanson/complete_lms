@@ -15,7 +15,7 @@ import {
   Notifications as NotificationsIcon,  Settings as SettingsIcon,
   Logout as LogoutIcon,  Analytics as AnalyticsIcon,  NotificationsActive as AlertsIcon,  Chat as ChatIcon,
   Assessment as ReportsIcon,  Computer as SystemSettingsIcon,  Web as WebsiteIcon,
-  Payment as PaymentIcon,   Checklist as ChecklistIcon
+  Payment as PaymentIcon,   Checklist as ChecklistIcon, School as SchoolIcon
 } from '@mui/icons-material';
 
 import AdminDashboard from './AdminDashboard';
@@ -31,6 +31,10 @@ import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
+
+import CourseManagement from './courses/CourseManagement';
+import CourseForm from './courses/CourseForm';
+import CourseView  from './courses/CourseView ';
 
 const drawerWidth = 240;
 
@@ -56,6 +60,8 @@ function Admin() {
   };
 
   const menuItems = [
+
+    { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> },
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/admin/users', name: 'User Management', icon: <UsersIcon /> },
     { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },
@@ -321,6 +327,8 @@ function Admin() {
           }}
         >
           <Routes>
+
+
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/finance" element={<AdminFinancialDashboard />} />
             <Route path="/users" element={<AdminUserManagement />} />
@@ -334,6 +342,13 @@ function Admin() {
             <Route path="/website-notifications" element={<WebsiteNotificationSettings />} />
             <Route path="/website-settings" element={<WebsiteSettings />} />
             <Route path="/quality-assurance" element={<QualityDashbaord />} />
+
+            <Route path="/courses" element={<CourseManagement />} />
+            <Route path="/courses/new" element={<CourseForm />} />
+            <Route path="/courses/edit/:id" element={<CourseForm />} />
+            <Route path="/courses/view/:id" element={<CourseView />} />
+
+
           </Routes>
         </Box>
       </Box>
