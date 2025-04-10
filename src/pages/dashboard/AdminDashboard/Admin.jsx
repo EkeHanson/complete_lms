@@ -35,6 +35,7 @@ import CourseManagement from './courses/CourseManagement';
 import CourseForm from './courses/CourseForm';
 import CourseView  from './courses/CourseView ';
 import ScheduleManagement from './ScheduleManagement';
+import ActivityFeed from './ActivityFeed'; // Add this import
 
 const drawerWidth = 240;
 
@@ -149,11 +150,28 @@ function Admin() {
               </IconButton>
             </Tooltip>
 
-            <IconButton size="large" color="inherit">
+            <Tooltip title="Activity Feed">
+              <IconButton
+                component={Link}
+                to="/admin/activity-feed"
+                size="large"
+                color="inherit"
+                sx={{
+                  color: location.pathname === '/admin/activity-feed' ? 
+                    theme.palette.primary.main : 'inherit'
+                }}
+              >
+                <Badge badgeContent={4} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+
+            {/* <IconButton size="large" color="inherit">
               <Badge badgeContent={4} color="error">
                 <NotificationsIcon />
               </Badge>
-            </IconButton>
+            </IconButton> */}
             
             <IconButton 
               size="large" 
@@ -360,6 +378,7 @@ function Admin() {
             <Route path="/courses/edit/:id" element={<CourseForm />} />
             <Route path="/courses/view/:id" element={<CourseView />} />
             <Route path="/schedule" element={<ScheduleManagement />} />
+            <Route path="/activity-feed" element={<ActivityFeed />} />
           </Routes>
         </Box>
       </Box>

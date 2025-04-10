@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
-  DialogContent, DialogActions, TextField, MenuItem, Snackbar,
-  Chip, Autocomplete, Checkbox, FormControlLabel, FormGroup, Divider
+  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
+  Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
+  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
+  Collapse, Card, CardContent, CardActions
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
-import {   Add as AddIcon,  Edit as EditIcon,   Delete as DeleteIcon, 
-  CalendarToday as CalendarIcon,  Person as PersonIcon,  Group as GroupIcon,  Email as EmailIcon
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
+  CalendarToday as CalendarIcon, Person as PersonIcon,
+  Group as GroupIcon, Email as EmailIcon, Videocam as VideocamIcon, 
+  Groups as TeamsIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { initGoogleAPI, createCalendarEvent } from '../../../components/common/googleCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -30,11 +36,13 @@ const userGroups = [
 ];
 
 const ScheduleManagement = () => {
+  const isMobile = useMediaQuery('(max-width:600px)');
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
+
 
   const [events, setEvents] = useState([
     { 
@@ -103,20 +111,56 @@ const ScheduleManagement = () => {
       additionalEmails: []
     }
   ]);
-  
+
   const [openDialog, setOpenDialog] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [additionalEmails, setAdditionalEmails] = useState([]);
   const [emailInput, setEmailInput] = useState('');
+  const [expandedEvent, setExpandedEvent] = useState(null);
 
   useEffect(() => {
     initGoogleAPI();
   }, []);
 
+  // Helper function to truncate URLs
+  const truncateUrl = (url, maxLength = 10) => {
+    if (!url) return '';
+    if (url.length <= maxLength) return url;
+    
+    const protocolEnd = url.indexOf('//') + 2;
+    const domainStart = url.indexOf('/', protocolEnd);
+    const domain = url.substring(0, domainStart);
+    const path = url.substring(domainStart);
+    
+    if (domain.length + 5 >= maxLength) {
+      return `${domain.substring(0, maxLength - 3)}...`;
+    }
+    
+    const remainingLength = maxLength - domain.length - 3;
+    const pathParts = path.split('/');
+    let truncatedPath = '';
+    
+    for (let part of pathParts) {
+      if (truncatedPath.length + part.length > remainingLength) {
+        break;
+      }
+      truncatedPath += `/${part}`;
+    }
+    
+    return `${domain}${truncatedPath}${truncatedPath.length < path.length ? '...' : ''}`;
+  };
+  
+  // Function to get platform icon
+  const getPlatformIcon = (url) => {
+    if (!url) return <VideocamIcon fontSize="small" />;
+    if (url.includes('google.com')) return <VideocamIcon fontSize="small" color="primary" />;
+    if (url.includes('teams.microsoft.com')) return <TeamsIcon fontSize="small" color="primary" />;
+    return <VideocamIcon fontSize="small" />;
+  };
+
   const handleAddToCalendar = (event) => {
-    // Include invitees in the calendar event
     const calendarEvent = {
       ...event,
       attendees: [
@@ -211,6 +255,211 @@ const ScheduleManagement = () => {
     return date.toLocaleDateString();
   };
 
+  const toggleExpandEvent = (eventId) => {
+    setExpandedEvent(expandedEvent === eventId ? null : eventId);
+  };
+
+  // Mobile view for events
+  const renderMobileEventCards = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {events.map((event) => (
+        <Card key={event.id} elevation={3}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" component="div">
+                {event.title}
+              </Typography>
+              <IconButton onClick={() => toggleExpandEvent(event.id)}>
+                {expandedEvent === event.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+            <Typography color="text.secondary" gutterBottom>
+              {event.type} • {formatDate(event.date)}
+            </Typography>
+            <Typography variant="body2">
+              {formatTime(event.date)} - {formatTime(event.endDate)}
+            </Typography>
+            
+            <Collapse in={expandedEvent === event.id}>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2">Location:</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {getPlatformIcon(event.location)}
+                  <Link 
+                    href={event.location} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    sx={{
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                  >
+                    {truncateUrl(event.location, 30)}
+                  </Link>
+                </Box>
+                
+                <Typography variant="subtitle2">Invitees:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                  {event.invitees.map((invitee, i) => (
+                    <Chip 
+                      key={i} 
+                      label={invitee.name} 
+                      size="small" 
+                      icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                    />
+                  ))}
+                  {event.additionalEmails.length > 0 && (
+                    <Chip 
+                      label={`${event.additionalEmails.length} email(s)`} 
+                      size="small" 
+                      icon={<EmailIcon />}
+                    />
+                  )}
+                </Box>
+              </Box>
+            </Collapse>
+          </CardContent>
+          <CardActions sx={{ justifyContent: 'space-between' }}>
+            <Button 
+              size="small" 
+              startIcon={<CalendarIcon />}
+              onClick={() => handleAddToCalendar(event)}
+              color="secondary"
+            >
+              Add to Calendar
+            </Button>
+            <Box>
+              <Button 
+                size="small" 
+                startIcon={<EditIcon />}
+                onClick={() => handleOpenDialog(event)}
+                sx={{ mr: 1 }}
+              >
+                Edit
+              </Button>
+              <Button 
+                size="small" 
+                startIcon={<DeleteIcon />}
+                onClick={() => handleDeleteEvent(event.id)}
+                color="error"
+              >
+                Delete
+              </Button>
+            </Box>
+          </CardActions>
+        </Card>
+      ))}
+    </Box>
+  );
+
+  // Desktop view for events
+  const renderDesktopEventTable = () => (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Title</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell>Time</TableCell>
+            <TableCell>Location</TableCell>
+            <TableCell>Invitees</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {events.map((event) => (
+            <TableRow key={event.id}>
+              <TableCell>{event.title}</TableCell>
+              <TableCell>{event.type}</TableCell>
+              <TableCell>{formatDate(event.date)}</TableCell>
+              <TableCell>
+                {formatTime(event.date)} - {formatTime(event.endDate)}
+              </TableCell>
+              <TableCell>
+                <Tooltip title={event.location} placement="top">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {getPlatformIcon(event.location)}
+                    <Link 
+                      href={event.location} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        '&:hover': { textDecoration: 'underline' },
+                        maxWidth: '200px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'inline-block'
+                      }}
+                    >
+                      {truncateUrl(event.location)}
+                    </Link>
+                  </Box>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {event.invitees.slice(0, 3).map((invitee, i) => (
+                    <Chip 
+                      key={i} 
+                      label={invitee.name} 
+                      size="small" 
+                      icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                    />
+                  ))}
+                  {event.invitees.length > 3 && (
+                    <Chip label={`+${event.invitees.length - 3}`} size="small" />
+                  )}
+                  {event.additionalEmails.length > 0 && (
+                    <Chip 
+                      label={`${event.additionalEmails.length} email(s)`} 
+                      size="small" 
+                      icon={<EmailIcon />}
+                    />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={1}>
+                  <Tooltip title="Edit">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleOpenDialog(event)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleDeleteEvent(event.id)}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Add to Calendar">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleAddToCalendar(event)}
+                      color="secondary"
+                    >
+                      <CalendarIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box>
@@ -223,87 +472,20 @@ const ScheduleManagement = () => {
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
           sx={{ mb: 3 }}
+          fullWidth={isMobile}
         >
           Add New Schedule
         </Button>
         
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Time</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Invitees</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell>{event.title}</TableCell>
-                  <TableCell>{event.type}</TableCell>
-                  <TableCell>{formatDate(event.date)}</TableCell>
-                  <TableCell>
-                    {formatTime(event.date)} - {formatTime(event.endDate)}
-                  </TableCell>
-                  <TableCell>{event.location}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {event.invitees.slice(0, 3).map((invitee, i) => (
-                        <Chip 
-                          key={i} 
-                          label={invitee.name} 
-                          size="small" 
-                          icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-                        />
-                      ))}
-                      {event.invitees.length > 3 && (
-                        <Chip label={`+${event.invitees.length - 3}`} size="small" />
-                      )}
-                      {event.additionalEmails.length > 0 && (
-                        <Chip 
-                          label={`${event.additionalEmails.length} email(s)`} 
-                          size="small" 
-                          icon={<EmailIcon />}
-                        />
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      size="small" 
-                      startIcon={<EditIcon />}
-                      onClick={() => handleOpenDialog(event)}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      size="small" 
-                      startIcon={<DeleteIcon />}
-                      onClick={() => handleDeleteEvent(event.id)}
-                      color="error"
-                    >
-                      Delete
-                    </Button>
-                    <Button 
-                      size="small" 
-                      startIcon={<CalendarIcon />}
-                      onClick={() => handleAddToCalendar(event)}
-                      color="secondary"
-                    >
-                      Add to Calendar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {isMobile ? renderMobileEventCards() : renderDesktopEventTable()}
 
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog} 
+          maxWidth="md" 
+          fullWidth
+          fullScreen={isMobile}
+        >
           <DialogTitle>{currentEvent?.id ? 'Edit Schedule' : 'Create New Schedule'}</DialogTitle>
           <DialogContent dividers>
             <TextField
