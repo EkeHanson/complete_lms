@@ -1,17 +1,8 @@
 // AdminProfileSettings.js
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Avatar,
-  Divider,
-  Grid,
-  Paper,
-  IconButton,
-  InputAdornment,
-  Container
+  Box,  Typography,  TextField,  Button,
+  Avatar,  Divider,  Grid,  Paper,  IconButton,  InputAdornment,  Container
 } from '@mui/material';
 import { CloudUpload, Visibility, VisibilityOff } from '@mui/icons-material';
 

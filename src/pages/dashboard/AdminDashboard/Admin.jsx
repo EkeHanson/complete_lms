@@ -10,7 +10,7 @@ import {
 import {
   Dashboard as DashboardIcon,  People as UsersIcon,
   Security as SecurityIcon,  AttachMoney as FinanceIcon,
-  Menu as MenuIcon,
+  Menu as MenuIcon,CalendarToday as ScheduleIcon,
   ChevronLeft as ChevronLeftIcon,  ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon,  Settings as SettingsIcon,
   Logout as LogoutIcon,  Analytics as AnalyticsIcon,  NotificationsActive as AlertsIcon,  Chat as ChatIcon,
@@ -35,6 +35,8 @@ import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
 import CourseManagement from './courses/CourseManagement';
 import CourseForm from './courses/CourseForm';
 import CourseView  from './courses/CourseView ';
+
+import ScheduleManagement from './ScheduleManagement';
 
 const drawerWidth = 240;
 
@@ -71,7 +73,8 @@ function Admin() {
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
-    { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
+    { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> },
+    { path: '/admin/schedule', name: 'Schedule', icon: <ScheduleIcon /> }, // Add this line
   ];
 
   const settingsMenuItems = [
@@ -347,6 +350,7 @@ function Admin() {
             <Route path="/courses/new" element={<CourseForm />} />
             <Route path="/courses/edit/:id" element={<CourseForm />} />
             <Route path="/courses/view/:id" element={<CourseView />} />
+            <Route path="/schedule" element={<ScheduleManagement />} />
 
 
           </Routes>
