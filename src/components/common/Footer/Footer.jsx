@@ -1,278 +1,203 @@
 import React from 'react';
-import logo from '../../../assets/logo.png';
-import { 
-  Box, Container, Grid, Link, Typography, Button, 
-  Divider, TextField, IconButton, useTheme, useMediaQuery
+import {
+  Box, Container, Typography, Grid, Stack, IconButton, Link, Divider, Button
 } from '@mui/material';
-import { 
-  Facebook, Twitter, LinkedIn, Instagram, YouTube,
-  Email, Phone, LocationOn, ArrowRightAlt,
-  Copyright
+import {
+  Facebook as FacebookIcon,
+  Twitter as TwitterIcon,
+  LinkedIn as LinkedInIcon,
+  Instagram as InstagramIcon,
+  YouTube as YouTubeIcon
 } from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-
-const FooterBackground = styled(Box)(({ theme }) => ({
-  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-  color: theme.palette.common.white,
-  position: 'relative',
-  overflow: 'hidden',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundImage: 'radial-gradient(circle at 75% 50%, rgba(255,255,255,0.1) 0%, transparent 30%)',
-  }
-}));
-
-const FooterLink = styled(Link)(({ theme }) => ({
-  color: 'rgba(255, 255, 255, 0.8)',
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(1),
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    color: theme.palette.common.white,
-    transform: 'translateX(4px)',
-    textDecoration: 'none'
-  }
-}));
-
-const SocialIcon = styled(IconButton)(({ theme }) => ({
-  color: theme.palette.common.white,
-  backgroundColor: 'rgba(255,255,255,0.1)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    backgroundColor: theme.palette.secondary.main,
-    transform: 'translateY(-3px)'
-  }
-}));
 
 const Footer = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
-  const companyLinks = [
-    { label: 'About Us', href: '/about' },
-    { label: 'Careers', href: '/careers' },
-    { label: 'Press Center', href: '/press' },
-    { label: 'Become an Instructor', href: '/teach' }
-  ];
-
-  const resourceLinks = [
-    { label: 'Blog', href: '/blog' },
-    { label: 'Help Center', href: '/help' },
-    { label: 'Tutorials', href: '/tutorials' },
-    { label: 'Webinars', href: '/webinars' }
-  ];
-
-  const legalLinks = [
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Cookie Policy', href: '/cookies' },
-    { label: 'Accessibility', href: '/accessibility' }
-  ];
-
-  const contactInfo = [
-    { icon: <Email fontSize="small" />, text: 'hello@learnly.com' },
-    { icon: <Phone fontSize="small" />, text: '+1 (555) 123-4567' },
-    { icon: <LocationOn fontSize="small" />, text: '123 Education Blvd, San Francisco, CA 94107' }
-  ];
-
   return (
-    <FooterBackground component="footer" sx={{ pt: 10, pb: 4 }}>
+    <Box sx={{ 
+      backgroundColor: '#1a2b5e', 
+      color: 'white',
+      pt: 6,
+      pb: 2
+    }}>
       <Container maxWidth="xl">
-        <Grid container spacing={6}>
-          {/* Newsletter Column */}
-          <Grid item xs={12} md={5}>
-            <Typography variant="h4" sx={{ 
-              mb: 3, 
-              fontWeight: 700,
-              background: `linear-gradient(to right, ${theme.palette.common.white}, ${theme.palette.secondary.light})`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              Stay Updated
+        {/* Main Footer Sections */}
+        <Grid 
+          container 
+          spacing={4} 
+          justifyContent="space-between" // Spread items across the screen
+          sx={{ mb: 4 }}
+        >
+          {/* Product Column */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                mb: 2,
+                fontSize: '1.1rem',
+                textTransform: 'uppercase',
+                textAlign: { xs: 'center', md: 'left' }
+              }}
+            >
+              Product
             </Typography>
-            <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-              Subscribe to our newsletter for the latest courses, news, and special offers.
-            </Typography>
-            
-            <Box component="form" sx={{ display: 'flex', gap: 2, mb: 4 }}>
-              <TextField
-                fullWidth
-                placeholder="Your email address"
-                variant="outlined"
-                size="small"
-                InputProps={{
-                  sx: {
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    borderRadius: 2,
-                    color: 'common.white',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255,255,255,0.2)'
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255,255,255,0.4)'
-                    }
-                  }
-                }}
-              />
-              <Button 
-                variant="contained" 
-                color="secondary" 
-                sx={{ 
-                  borderRadius: 2,
-                  px: 4,
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Subscribe
-              </Button>
-            </Box>
-
-            <Typography variant="subtitle2" sx={{ mb: 2, opacity: 0.8 }}>
-              Follow us on social media:
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <SocialIcon aria-label="Facebook">
-                <Facebook />
-              </SocialIcon>
-              <SocialIcon aria-label="Twitter">
-                <Twitter />
-              </SocialIcon>
-              <SocialIcon aria-label="LinkedIn">
-                <LinkedIn />
-              </SocialIcon>
-              <SocialIcon aria-label="Instagram">
-                <Instagram />
-              </SocialIcon>
-              <SocialIcon aria-label="YouTube">
-                <YouTube />
-              </SocialIcon>
-            </Box>
-          </Grid>
-
-          {/* Links Columns */}
-          <Grid item xs={12} md={7}>
-            <Grid container spacing={4}>
-              <Grid item xs={6} sm={3}>
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Company
-                </Typography>
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-                  {companyLinks.map((link, index) => (
-                    <li key={index} style={{ marginBottom: theme.spacing(1) }}>
-                      <FooterLink href={link.href} underline="none">
-                        <ArrowRightAlt fontSize="small" />
-                        {link.label}
-                      </FooterLink>
-                    </li>
-                  ))}
-                </Box>
-              </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Resources
-                </Typography>
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-                  {resourceLinks.map((link, index) => (
-                    <li key={index} style={{ marginBottom: theme.spacing(1) }}>
-                      <FooterLink href={link.href} underline="none">
-                        <ArrowRightAlt fontSize="small" />
-                        {link.label}
-                      </FooterLink>
-                    </li>
-                  ))}
-                </Box>
-              </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Legal
-                </Typography>
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-                  {legalLinks.map((link, index) => (
-                    <li key={index} style={{ marginBottom: theme.spacing(1) }}>
-                      <FooterLink href={link.href} underline="none">
-                        <ArrowRightAlt fontSize="small" />
-                        {link.label}
-                      </FooterLink>
-                    </li>
-                  ))}
-                </Box>
-              </Grid>
-
-              <Grid item xs={6} sm={3}>
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Contact
-                </Typography>
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-                  {contactInfo.map((item, index) => (
-                    <li key={index} style={{ 
-                      marginBottom: theme.spacing(2),
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: theme.spacing(1)
-                    }}>
-                      <Box sx={{ 
-                        color: theme.palette.secondary.light,
-                        mt: '2px'
-                      }}>
-                        {item.icon}
-                      </Box>
-                      <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                        {item.text}
-                      </Typography>
-                    </li>
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ 
-          my: 6, 
-          borderColor: 'rgba(255,255,255,0.1)',
-          background: `linear-gradient(to right, transparent, ${theme.palette.secondary.light}, transparent)`,
-          height: '1px'
-        }} />
-
-        <Grid container alignItems="center" justifyContent="space-between">
-          <Grid item>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box component="img" 
-                src={logo}
-                alt="Learnly Logo"
-                sx={{ height: 40 }}
-              />
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                <Copyright fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                {new Date().getFullYear()} Learnly, Inc. All rights reserved.
-              </Typography>
-            </Box>
+            <Stack 
+              spacing={1} 
+              alignItems={{ xs: 'center', md: 'flex-start' }}
+            >
+              <Link href="/features" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Features</Link>
+              <Link href="/pricing" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Pricing</Link>
+              <Link href="/solutions" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Solutions</Link>
+              <Link href="/integrations" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Integrations</Link>
+              <Link href="/mobile" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Mobile App</Link>
+            </Stack>
           </Grid>
           
-          {!isMobile && (
-            <Grid item>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Made with ❤️ for lifelong learners
-              </Typography>
-            </Grid>
-          )}
-
-          <Grid item>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              v{ '1.0.0'}
+          {/* Resources Column */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                mb: 2,
+                fontSize: '1.1rem',
+                textTransform: 'uppercase',
+                textAlign: { xs: 'center', md: 'left' }
+              }}
+            >
+              Resources
             </Typography>
+            <Stack 
+              spacing={1} 
+              alignItems={{ xs: 'center', md: 'flex-start' }}
+            >
+              <Link href="#" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Blog</Link>
+              <Link href="#" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Help Center</Link>
+              <Link href="#" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Webinars</Link>
+              <Link href="#" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Case Studies</Link>
+              <Link href="#" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>API Docs</Link>
+            </Stack>
+          </Grid>
+          
+          {/* Company Column */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                mb: 2,
+                fontSize: '1.1rem',
+                textTransform: 'uppercase',
+                textAlign: { xs: 'center', md: 'left' }
+              }}
+            >
+              Company
+            </Typography>
+            <Stack 
+              spacing={1} 
+              alignItems={{ xs: 'center', md: 'flex-start' }}
+            >
+              <Link href="/about" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>About Us</Link>
+              <Link href="/careers" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Careers</Link>
+              <Link href="/partners" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Partners</Link>
+              <Link href="/contact" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Contact Us</Link>
+              <Link href="newsroom" color="inherit" underline="hover" sx={{ fontSize: '0.9rem' }}>Newsroom</Link>
+            </Stack>
+          </Grid>
+          
+          {/* Get Started Column */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: { xs: 'center', md: 'flex-start' },
+              textAlign: { xs: 'center', md: 'left' }
+            }}>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 700, 
+                  mb: 2,
+                  fontSize: '1.1rem',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Get Started
+              </Typography>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                sx={{ 
+                  mb: 2,
+                  backgroundColor: '#ff6b35',
+                  '&:hover': { backgroundColor: '#e05a2b' }
+                }}
+              >
+                Request Demo
+              </Button>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Ready to transform your school management?
+              </Typography>
+              <Typography variant="body2">
+                Call us: +1 (800) 123-4567
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+        
+        <Divider sx={{ backgroundColor: 'rgba(255,255,255,0.2)', my: 3 }} />
+        
+        {/* Bottom Section */}
+        <Grid 
+          container 
+          spacing={2} 
+          justifyContent="space-between" // Spread items across the screen
+          alignItems="center"
+        >
+          {/* Copyright */}
+          <Grid item xs={12} md={6}>
+            <Stack 
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              justifyContent={{ xs: 'center', md: 'flex-start' }}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                © {new Date().getFullYear()} EduManage. All rights reserved.
+              </Typography>
+              <Link href="/privacy" color="inherit" underline="hover" sx={{ fontSize: '0.8rem' }}>Privacy Policy</Link>
+              <Link href="/terms" color="inherit" underline="hover" sx={{ fontSize: '0.8rem' }}>Terms of Service</Link>
+              <Link href="/cookies" color="inherit" underline="hover" sx={{ fontSize: '0.8rem' }}>Cookie Policy</Link>
+            </Stack>
+          </Grid>
+          
+          {/* Social Media Icons */}
+          <Grid item xs={12} md={6}>
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              justifyContent={{ xs: 'center', md: 'flex-end' }}
+            >
+              <IconButton sx={{ color: 'white' }} href="https://facebook.com" aria-label="Facebook">
+                <FacebookIcon fontSize="small" />
+              </IconButton>
+              <IconButton sx={{ color: 'white' }} href="https://twitter.com" aria-label="Twitter">
+                <TwitterIcon fontSize="small" />
+              </IconButton>
+              <IconButton sx={{ color: 'white' }} href="https://www.linkedin.com/in/ekene-onwon-abraham-4370a0228/" aria-label="LinkedIn">
+                <LinkedInIcon fontSize="small" />
+              </IconButton>
+              <IconButton sx={{ color: 'white' }} href="https://instagram.com" aria-label="Instagram">
+                <InstagramIcon fontSize="small" />
+              </IconButton>
+              <IconButton sx={{ color: 'white' }} href="https://www.youtube.com/@ekene-onwon_hanson" aria-label="YouTube">
+                <YouTubeIcon fontSize="small" />
+              </IconButton>
+            </Stack>
           </Grid>
         </Grid>
       </Container>
-    </FooterBackground>
+    </Box>
   );
 };
 

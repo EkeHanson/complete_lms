@@ -4,12 +4,14 @@ import {
   Card, CardContent, CardMedia, Chip 
 } from '@mui/material';
 import { Star as StarIcon, LocationOn as LocationIcon } from '@mui/icons-material';
+import Navbar from '../components/common/Navbar/Navbar';
+import Footer from '../components/common/Footer/Footer';
 // import Logo from "../../../assets/Gold Logo Mockup.jpg"
-import image1 from '../assets/ups.jpg'
-import image2 from '../assets/opopo.jpg'
-import image3 from '../assets/hero-image.jpg'
-import image4 from '../assets/renting.jpg'
-const FeaturedListings = ({ theme }) => {
+import image1 from '../assets/facebook.png'
+import image2 from '../assets/tesla.png'
+import image3 from '../assets/renting.jpg'
+import image4 from '../assets/toyota.png'
+const Features = ({ theme }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -31,7 +33,7 @@ const FeaturedListings = ({ theme }) => {
       reviews: 124,
       location: 'New York, NY',
       image: {image1},
-      // image: '../../../assets/Gold Logo Mockup.jpg',
+      // image: '../assets/Gold Logo Mockup.jpg',
       category: 'Photography'
     },
     {
@@ -251,11 +253,15 @@ const FeaturedListings = ({ theme }) => {
 
 
   return (
+    <>
+    <Navbar />
     <Box sx={{ 
       py: 10,
       backgroundColor: '#f8f9fa',
       position: 'relative'
     }}>
+       
+
       <Container maxWidth="xl">
         <Box sx={{ 
           textAlign: 'center',
@@ -464,8 +470,11 @@ const FeaturedListings = ({ theme }) => {
           </Button>
         </Box>
       </Container>
+       
     </Box>
+    <Footer />
+    </>
   );
 };
 
-export default FeaturedListings;
+export default Features;

@@ -1,8 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Pricing from './pages/Pricing';
+import Features  from './pages/Features';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import BrowseListings from './components/listings/BrowseListings';
@@ -11,10 +14,15 @@ import Navbar from './components/common/Navbar/Navbar';
 import Footer from './components/common/Footer/Footer';
 import AdminDashboard from './pages/dashboard/AdminDashboard/Admin';
 
+
+
 import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement/FeedbackForm.jsx'
 
 
 function App() {
+
+  const theme = useTheme();
+
   return (
     <Router>
       {/* <Navbar /> */}
@@ -23,6 +31,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/features" element={<Features theme={theme} />} />
         <Route path="/feedback-form" element={<FeedbackForm />} />
 
 

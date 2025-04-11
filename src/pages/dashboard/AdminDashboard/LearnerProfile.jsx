@@ -4,7 +4,7 @@ import {
   Box, Container, Typography, Grid, Paper, Avatar, Divider,
   Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Button, TextField, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -163,13 +163,30 @@ const LearnerProfile = ({ learnerId }) => {
                     {learnerData.coursesSubscribed} subscribed • {learnerData.coursesCompleted} completed
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex' }}>
-                  <Typography variant="body1" sx={{ fontWeight: 500, mr: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
                     Completion Rate:
                   </Typography>
-                  <Typography variant="body1">
-                    {learnerData.completionRate}%
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={learnerData.completionRate} 
+                      sx={{ 
+                        height: 10, 
+                        borderRadius: 5, 
+                        flexGrow: 1,
+                        backgroundColor: 'grey.200',
+                        '& .MuiLinearProgress-bar': {
+                          borderRadius: 5,
+                          backgroundColor: learnerData.completionRate >= 75 ? 'success.main' : 
+                                          learnerData.completionRate >= 50 ? 'warning.main' : 'error.main'
+                        }
+                      }} 
+                    />
+                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      {learnerData.completionRate}%
+                    </Typography>
+                  </Box>
                 </Box>
               </Grid>
               <Grid item xs={12}>

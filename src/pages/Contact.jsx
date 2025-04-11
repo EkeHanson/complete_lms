@@ -1,19 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  TextField,
-  Button,
-  Card,
-  CardContent,
-  Divider,
-  Chip,
-  useTheme,
-  useMediaQuery,
-  Paper,
-  Link
+  Box,  Container,  Typography,  Grid,  TextField,  Button,  Card,
+  CardContent,  Divider,  Chip,  useTheme,  useMediaQuery,  Paper,  Link
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -24,6 +12,8 @@ import {
   CheckCircle as SuccessIcon,
   Error as ErrorIcon
 } from '@mui/icons-material';
+import Navbar from '../components/common/Navbar/Navbar';
+import Footer from '../components/common/Footer/Footer';
 
 const Contact = () => {
   const theme = useTheme();
@@ -100,6 +90,7 @@ const Contact = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Navbar />
       {/* Header Section */}
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
@@ -296,7 +287,7 @@ const Contact = () => {
             </Card>
 
             {/* Map Placeholder */}
-            <Box sx={{ 
+            {/* <Box sx={{ 
               height: 250, 
               backgroundColor: theme.palette.grey[200],
               borderRadius: 2,
@@ -308,13 +299,13 @@ const Contact = () => {
               <Typography color="text.secondary">
                 [Interactive Map Would Appear Here]
               </Typography>
-            </Box>
+            </Box> */}
           </Box>
         </Grid>
       </Grid>
 
       {/* Team Contact Section */}
-      {!isMobile && (
+      {/* {!isMobile && (
         <Box sx={{ mt: 8 }}>
           <Typography variant="h4" component="h2" sx={{ textAlign: 'center', mb: 4, fontWeight: 700 }}>
             Contact Our Team Directly
@@ -368,8 +359,11 @@ const Contact = () => {
               </Grid>
             ))}
           </Grid>
+          
         </Box>
-      )}
+        
+      )} */}
+      <Footer />
     </Container>
   );
 };

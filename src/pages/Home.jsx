@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import Navbar from '../components/common/Navbar/Navbar';
 import Footer from '../components/common/Footer/Footer';
-import Advertorial from '../components/common/Advertorial/Advertorial';
+import Advertorial from './dashboard/AdminDashboard/Advertorial/Advertorial';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import './Home.css';
@@ -405,15 +405,7 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       }}>
         <Container maxWidth="lg">
           <Grid container spacing={4} justifyContent="center" alignItems="center">
-            {[
-              {logo1},
-              {logo2},
-              {logo3},
-              {logo4},
-              {logo5},
-              {logo6},
-              {logo7}
-            ].map((logo, index) => (
+            {[logo1, logo2, logo3, logo4, logo5, logo6, logo7].map((logo, index) => (
               <Grid item key={index} xs={6} sm={4} md={2}>
                 <Box 
                   component="img"

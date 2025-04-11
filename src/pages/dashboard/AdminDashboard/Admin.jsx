@@ -10,7 +10,7 @@ import {
 import {
   Dashboard as DashboardIcon, People as UsersIcon,
   Security as SecurityIcon, AttachMoney as FinanceIcon,
-  Menu as MenuIcon, CalendarToday as ScheduleIcon,
+  Menu as MenuIcon, CalendarToday as ScheduleIcon,Campaign as AdvertIcon,
   ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon, Settings as SettingsIcon,
   Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
@@ -38,6 +38,7 @@ import ScheduleManagement from './ScheduleManagement';
 import ActivityFeed from './ActivityFeed'; // Add this import
 import Messaging from './Messaging';
 import LearnerProfile from './LearnerProfile';
+import Advertorial from './Advertorial/Advertorial';
 
 const drawerWidth = 240;
 
@@ -137,6 +138,21 @@ function Admin() {
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Schedule Icon with Tooltip */}
+            <Tooltip title="Advert Management">
+              <IconButton 
+                component={Link}
+                to="/admin/advertorial"
+                size="large" 
+                color="inherit"
+                aria-label="advert-management"
+                sx={{
+                  color: location.pathname === '/admin/advertorial' ? 
+                    theme.palette.primary.main : 'inherit'
+                }}
+              >
+                <AdvertIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Schedule Management">
               <IconButton 
                 component={Link}
@@ -400,6 +416,7 @@ function Admin() {
             <Route path="/schedule" element={<ScheduleManagement />} />
             <Route path="/activity-feed" element={<ActivityFeed />} />
             <Route path="/messaging" element={<Messaging />} /> 
+            <Route path="/advertorial" element={<Advertorial />} />
 
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
           </Routes>
