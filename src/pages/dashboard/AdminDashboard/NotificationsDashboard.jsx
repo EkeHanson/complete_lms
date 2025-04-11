@@ -1,32 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Box, Container, Typography,
-  Grid, Card, List, CardContent,
-  Divider, Tabs, Tab, Table, TableBody,
-  TableCell, TableContainer,
-  TableHead, TableRow, Paper, Chip,
-  Avatar, IconButton, Tooltip, useTheme,
-  useMediaQuery, TextField,
-  InputAdornment, Button, Badge, Stack,
-  ListItem, ListItemIcon, ListItemText
+  Box, Container, Typography,  Grid, Card, List, CardContent,
+  Divider, Tabs, Tab, Table, TableBody,  TableCell, TableContainer,
+  TableHead, TableRow, Paper, Chip,  InputAdornment, Button, Badge, Stack,
+  Avatar, IconButton, Tooltip, useTheme,  useMediaQuery, TextField,ListItem, ListItemIcon, ListItemText
 } from '@mui/material';
 import {
-  Notifications as NotificationsIcon,
-  Warning as WarningIcon,
-  Report as ReportIcon,
-  AddShoppingCart as ListingIcon,
-  HowToReg as ApprovalIcon,
-  Security as SuspiciousIcon,
-  Refresh as RefreshIcon,
-  CheckCircle as ResolveIcon,
-  ArrowForward as DetailsIcon,
-  CalendarToday as CalendarIcon,
-  FilterList as FilterIcon,
-  Error as CriticalIcon,
-  Storage as StorageIcon,
-  Traffic as TrafficIcon,
-  Search as SearchIcon, Block as BlockIcon 
-} from '@mui/icons-material';
+  Notifications as NotificationsIcon,  Warning as WarningIcon,  Report as ReportIcon,
+  AddShoppingCart as ListingIcon,  HowToReg as ApprovalIcon,  Security as SuspiciousIcon,
+   ArrowForward as DetailsIcon,  Refresh as RefreshIcon,  CheckCircle as ResolveIcon,  
+  CalendarToday as CalendarIcon,  FilterList as FilterIcon, Search as SearchIcon, Block as BlockIcon,
+  Error as CriticalIcon,  Storage as StorageIcon,  Traffic as TrafficIcon,
+  } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -75,6 +60,7 @@ const NotificationsDashboard = () => {
     { id: 4, type: 'Fake Reviews', user: 'reviewer123@example.com', details: '5 identical positive reviews', timestamp: '2023-06-13 22:18:37', status: 'investigating' }
   ];
 
+  
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };

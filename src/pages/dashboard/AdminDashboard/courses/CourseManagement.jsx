@@ -1,39 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  Box, 
-  Typography, 
-  Button, 
-  Grid, 
-  Paper, 
-  TextField,
-  Divider,
-  Tabs,
-  Tab,
-  useTheme,
-  Card,
-  CardContent,
-  LinearProgress,
-  Chip,
-  Avatar,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  IconButton,
-  Stack
+  Box,   Typography,   Button,   Grid,   Paper,   TextField,  Divider,  Tabs,  Tab,  useTheme,  Card,
+  CardContent,  LinearProgress,  Chip,  Avatar,  List,  ListItem,
+  ListItemAvatar,  ListItemText,  IconButton,  Stack,  useMediaQuery, ListItemSecondaryAction 
 } from '@mui/material';
 import { 
-  Add, 
-  Search, 
-  FilterList,
-  People,
-  School,
-  CheckCircle,
-  TrendingUp,
-  Warning,
-  Star,
-  Category,
-  AccessTime
+  Add,   Search,   FilterList,  People,
+  School,  CheckCircle,  TrendingUp,  Warning,
+  Star,  Category,  AccessTime,  Menu as MenuIcon
 } from '@mui/icons-material';
 import CourseList from './CourseList';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +17,8 @@ const CourseManagement = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   // Dummy data
   const courseStats = {
@@ -83,13 +59,17 @@ const CourseManagement = () => {
   const StatCard = ({ icon, title, value, color }) => (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Stack direction="row" alignItems="center" spacing={2}>
-          <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.dark` }}>
+        <Stack direction={isMobile ? "column" : "row"} alignItems="center" spacing={2}>
+          <Avatar sx={{ 
+            bgcolor: `${color}.light`, 
+            color: `${color}.dark`,
+            ...(isMobile && { mb: 1 })
+          }}>
             {icon}
           </Avatar>
-          <Box>
+          <Box sx={{ textAlign: isMobile ? 'center' : 'left' }}>
             <Typography variant="subtitle2" color="text.secondary">{title}</Typography>
-            <Typography variant="h5">{value}</Typography>
+            <Typography variant={isMobile ? "h6" : "h5"}>{value}</Typography>
           </Box>
         </Stack>
       </CardContent>
@@ -105,23 +85,32 @@ const CourseManagement = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          Course Management Dashboard
+    <Box sx={{ p: isMobile ? 1 : 3 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'center',
+        mb: 3,
+        gap: isMobile ? 2 : 0
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 600 }}>
+          Course Management
         </Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
           onClick={handleAddCourse}
+          fullWidth={isMobile}
+          size={isMobile ? "small" : "medium"}
         >
-          Add New Course
+          {isMobile ? 'New Course' : 'Add New Course'}
         </Button>
       </Box>
 
       {/* Quick Stats Section */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6} lg={3}>
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
           <StatCard 
             icon={<School />} 
             title="Total Courses" 
@@ -129,15 +118,15 @@ const CourseManagement = () => {
             color="primary" 
           />
         </Grid>
-        <Grid item xs={12} md={6} lg={3}>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
           <StatCard 
             icon={<People />} 
-            title="Total Enrollments" 
+            title="Enrollments" 
             value={courseStats.totalEnrollments} 
             color="secondary" 
           />
         </Grid>
-        <Grid item xs={12} md={6} lg={3}>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
           <StatCard 
             icon={<CheckCircle />} 
             title="Completed" 
@@ -145,10 +134,10 @@ const CourseManagement = () => {
             color="success" 
           />
         </Grid>
-        <Grid item xs={12} md={6} lg={3}>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
           <StatCard 
             icon={<TrendingUp />} 
-            title="Avg Completion" 
+            title="Completion %" 
             value={`${courseStats.averageCompletionRate}%`} 
             color="info" 
           />
@@ -156,21 +145,21 @@ const CourseManagement = () => {
       </Grid>
 
       {/* Detailed Stats Section */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
         {/* Most Popular Course */}
         <Grid item xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <Star color="warning" sx={{ mr: 1 }} /> Most Popular Course
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Star color="warning" sx={{ mr: 1 }} /> Most Popular
               </Typography>
-              <Typography variant="h5">{courseStats.mostPopularCourse.title}</Typography>
-              <Typography color="text.secondary" sx={{ mb: 2 }}>
+              <Typography variant={isMobile ? "h6" : "h5"}>{courseStats.mostPopularCourse.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Instructor: {courseStats.mostPopularCourse.instructor}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <People color="action" sx={{ mr: 1 }} />
-                <Typography>{courseStats.mostPopularCourse.enrollments} enrollments</Typography>
+                <Typography variant="body2">{courseStats.mostPopularCourse.enrollments} enrollments</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -180,16 +169,16 @@ const CourseManagement = () => {
         <Grid item xs={12} md={6}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <Warning color="error" sx={{ mr: 1 }} /> Least Popular Course
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Warning color="error" sx={{ mr: 1 }} /> Least Popular
               </Typography>
-              <Typography variant="h5">{courseStats.leastPopularCourse.title}</Typography>
-              <Typography color="text.secondary" sx={{ mb: 2 }}>
+              <Typography variant={isMobile ? "h6" : "h5"}>{courseStats.leastPopularCourse.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Instructor: {courseStats.leastPopularCourse.instructor}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <People color="action" sx={{ mr: 1 }} />
-                <Typography>{courseStats.leastPopularCourse.enrollments} enrollments</Typography>
+                <Typography variant="body2">{courseStats.leastPopularCourse.enrollments} enrollments</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -199,8 +188,8 @@ const CourseManagement = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <Category sx={{ mr: 1, color: 'purple' }} /> Categories Distribution
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Category sx={{ mr: 1, color: 'purple' }} /> Categories
               </Typography>
               <Box sx={{ mt: 2 }}>
                 {courseStats.categories.map((category) => (
@@ -222,18 +211,25 @@ const CourseManagement = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <AccessTime sx={{ mr: 1, color: 'orange' }} /> Recently Added Courses
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <AccessTime sx={{ mr: 1, color: 'orange' }} /> Recent Courses
               </Typography>
-              <List>
+              <List dense={isMobile}>
                 {courseStats.recentCourses.map((course, index) => (
                   <ListItem key={index} secondaryAction={
-                    <Chip label="New" color="info" size="small" />
+                    !isMobile && <Chip label="New" color="info" size="small" />
                   }>
                     <ListItemText
                       primary={course.title}
                       secondary={`Added: ${course.date} • ${course.instructor}`}
+                      primaryTypographyProps={{ variant: isMobile ? "body2" : "body1" }}
+                      secondaryTypographyProps={{ variant: isMobile ? "caption" : "body2" }}
                     />
+                    {isMobile && (
+                      <ListItemSecondaryAction>
+                        <Chip label="New" color="info" size="small" />
+                      </ListItemSecondaryAction>
+                    )}
                   </ListItem>
                 ))}
               </List>
@@ -241,11 +237,14 @@ const CourseManagement = () => {
           </Card>
         </Grid>
       </Grid>
+      
       {/* Courses List Section */}
       <Paper sx={{ mb: 3 }}>
         <Tabs 
           value={activeTab} 
           onChange={(e, newValue) => setActiveTab(newValue)}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
           sx={{
             '& .MuiTabs-indicator': {
               backgroundColor: theme.palette.primary.main,
@@ -259,7 +258,7 @@ const CourseManagement = () => {
           <Tab label="Archived" />
         </Tabs>
         <Divider />
-        <CourseList />
+        <CourseList isMobile={isMobile} />
       </Paper>
     </Box>
   );

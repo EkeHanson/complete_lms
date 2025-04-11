@@ -13,12 +13,9 @@ import ListingDetails from './components/listings/ListingDetails';
 import Navbar from './components/common/Navbar/Navbar';
 import Footer from './components/common/Footer/Footer';
 import AdminDashboard from './pages/dashboard/AdminDashboard/Admin';
-
-
-
 import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement/FeedbackForm.jsx'
 
-
+import './App.css'
 function App() {
 
   const theme = useTheme();
@@ -35,7 +32,6 @@ function App() {
         <Route path="/features" element={<Features theme={theme} />} />
         <Route path="/feedback-form" element={<FeedbackForm />} />
 
-
         {/* Auth Pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -46,6 +42,7 @@ function App() {
 
         {/* Admin Dashboard */}
         <Route path="/admin/*" element={<AdminDashboard />} />
+        
       </Routes>
       {/* <Footer /> */}
     </Router>
