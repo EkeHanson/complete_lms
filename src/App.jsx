@@ -10,10 +10,10 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import BrowseListings from './components/listings/BrowseListings';
 import ListingDetails from './components/listings/ListingDetails';
-import Navbar from './components/common/Navbar/Navbar';
-import Footer from './components/common/Footer/Footer';
 import AdminDashboard from './pages/dashboard/AdminDashboard/Admin';
 import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement/FeedbackForm.jsx'
+
+import { CertificateProvider } from './contexts/CertificateContext';
 
 import './App.css'
 function App() {
@@ -22,6 +22,7 @@ function App() {
 
   return (
     <Router>
+      <CertificateProvider>
       {/* <Navbar /> */}
       <Routes>
         {/* Static Pages */}
@@ -41,10 +42,13 @@ function App() {
         <Route path="/listings/:id" element={<ListingDetails />} />
 
         {/* Admin Dashboard */}
-        <Route path="/admin/*" element={<AdminDashboard />} />
+      
+          <Route path="/admin/*" element={<AdminDashboard />} />
+        
         
       </Routes>
       {/* <Footer /> */}
+      </CertificateProvider>
     </Router>
   );
 }

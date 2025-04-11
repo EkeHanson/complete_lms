@@ -1,5 +1,369 @@
 
 
+// === File: DraggableElement.jsx ===
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { CertificateContext } from '../../../contexts/CertificateContext';
+
+const DraggableElement = ({ id, children, defaultPosition, isDisabled = false }) => {
+  const { updateElementPosition } = useContext(CertificateContext);
+  const [position, setPosition] = useState(defaultPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const elementRef = useRef(null);
+  const containerRef = useRef(document.querySelector('.certificate-template'));
+
+  const handleMouseDown = (e) => {
+    if (isDisabled) return;
+    
+    setIsDragging(true);
+    const rect = elementRef.current.getBoundingClientRect();
+    setOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || isDisabled) return;
+    
+    if (!containerRef.current) {
+      containerRef.current = document.querySelector('.certificate-template');
+      if (!containerRef.current) return;
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const elementRect = elementRef.current.getBoundingClientRect();
+    
+    // Calculate new position with full container bounds
+    let newX = e.clientX - containerRect.left - offset.x;
+    let newY = e.clientY - containerRect.top - offset.y;
+    
+    // Allow dragging to edges by considering element width/height
+    newX = Math.max(0, Math.min(newX, containerRect.width - elementRect.width));
+    newY = Math.max(0, Math.min(newY, containerRect.height - elementRect.height));
+    
+    const newPosition = { x: newX, y: newY };
+    
+    setPosition(newPosition);
+    updateElementPosition(id, newPosition);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, offset]);
+
+  const style = {
+    position: 'absolute',
+    left: `${position.x}px`,
+    top: `${position.y}px`,
+    cursor: isDragging ? 'grabbing' : (isDisabled ? 'default' : 'grab'),
+    zIndex: isDragging ? 1000 : 1
+  };
+
+  return (
+    <div
+      ref={elementRef}
+      id={id}
+      style={style}
+      onMouseDown={handleMouseDown}
+      className="draggable-element"
+    >
+      {children}
+    </div>
+  );
+};
+
+export default DraggableElement;
+
+// === File: PreviewPanel.css ===
+
+
+// === File: PreviewPanel.jsx ===
+import React, { useContext } from 'react';
+import { CertificateContext } from '../../contexts/CertificateContext';
+import { toPng, toJpeg } from 'html-to-image';
+import { saveAs } from 'file-saver';
+import Certificate from '../Certificate/Certificate';
+import './PreviewPanel.css';
+
+const PreviewPanel = () => {
+  const { certificate } = useContext(CertificateContext);
+  const certificateRef = React.useRef(null);
+
+  const downloadCertificate = async (format) => {
+    if (!certificateRef.current) return;
+
+    try {
+      let dataUrl;
+      const options = {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff'
+      };
+
+      switch (format) {
+        case 'png':
+          dataUrl = await toPng(certificateRef.current, options);
+          saveAs(dataUrl, `${certificate.recipientName || 'certificate'}.png`);
+          break;
+        case 'jpeg':
+          dataUrl = await toJpeg(certificateRef.current, options);
+          saveAs(dataUrl, `${certificate.recipientName || 'certificate'}.jpg`);
+          break;
+        case 'pdf':
+          alert('PDF export would be implemented with jsPDF');
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+    }
+  };
+
+  return (
+    <div className="preview-panel">
+      <h3>Preview & Export</h3>
+      
+      <div className="preview-container">
+        <div className="certificate-preview" ref={certificateRef}>
+          <Certificate isPreview={true} />
+        </div>
+      </div>
+
+      <div className="export-options">
+        <h4>Export Options</h4>
+        <div className="export-buttons">
+          <button onClick={() => downloadCertificate('png')}>PNG</button>
+          <button onClick={() => downloadCertificate('jpeg')}>JPEG</button>
+          <button onClick={() => downloadCertificate('pdf')}>PDF</button>
+        </div>
+      </div>
+
+      <div className="certificate-info">
+        <h4>Certificate Details</h4>
+        <ul>
+          <li><strong>Recipient:</strong> {certificate.recipientName || "Not specified"}</li>
+          <li><strong>Course:</strong> {certificate.courseName || "Not specified"}</li>
+          <li><strong>Date:</strong> {certificate.date}</li>
+          <li><strong>Signatures:</strong> {certificate.signatures.length}</li>
+          <li><strong>Logos:</strong> {certificate.logos.length}</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default PreviewPanel;
+
+// === File: Toolbar.css ===
+
+
+// === File: Toolbar.jsx ===
+import React, { useState, useContext } from 'react'; // Added useContext import here
+import { CertificateContext } from '../../../contexts/CertificateContext';
+import { FaFileAlt, FaDownload, FaUndo, FaRedo, FaSave, FaShareAlt } from 'react-icons/fa';
+import PreviewModal from '../Certificate/PreviewModal';
+import './Toolbar.css';
+
+const Toolbar = () => {
+  const { certificate, updateCertificate } = useContext(CertificateContext);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handleNewCertificate = () => {
+    if (window.confirm('Are you sure you want to create a new certificate? All current changes will be lost.')) {
+      updateCertificate({
+        title: "Certificate of Completion",
+        recipientName: "",
+        courseName: "",
+        date: new Date().toLocaleDateString(),
+        signatures: [],
+        logos: [],
+        template: "classic",
+        barcodeData: "https://cmvp.net/verification/4b832a6e-bba1-4e15-b7d5-6da5657512f0/ARTS/"
+      });
+    }
+  };
+
+  const handleSave = () => {
+    // First save to local storage
+    localStorage.setItem('certificateData', JSON.stringify(certificate));
+    // Then show preview
+    setShowPreview(true);
+  };
+
+  const handleLoad = () => {
+    const savedData = localStorage.getItem('certificateData');
+    if (savedData) {
+      if (window.confirm('Load saved certificate? Current changes will be lost.')) {
+        updateCertificate(JSON.parse(savedData));
+      }
+    } else {
+      alert('No saved certificate found');
+    }
+  };
+
+  return (
+    <>
+      <div className="toolbar">
+        <div className="toolbar-left">
+          <h1 className="app-title">Certificate Builder</h1>
+        </div>
+        
+        <div className="toolbar-center">
+          <button className="toolbar-button" onClick={handleNewCertificate}>
+            <FaFileAlt className="toolbar-icon" />
+            <span>New</span>
+          </button>
+          
+          <button className="toolbar-button" onClick={handleSave}>
+            <FaSave className="toolbar-icon" />
+            <span>Preview & Save </span>
+          </button>
+          
+          <button className="toolbar-button" onClick={handleLoad}>
+            <FaFileAlt className="toolbar-icon" />
+            <span>Load</span>
+          </button>
+        </div>
+      </div>
+
+      {showPreview && (
+        <PreviewModal onClose={() => setShowPreview(false)} />
+      )}
+    </>
+  );
+};
+
+export default Toolbar;
+
+import React, { createContext, useState, useCallback } from 'react';
+
+export const CertificateContext = createContext();
+
+export const CertificateProvider = ({ children }) => {
+  const [history, setHistory] = useState([{
+    title: "Certificate of Completion",
+    recipientName: "",
+    courseName: "",
+    date: new Date().toLocaleDateString(),
+    signatures: [],
+    logos: [],
+    template: "classic",
+    templateImage: null,
+    barcodeData: "https://cmvp.net/verification/4b832a6e-bba1-4e15-b7d5-6da5657512f0/ARTS/",
+    backgroundColor: 'transparent',
+    borderColor: '#f1c40f',
+    borderWidth: '15px',
+    borderStyle: 'solid',
+    completionText: 'has successfully completed the course',
+  }]);
+  
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const certificate = history[historyIndex];
+
+  const updateCertificate = useCallback((updates, recordHistory = false) => {
+    if (recordHistory) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push({ ...certificate, ...updates });
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    } else {
+      setHistory(prev => {
+        const newHistory = [...prev];
+        newHistory[historyIndex] = { ...certificate, ...updates };
+        return newHistory;
+      });
+    }
+  }, [certificate, history, historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(prev => prev - 1);
+    }
+  }, [historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(prev => prev + 1);
+    }
+  }, [history, historyIndex]);
+
+  const addSignature = useCallback((signature) => {
+    updateCertificate({
+      signatures: [...certificate.signatures, signature]
+    }, true);
+  }, [certificate.signatures, updateCertificate]);
+
+  const updateSignature = useCallback((index, updates) => {
+    const updatedSignatures = [...certificate.signatures];
+    updatedSignatures[index] = { ...updatedSignatures[index], ...updates };
+    updateCertificate({ signatures: updatedSignatures }, true);
+  }, [certificate.signatures, updateCertificate]);
+
+  const removeSignature = useCallback((index) => {
+    updateCertificate({
+      signatures: certificate.signatures.filter((_, i) => i !== index)
+    }, true);
+  }, [certificate.signatures, updateCertificate]);
+
+  const addLogo = useCallback((logo) => {
+    updateCertificate({
+      logos: [...certificate.logos, logo]
+    }, true);
+  }, [certificate.logos, updateCertificate]);
+
+  const updateLogo = useCallback((index, updates) => {
+    const updatedLogos = [...certificate.logos];
+    updatedLogos[index] = { ...updatedLogos[index], ...updates };
+    updateCertificate({ logos: updatedLogos }, true);
+  }, [certificate.logos, updateCertificate]);
+
+  const removeLogo = useCallback((index) => {
+    updateCertificate({
+      logos: certificate.logos.filter((_, i) => i !== index)
+    }, true);
+  }, [certificate.logos, updateCertificate]);
+
+  const updateCompletionTextPosition = useCallback((position) => {
+    updateCertificate({
+      completionTextPosition: position
+    });
+  }, [updateCertificate]);
+
+  return (
+    <CertificateContext.Provider value={{
+      certificate,
+      updateCertificate,
+      history,
+      historyIndex,
+      undo,
+      redo,
+      addSignature,
+      updateSignature,
+      removeSignature,
+      addLogo,
+      updateLogo,
+      removeLogo,
+      updateCompletionTextPosition
+    }}>
+      {children}
+    </CertificateContext.Provider>
+  );
+};
+
 // === File: BarcodeGenerator.jsx ===
 // BarcodeGenerator.jsx
 import React, { useEffect, useRef } from 'react';
@@ -22,222 +386,7 @@ const BarcodeGenerator = ({ data }) => {
 export default BarcodeGenerator;
 
 // === File: BulkCertificateControls.css ===
-/* BulkCertificateControls.css */
-.bulk-certificate-controls {
-  padding: 15px;
-  background: #fff;
-  border-radius: var(--border-radius);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  width: 100%;
-}
 
-.bulk-certificate-controls h3 {
-  margin-bottom: 15px;
-  color: var(--dark-color);
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-  font-size: 18px;
-}
-
-.data-source-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.data-source-selector label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.column-mapping {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.api-status {
-  margin: 15px 0;
-  padding: 10px;
-  border-radius: 4px;
-  background: #f8f9fa;
-  text-align: center;
-  font-size: 14px;
-}
-
-.loading-indicator {
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.loading-indicator::after {
-  content: "";
-  width: 16px;
-  height: 16px;
-  border: 3px solid rgba(52, 152, 219, 0.3);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.success-message {
-  color: var(--secondary-color);
-}
-
-.recipients-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.recipients-header h4 {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-}
-
-.select-all-btn {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 2px 8px;
-}
-
-.select-all-btn:hover {
-  text-decoration: underline;
-}
-
-.recipients-scroll {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #eee;
-  border-radius: 4px;
-}
-
-.recipient-item {
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.recipient-item:hover {
-  background: #f5f7fa;
-}
-
-.recipient-item.selected {
-  background: #e3f2fd;
-  font-weight: 500;
-}
-
-.recipient-name {
-  font-weight: 500;
-  margin-bottom: 4px;
-  font-size: 14px;
-}
-
-.recipient-course {
-  font-size: 12px;
-  color: #666;
-}
-
-.bulk-actions {
-  margin-top: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.bulk-actions button {
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.bulk-actions button:disabled {
-  background: #ddd;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.bulk-actions button.secondary {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.bulk-actions button.secondary:hover:not(:disabled) {
-  background: #e0e0e0;
-}
-
-.bulk-actions button.primary {
-  background: var(--primary-color);
-  color: white;
-}
-
-.bulk-actions button.primary:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.form-group input, 
-.form-group select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-/* Responsive Adjustments */
-@media (min-width: 768px) {
-  .column-mapping {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .recipients-scroll {
-    max-height: 250px;
-  }
-}
-
-@media (min-width: 992px) {
-  .bulk-certificate-controls {
-    padding: 20px;
-  }
-  
-  .recipients-scroll {
-    max-height: 300px;
-  }
-}
 
 // === File: BulkCertificateControls.jsx ===
 import React, { useState, useContext, useEffect } from 'react';
@@ -602,424 +751,15 @@ const BulkCertificateControls = () => {
 export default BulkCertificateControls;
 
 // === File: Certificate.css ===
-/* Certificate Controls Container */
-.certificate-controls {
-  width: 100%;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
 
-/* Tabs Container */
-.tabs-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 0 32px;
-}
-
-/* Scrollable Tabs */
-.control-tabs {
-  display: flex;
-  overflow-x: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-  white-space: nowrap;
-  flex: 1;
-  padding: 0 4px;
-  scroll-behavior: smooth;
-}
-
-.control-tabs::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
-
-.control-tabs button {
-  flex: 0 0 auto;
-  padding: 12px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  color: #666;
-  position: relative;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.control-tabs button.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
-}
-
-.control-tabs button:hover:not(.active) {
-  color: #333;
-  background-color: #f5f5f5;
-}
-
-/* Scroll Buttons */
-.scroll-button {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 50%;
-  cursor: pointer;
-  z-index: 2;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
-}
-
-.scroll-button.left {
-  left: 0;
-}
-
-.scroll-button.right {
-  right: 0;
-}
-
-.scroll-button:hover {
-  background-color: #f5f5f5;
-  transform: translateY(-50%) scale(1.05);
-}
-
-.scroll-button svg {
-  font-size: 14px;
-  color: #666;
-}
-
-/* Control Content */
-.control-content {
-  padding: 20px;
-  height: calc(100% - 49px);
-  overflow-y: auto;
-}
-
-/* Form Styles */
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  font-size: 14px;
-  color: #444;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-}
-
-/* Color Picker Styles */
-.color-picker-group {
-  margin-bottom: 15px;
-}
-
-.color-picker-wrapper {
-  position: relative;
-}
-
-.color-picker-button {
-  width: 100%;
-  height: 36px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.color-picker-popup {
-  position: absolute;
-  z-index: 10;
-  top: 40px;
-  left: 0;
-  background: white;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-
-.close-picker {
-  margin-top: 10px;
-  padding: 6px 12px;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .control-tabs button {
-    padding: 12px 16px;
-  }
-  
-  .tabs-container {
-    padding: 0 28px;
-  }
-}
-
-@media (max-width: 480px) {
-  .control-tabs button {
-    padding: 10px 12px;
-    font-size: 13px;
-  }
-  
-  .scroll-button {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .tabs-container {
-    padding: 0 24px;
-  }
-}
-.certificate-wrapper {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
-
-.certificate-template {
-  position: relative;
-  margin: 0 auto;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.certificate-content {
-  position: relative;
-  z-index: 1;
-  padding: 60px;
-  text-align: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.certificate-title {
-  font-size: 2.5rem;
-  margin-bottom: 30px;
-  color: #333;
-}
-
-.recipient-name {
-  font-size: 2rem;
-  margin: 20px 0;
-  color: #2c3e50;
-}
-
-.course-name {
-  font-size: 1.8rem;
-  margin: 20px 0;
-  color: #3498db;
-}
-
-.certificate-text {
-  font-size: 1.2rem;
-  margin: 10px 0;
-  color: #555;
-}
-
-.signatures-container {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 60px;
-  flex-wrap: wrap;
-}
-
-.signature-box {
-  margin: 0 20px;
-  text-align: center;
-}
-
-.signature-image {
-  max-width: 150px;
-  height: auto;
-  margin-bottom: 10px;
-}
-
-.signature-name {
-  font-weight: bold;
-  margin: 5px 0;
-}
-
-.signature-date {
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.barcode-container {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-}
-
-.certificate-logo {
-  max-width: 100px;
-  height: auto;
-  object-fit: contain;
-}
-/* Add to Certificate.css */
-.draggable-text {
-  cursor: move;
-  user-select: none;
-}
-
-.certificate-text {
-  font-size: 1.2rem;
-  margin: 10px 0;
-  color: #555;
-  position: relative; /* Needed for proper dragging */
-}
-/* Add these to your existing Certificate.css */
-.draggable-text {
-  cursor: move;
-  user-select: none;
-  margin: 10px 0;
-  padding: 5px 10px;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.certificate-text {
-  font-size: 1.2rem;
-  color: #555;
-  position: relative;
-}
-
-/* Ensure the draggable elements don't affect layout */
-.react-draggable {
-  position: absolute;
-  z-index: 1;
-}
-.certificate-wrapper {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
-
-.certificate-template {
-  position: relative;
-  margin: 0 auto;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
-
-.certificate-content {
-  position: relative;
-  z-index: 1;
-  padding: 60px;
-  text-align: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.certificate-title {
-  font-size: 2.5rem;
-  margin-bottom: 30px;
-  color: #333;
-}
-
-.recipient-name {
-  font-size: 2rem;
-  margin: 20px 0;
-  color: #2c3e50;
-}
-
-.course-name {
-  font-size: 1.8rem;
-  margin: 20px 0;
-  color: #3498db;
-}
-
-.certificate-text {
-  font-size: 1.2rem;
-  margin: 10px 0;
-  color: #555;
-}
-
-.signatures-container {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 30px;
-  flex-wrap: wrap;
-}
-
-.signature-box {
-  margin: 0 10px;
-  text-align: center;
-  padding: 5px;
-}
-
-.signature-image {
-  max-width: 120px;
-  height: auto;
-  margin-bottom: 5px;
-}
-
-.signature-name {
-  font-weight: bold;
-  margin: 5px 0;
-  font-size: 0.8rem;
-  color: #333;
-  line-height: 1.2;
-}
-
-.signature-date {
-  margin: 0;
-  font-size: 0.7rem;
-  color: #666;
-  line-height: 1.2;
-}
-
-.barcode-container {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-}
-
-.certificate-logo {
-  max-width: 100px;
-  height: auto;
-  object-fit: contain;
-}
 
 // === File: Certificate.jsx ===
-import React, { useContext, useRef, useEffect } from 'react';
+// === File: Certificate.jsx ===
+import React, { useContext } from 'react';
 import { CertificateContext } from '../../../contexts/CertificateContext';
-import DraggableElement from '../UI/DraggableElement';
+import { Box, Paper, Typography } from '@mui/material';
 import BarcodeGenerator from './BarcodeGenerator';
-import './Certificate.css';
+import DraggableElement from '../UI/DraggableElement';
 
 // Import template images
 import classicTemplate from '../../../assets/templates/classic.jpg';
@@ -1028,8 +768,7 @@ import elegantTemplate from '../../../assets/templates/elegant.png';
 import minimalTemplate from '../../../assets/templates/minimal.jpg';
 
 const Certificate = () => {
-  const { certificate, updateCompletionTextPosition } = useContext(CertificateContext);
-  const certificateRef = useRef(null);
+  const { certificate } = useContext(CertificateContext);
   const { 
     title, 
     recipientName, 
@@ -1057,686 +796,508 @@ const Certificate = () => {
   // Use custom template if available, otherwise use predefined
   const backgroundImage = templateImage || templateImages[template];
 
-  const certificateStyle = {
-    backgroundImage: `url(${backgroundImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    borderColor,
-    borderWidth,
-    borderStyle
-  };
-
-  // Fixed dimensions for consistent rendering
-  const [dimensions, setDimensions] = React.useState({ width: 1000, height: 707 });
-
-  useEffect(() => {
-    const calculateDimensions = () => {
-      if (certificateRef.current) {
-        const width = certificateRef.current.offsetWidth;
-        const height = width * 0.707; // Standard A4 ratio
-        setDimensions({ width, height });
-      }
-    };
-
-    calculateDimensions();
-    window.addEventListener('resize', calculateDimensions);
-    return () => window.removeEventListener('resize', calculateDimensions);
-  }, []);
-
-  const handleCompletionTextDrag = (e, data) => {
-    updateCompletionTextPosition({ x: data.x, y: data.y });
-  };
-
   return (
-    <div className="certificate-wrapper" ref={certificateRef}>
-      <div 
-        className="certificate-template" 
-        style={{
-          ...certificateStyle,
-          width: `${dimensions.width}px`,
-          height: `${dimensions.height}px`,
-          position: 'relative'
+    <Paper 
+      elevation={3}
+      sx={{
+        width: '100%',
+        maxWidth: '1000px',
+        aspectRatio: '4/3',
+        position: 'relative',
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        borderColor,
+        borderWidth,
+        borderStyle,
+        p: 4,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        mx: 'auto',
+        my: 2
+      }}
+    >
+      <Typography 
+        variant="h3" 
+        component="h1" 
+        sx={{ 
+          fontWeight: 700,
+          color: 'text.primary',
+          mb: 2,
+          textAlign: 'center'
         }}
       >
-        <div className="certificate-content">
-          <h1 className="certificate-title">{title}</h1>
-          <p className="certificate-text">This is to certify that</p>
-          <h2 className="recipient-name">{recipientName || "[Recipient Name]"}</h2>
-          <p className="certificate-text">
-            {certificate.completionText || "has successfully completed the course"}
-          </p>
-          <h3 className="course-name">{courseName || "[Course Name]"}</h3>
-          <p className="certificate-text">on this {date}</p>
-          
-          <div className="signatures-container">
-            {signatures.map((sig, index) => (
-              <DraggableElement 
-                key={index} 
-                id={`signature-${index}`} 
-                defaultPosition={sig.position}
-                bounds="parent"
-              >
-                <div className="signature-box">
-                  <img 
-                    src={sig.image} 
-                    alt="Signature" 
-                    className="signature-image" 
-                    style={{ width: '120px', height: 'auto' }}
-                  />
-                  <p className="signature-name">{sig.name || "[Name]"}</p>
-                  <p className="signature-date">{sig.date || "[Date]"}</p>
-                </div>
-              </DraggableElement>
-            ))}
-          </div>
-        </div>
-
-        {/* Logos */}
-        {logos.map((logo, index) => (
+        {title}
+      </Typography>
+      
+      <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+        This is to certify that
+      </Typography>
+      
+      <Typography 
+        variant="h2" 
+        component="h2" 
+        sx={{ 
+          fontWeight: 600,
+          color: 'primary.main',
+          mb: 2,
+          textAlign: 'center'
+        }}
+      >
+        {recipientName || "[Recipient Name]"}
+      </Typography>
+      
+      <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+        {completionText || "has successfully completed the course"}
+      </Typography>
+      
+      <Typography 
+        variant="h4" 
+        component="h3" 
+        sx={{ 
+          fontWeight: 500,
+          color: 'text.secondary',
+          mb: 2,
+          textAlign: 'center'
+        }}
+      >
+        {courseName || "[Course Name]"}
+      </Typography>
+      
+      <Typography variant="body1" sx={{ mb: 4, textAlign: 'center' }}>
+        on this {date}
+      </Typography>
+      
+      <Box 
+        sx={{ 
+          display: 'flex',
+          justifyContent: 'space-around',
+          width: '100%',
+          mt: 'auto',
+          position: 'relative',
+          height: '120px'
+        }}
+      >
+        {signatures.map((sig, index) => (
           <DraggableElement 
-            key={`logo-${index}`} 
-            id={`logo-${index}`} 
-            defaultPosition={logo?.position || { x: 50, y: 50 }}
+            key={index} 
+            id={`signature-${index}`} 
+            defaultPosition={sig.position}
             bounds="parent"
           >
-            <img 
-              src={logo?.image} 
-              alt={`Logo ${index + 1}`} 
-              className="certificate-logo" 
-              style={{
-                width: '100px',
-                height: 'auto',
-                position: 'absolute',
-                zIndex: 10
-              }}
-            />
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}>
+              <Box 
+                component="img"
+                src={sig.image} 
+                alt="Signature" 
+                sx={{ 
+                  width: '120px', 
+                  height: 'auto',
+                  mb: 1
+                }}
+              />
+              <Typography variant="body2">{sig.name || "[Name]"}</Typography>
+              <Typography variant="caption">{sig.date || "[Date]"}</Typography>
+            </Box>
           </DraggableElement>
         ))}
+      </Box>
 
-        {/* Barcode */}
-        <div className="barcode-container">
-          <BarcodeGenerator data={barcodeData} />
-        </div>
-      </div>
-    </div>
+      {/* Logos */}
+      {logos.map((logo, index) => (
+        <DraggableElement 
+          key={`logo-${index}`} 
+          id={`logo-${index}`} 
+          defaultPosition={logo?.position || { x: 50, y: 50 }}
+          bounds="parent"
+        >
+          <Box 
+            component="img"
+            src={logo?.image} 
+            alt={`Logo ${index + 1}`}
+            sx={{
+              width: '100px',
+              height: 'auto',
+            }}
+          />
+        </DraggableElement>
+      ))}
+
+      {/* Barcode */}
+      <Box sx={{ 
+        position: 'absolute',
+        bottom: 16,
+        right: 16
+      }}>
+        <BarcodeGenerator data={barcodeData} />
+      </Box>
+    </Paper>
   );
 };
 
 export default Certificate;
 
 // === File: CertificateControls.css ===
-/* CertificateControls.css */
-.certificate-controls {
-    width: 100%;
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-  }
-  
-  .tabs-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  
-  .control-tabs {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    white-space: nowrap;
-    flex: 1;
-    padding: 0 4px;
-    scroll-behavior: smooth;
-  }
-  
-  .control-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .control-tabs button {
-    flex: 0 0 auto;
-    padding: 12px 16px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-weight: 500;
-    color: #666;
-    position: relative;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
-    font-size: 14px;
-  }
-  
-  .control-tabs button.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-  }
-  
-  .control-tabs button:hover:not(.active) {
-    color: #333;
-    background-color: #f5f5f5;
-  }
-  
-  .scroll-button {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: white;
-    border: 1px solid #ddd;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 2;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-  }
-  
-  .scroll-button.left {
-    left: 5px;
-  }
-  
-  .scroll-button.right {
-    right: 5px;
-  }
-  
-  .scroll-button:hover {
-    background-color: #f5f5f5;
-    transform: translateY(-50%) scale(1.05);
-  }
-  
-  .control-content {
-    padding: 15px;
-    max-height: 500px;
-    overflow-y: auto;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    font-size: 14px;
-    color: #444;
-  }
-  
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  
-  .form-group input:focus,
-  .form-group select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-  }
-  
-  .color-picker-group {
-    margin-bottom: 15px;
-  }
-  
-  .color-picker-wrapper {
-    position: relative;
-  }
-  
-  .color-picker-button {
-    width: 100%;
-    height: 36px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  .color-picker-popup {
-    position: absolute;
-    z-index: 10;
-    top: 40px;
-    left: 0;
-    background: white;
-    padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  }
-  
-  .close-picker {
-    margin-top: 10px;
-    padding: 6px 12px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  /* Responsive Adjustments */
-  @media (max-width: 768px) {
-    .control-tabs button {
-      padding: 10px 12px;
-      font-size: 13px;
-    }
-    
-    .scroll-button {
-      width: 24px;
-      height: 24px;
-    }
-    
-    .control-content {
-      max-height: 300px;
-    }
-  }
+
 
 // === File: CertificateControls.jsx ===
-import React, { useContext, useState, useRef, useEffect } from 'react';
+// === File: BulkCertificateControls.jsx ===
+import React, { useState, useContext } from 'react';
 import { CertificateContext } from '../../../contexts/CertificateContext';
-import SignatureManager from './SignatureManager';
-import LogoManager from './LogoManager';
-import CertificateTemplates from './CertificateTemplates';
-import { ChromePicker } from 'react-color';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import './Certificate.css';
+import * as XLSX from 'xlsx';
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Radio, 
+  RadioGroup, 
+  FormControlLabel, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem,
+  CircularProgress,
+  Paper,
+  Checkbox,
+  Divider
+} from '@mui/material';
+import PreviewModal from '../Certificate/PreviewModal';
 
-const CertificateControls = () => {
+const dummyRecipients = [
+  { id: 1, fullName: "John Doe", email: "john@example.com", course: "Advanced React" },
+  { id: 2, fullName: "Jane Smith", email: "jane@example.com", course: "Node.js Fundamentals" },
+  { id: 3, fullName: "Alex Johnson", email: "alex@example.com", course: "UI/UX Design" },
+];
+
+const BulkCertificateControls = () => {
   const { certificate, updateCertificate } = useContext(CertificateContext);
-  const [activeTab, setActiveTab] = useState('details');
-  const [showBgPicker, setShowBgPicker] = useState(false);
-  const [showBorderPicker, setShowBorderPicker] = useState(false);
-  const [borderWidth, setBorderWidth] = useState(certificate.borderWidth || '15px');
-  const [borderStyle, setBorderStyle] = useState(certificate.borderStyle || 'solid');
-  
-  const tabsRef = useRef(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(false);
+  const [recipients, setRecipients] = useState([]);
+  const [selectedRecipients, setSelectedRecipients] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [templateData, setTemplateData] = useState({});
+  const [dataSource, setDataSource] = useState('api');
+  const [columns, setColumns] = useState([]);
+  const [nameColumn, setNameColumn] = useState('fullName');
+  const [courseColumn, setCourseColumn] = useState('course');
+  const [generatedCertificates, setGeneratedCertificates] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    updateCertificate({ [name]: value });
-  };
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const handleColorChange = (colorType, color) => {
-    updateCertificate({ [colorType]: color.hex });
-  };
-
-  const handleBorderWidthChange = (e) => {
-    const value = e.target.value;
-    setBorderWidth(value);
-    updateCertificate({ borderWidth: value });
-  };
-
-  const handleBorderStyleChange = (e) => {
-    const value = e.target.value;
-    setBorderStyle(value);
-    updateCertificate({ borderStyle: value });
-  };
-
-  const handleScroll = () => {
-    if (tabsRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-      setShowLeftArrow(scrollLeft > 0);
-      setShowRightArrow(scrollLeft < scrollWidth - clientWidth);
-    }
-  };
-
-  const scrollTabs = (direction) => {
-    if (tabsRef.current) {
-      const scrollAmount = direction === 'left' ? -200 : 200;
-      tabsRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
-
-  // Check scroll position on mount and resize
-  useEffect(() => {
-    const checkScroll = () => {
-      if (tabsRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-        setShowLeftArrow(scrollLeft > 0);
-        setShowRightArrow(scrollLeft < scrollWidth - clientWidth);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setIsLoading(true);
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        if (jsonData.length > 0) {
+          setRecipients(jsonData);
+          setColumns(Object.keys(jsonData[0]));
+          const firstRow = jsonData[0];
+          const autoNameCol = Object.keys(firstRow).find(k => 
+            k.match(/name|fullname|student/i)
+          );
+          const autoCourseCol = Object.keys(firstRow).find(k => 
+            k.match(/course|subject|class/i)
+          );
+          if (autoNameCol) setNameColumn(autoNameCol);
+          if (autoCourseCol) setCourseColumn(autoCourseCol);
+        }
+      } catch (error) {
+        console.error("Error processing Excel file:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
+    reader.readAsArrayBuffer(file);
+  };
 
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, []);
+  const toggleRecipientSelection = (id) => {
+    setSelectedRecipients(prev => 
+      prev.includes(id) 
+        ? prev.filter(item => item !== id) 
+        : [...prev, id]
+    );
+  };
+
+  const saveTemplateData = () => {
+    const { recipientName, ...currentTemplate } = certificate;
+    setTemplateData(currentTemplate);
+  };
+
+  const generateAllCertificates = async () => {
+    if (selectedRecipients.length === 0) return;
+    
+    setIsLoading(true);
+    try {
+      const certs = selectedRecipients.map(id => {
+        const recipient = recipients.find(r => 
+          dataSource === 'api' ? r.id === id : r === id
+        );
+        return {
+          ...templateData,
+          recipientName: recipient[nameColumn],
+          courseName: recipient[courseColumn] || ''
+        };
+      });
+
+      setGeneratedCertificates(certs);
+      
+      if (certs.length > 0) {
+        updateCertificate(certs[0]);
+        setCurrentPreviewIndex(0);
+        setShowPreview(true);
+      }
+    } catch (error) {
+      console.error("Error generating certificates:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const navigatePreview = (direction) => {
+    let newIndex = currentPreviewIndex;
+    if (direction === 'prev' && currentPreviewIndex > 0) {
+      newIndex = currentPreviewIndex - 1;
+    } else if (direction === 'next' && currentPreviewIndex < generatedCertificates.length - 1) {
+      newIndex = currentPreviewIndex + 1;
+    }
+    
+    if (newIndex !== currentPreviewIndex) {
+      setCurrentPreviewIndex(newIndex);
+      updateCertificate(generatedCertificates[newIndex]);
+    }
+  };
+
+  const selectAllRecipients = () => {
+    if (selectedRecipients.length === recipients.length) {
+      setSelectedRecipients([]);
+    } else {
+      setSelectedRecipients(
+        dataSource === 'api' 
+          ? recipients.map(r => r.id) 
+          : [...recipients]
+      );
+    }
+  };
 
   return (
-    <div className="certificate-controls">
-      <div className="tabs-container">
-        {showLeftArrow && (
-          <button 
-            className="scroll-button left"
-            onClick={() => scrollTabs('left')}
-            aria-label="Scroll tabs left"
-          >
-            <FaChevronLeft />
-          </button>
-        )}
-        
-        <div 
-          className="control-tabs"
-          ref={tabsRef}
-          onScroll={handleScroll}
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>Bulk Certificate Generator</Typography>
+      
+      <FormControl component="fieldset" sx={{ mb: 3 }}>
+        <RadioGroup 
+          row 
+          value={dataSource} 
+          onChange={(e) => setDataSource(e.target.value)}
         >
-          <button 
-            className={activeTab === 'details' ? 'active' : ''} 
-            onClick={() => setActiveTab('details')}
+          <FormControlLabel 
+            value="api" 
+            control={<Radio />} 
+            label="Use Sample API Data" 
+          />
+          <FormControlLabel 
+            value="excel" 
+            control={<Radio />} 
+            label="Upload Excel File" 
+          />
+        </RadioGroup>
+      </FormControl>
+      
+      {dataSource === 'excel' && (
+        <Box sx={{ mb: 3 }}>
+          <Button 
+            variant="contained"
+            component="label"
+            disabled={isLoading}
           >
-            Details
-          </button>
-          <button 
-            className={activeTab === 'design' ? 'active' : ''} 
-            onClick={() => setActiveTab('design')}
-          >
-            Design
-          </button>
-          <button 
-            className={activeTab === 'signatures' ? 'active' : ''} 
-            onClick={() => setActiveTab('signatures')}
-          >
-            Signatures
-          </button>
-          <button 
-            className={activeTab === 'logos' ? 'active' : ''} 
-            onClick={() => setActiveTab('logos')}
-          >
-            Logos
-          </button>
-          <button 
-            className={activeTab === 'templates' ? 'active' : ''} 
-            onClick={() => setActiveTab('templates')}
-          >
-            Templates
-          </button>
-        </div>
-
-        {showRightArrow && (
-          <button 
-            className="scroll-button right"
-            onClick={() => scrollTabs('right')}
-            aria-label="Scroll tabs right"
-          >
-            <FaChevronRight />
-          </button>
+            Upload Excel File
+            <input 
+              type="file" 
+              hidden 
+              accept=".xlsx, .xls, .csv" 
+              onChange={handleFileUpload} 
+            />
+          </Button>
+        </Box>
+      )}
+      
+      {columns.length > 0 && dataSource === 'excel' && (
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Name Column</InputLabel>
+            <Select 
+              value={nameColumn} 
+              onChange={(e) => setNameColumn(e.target.value)}
+              disabled={isLoading}
+            >
+              {columns.map((col, i) => (
+                <MenuItem key={i} value={col}>{col}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl fullWidth size="small">
+            <InputLabel>Course Column</InputLabel>
+            <Select 
+              value={courseColumn} 
+              onChange={(e) => setCourseColumn(e.target.value)}
+              disabled={isLoading}
+            >
+              <MenuItem value="">None</MenuItem>
+              {columns.map((col, i) => (
+                <MenuItem key={i} value={col}>{col}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+      
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          {recipients.length} {dataSource === 'api' ? 'sample' : 'uploaded'} recipients available
+        </Typography>
+      )}
+      
+      {recipients.length > 0 && (
+        <>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="subtitle1">
+              Select Recipients ({selectedRecipients.length} selected)
+            </Typography>
+            <Button 
+              onClick={selectAllRecipients}
+              size="small"
+            >
+              {selectedRecipients.length === recipients.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          </Box>
+          
+          <Paper sx={{ maxHeight: 300, overflow: 'auto', mb: 3 }}>
+            {recipients.map((recipient, index) => {
+              const id = dataSource === 'api' ? recipient.id : index;
+              return (
+                <Box 
+                  key={dataSource === 'api' ? recipient.id : index}
+                  sx={{
+                    p: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: selectedRecipients.includes(id) ? 'action.selected' : 'background.paper',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      cursor: 'pointer'
+                    }
+                  }}
+                  onClick={() => toggleRecipientSelection(id)}
+                >
+                  <Checkbox 
+                    checked={selectedRecipients.includes(id)}
+                    onChange={() => toggleRecipientSelection(id)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <Box sx={{ ml: 1 }}>
+                    <Typography>{recipient[nameColumn]}</Typography>
+                    {courseColumn && recipient[courseColumn] && (
+                      <Typography variant="body2" color="text.secondary">
+                        {recipient[courseColumn]}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Paper>
+        </>
+      )}
+      
+      <Divider sx={{ my: 2 }} />
+      
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Button 
+          variant="outlined"
+          onClick={saveTemplateData} 
+          disabled={isLoading}
+        >
+          Save Template Settings
+        </Button>
+        
+        <Button 
+          variant="outlined"
+          onClick={() => previewCertificate(selectedRecipients[0])} 
+          disabled={selectedRecipients.length === 0 || isLoading}
+        >
+          Preview Selected Certificate
+        </Button>
+        
+        <Button 
+          variant="contained"
+          onClick={generateAllCertificates} 
+          disabled={selectedRecipients.length === 0 || isLoading}
+        >
+          {isLoading ? 'Generating...' : `Generate All (${selectedRecipients.length})`}
+        </Button>
+        
+        {generatedCertificates.length > 0 && (
+          <>
+            <Button 
+              variant="outlined"
+              onClick={() => {
+                setCurrentPreviewIndex(0);
+                updateCertificate(generatedCertificates[0]);
+                setShowPreview(true);
+              }}
+            >
+              Preview All Certificates
+            </Button>
+            <Button 
+              variant="contained"
+              onClick={() => downloadAllCertificates('pdf')}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : `Download All (${generatedCertificates.length})`}
+            </Button>
+          </>
         )}
-      </div>
+      </Box>
 
-      <div className="control-content">
-        {activeTab === 'details' && (
-          <div className="details-controls">
-            <div className="form-group">
-              <label>Certificate Title</label>
-              <input
-                type="text"
-                name="title"
-                value={certificate.title}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Recipient Name</label>
-              <input
-                type="text"
-                name="recipientName"
-                value={certificate.recipientName}
-                onChange={handleInputChange}
-                placeholder="Enter recipient name"
-              />
-            </div>
-            <div className="form-group">
-              <label>Course Name</label>
-              <input
-                type="text"
-                name="courseName"
-                value={certificate.courseName}
-                onChange={handleInputChange}
-                placeholder="Enter course name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Completion Text</label>
-              <input
-                type="text"
-                name="completionText"
-                value={certificate.completionText}
-                onChange={(e) => updateCertificate({ completionText: e.target.value })}
-                placeholder="Completion text (e.g., 'has successfully completed the course')"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={certificate.date}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Barcode URL</label>
-              <input
-                type="text"
-                name="barcodeData"
-                value={certificate.barcodeData}
-                onChange={handleInputChange}
-                placeholder="Enter verification URL"
-              />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'design' && (
-          <div className="design-controls">
-            <div className="color-picker-group">
-              <label>Background Color</label>
-              <div className="color-picker-wrapper">
-                <button 
-                  className="color-picker-button"
-                  style={{ backgroundColor: certificate.backgroundColor || '#ffffff' }}
-                  onClick={() => setShowBgPicker(!showBgPicker)}
-                />
-                {showBgPicker && (
-                  <div className="color-picker-popup">
-                    <ChromePicker
-                      color={certificate.backgroundColor || '#ffffff'}
-                      onChangeComplete={(color) => handleColorChange('backgroundColor', color)}
-                    />
-                    <button 
-                      className="close-picker"
-                      onClick={() => setShowBgPicker(false)}
-                    >
-                      Done
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="color-picker-group">
-              <label>Border Color</label>
-              <div className="color-picker-wrapper">
-                <button 
-                  className="color-picker-button"
-                  style={{ backgroundColor: certificate.borderColor || '#f1c40f' }}
-                  onClick={() => setShowBorderPicker(!showBorderPicker)}
-                />
-                {showBorderPicker && (
-                  <div className="color-picker-popup">
-                    <ChromePicker
-                      color={certificate.borderColor || '#f1c40f'}
-                      onChangeComplete={(color) => handleColorChange('borderColor', color)}
-                    />
-                    <button 
-                      className="close-picker"
-                      onClick={() => setShowBorderPicker(false)}
-                    >
-                      Done
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Border Width</label>
-              <select 
-                value={borderWidth} 
-                onChange={handleBorderWidthChange}
-                className="border-width-select"
-              >
-                <option value="1px">Thin (1px)</option>
-                <option value="5px">Medium (5px)</option>
-                <option value="10px">Thick (10px)</option>
-                <option value="15px">Extra Thick (15px)</option>
-                <option value="20px">Very Thick (20px)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Border Style</label>
-              <select 
-                value={borderStyle} 
-                onChange={handleBorderStyleChange}
-                className="border-style-select"
-              >
-                <option value="solid">Solid</option>
-                <option value="dashed">Dashed</option>
-                <option value="dotted">Dotted</option>
-                <option value="double">Double</option>
-                <option value="groove">Groove</option>
-                <option value="ridge">Ridge</option>
-                <option value="inset">Inset</option>
-                <option value="outset">Outset</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'signatures' && <SignatureManager />}
-        {activeTab === 'logos' && <LogoManager />}
-        {activeTab === 'templates' && <CertificateTemplates />}
-      </div>
-    </div>
+      {showPreview && generatedCertificates.length > 0 && (
+        <PreviewModal 
+          onClose={() => setShowPreview(false)}
+          onNavigate={navigatePreview}
+          currentIndex={currentPreviewIndex}
+          totalCertificates={generatedCertificates.length}
+          onDownloadAll={() => downloadAllCertificates('pdf')}
+        />
+      )}
+    </Box>
   );
 };
 
-export default CertificateControls;
+export default BulkCertificateControls;
 
 // === File: CertificateTemplates.css ===
-/* CertificateTemplates.css */
-.templates-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-}
 
-.templates-title {
-  font-size: 15px;
-  margin-bottom: 12px;
-  color: #444;
-  font-weight: 600;
-}
-
-.template-upload {
-  margin-bottom: 15px;
-}
-
-.upload-button {
-  display: inline-block;
-  padding: 8px 12px;
-  background-color: #3498db;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.upload-button:hover {
-  background-color: #2980b9;
-}
-
-.templates-scrollable {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 5px;
-}
-
-.templates-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding-bottom: 5px;
-}
-
-.template-card {
-  cursor: pointer;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #e0e0e0;
-  transition: all 0.2s ease;
-}
-
-.template-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.template-card.active {
-  border: 2px solid #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-}
-
-.template-image {
-  width: 100%;
-  height: 80px;
-  object-fit: cover;
-  display: block;
-}
-
-.template-label {
-  display: block;
-  padding: 6px;
-  font-size: 12px;
-  text-align: center;
-  color: #555;
-}
-
-/* Custom scrollbar */
-.templates-scrollable::-webkit-scrollbar {
-  width: 6px;
-}
-
-.templates-scrollable::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.templates-scrollable::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.templates-scrollable::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
 
 // === File: CertificateTemplates.jsx ===
 import React, { useContext, useState } from 'react';
@@ -1875,75 +1436,7 @@ const CompletionTextControl = () => {
 export default CompletionTextControl;
 
 // === File: DownloadOptionsModal.css ===
-.download-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .download-modal {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 400px;
-    position: relative;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .download-modal h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    text-align: center;
-    color: #2c3e50;
-  }
-  
-  .close-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #7f8c8d;
-  }
-  
-  .download-options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .download-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 15px;
-    background-color: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-  }
-  
-  .download-option:hover {
-    background-color: #e9ecef;
-    border-color: #d0d0d0;
-  }
-  
-  .option-icon {
-    font-size: 20px;
-    color: #3498db;
-  }
+
 
 // === File: DownloadOptionsModal.jsx ===
 import React from 'react';
@@ -1994,13 +1487,7 @@ const DownloadOptionsModal = ({ onClose, onDownload }) => {
 export default DownloadOptionsModal;
 
 // === File: DraggableElement.css ===
-.draggable-element {
-  transition: transform 0.1s ease;
-}
 
-.draggable-element.dragging {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
 
 // === File: DraggableElement.jsx ===
 import React, { useState, useRef, useEffect } from 'react';
@@ -2166,159 +1653,7 @@ const LogoManager = () => {
 export default LogoManager;
 
 // === File: PreviewModal.css ===
-.preview-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
 
-.preview-content {
-  background-color: white;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 1000px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.preview-header h2 {
-  margin: 0;
-  color: #333;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #666;
-  padding: 5px;
-}
-
-.close-button:hover {
-  color: #333;
-}
-
-.certificate-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.certificate-preview {
-  width: 100%;
-  max-width: 800px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.download-options {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.download-button {
-  padding: 10px 15px;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.2s;
-}
-
-.download-button:hover {
-  background-color: #220808;
-}
-
-.download-button.pdf {
-  background-color: #e74c3c;
-  color: white;
-  border-color: #c0392b;
-}
-
-.download-button.pdf:hover {
-  background-color: #c0392b;
-}
-
-.download-button.primary {
-  background-color: #3498db;
-  color: white;
-  border-color: #2980b9;
-}
-
-.download-button.primary:hover {
-  background-color: #2980b9;
-}
-
-/* Bulk navigation styles */
-.bulk-navigation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 15px 0;
-  gap: 20px;
-}
-
-.nav-button {
-  padding: 8px 15px;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.nav-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.nav-status {
-  font-weight: bold;
-  min-width: 80px;
-  text-align: center;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .preview-content {
-    width: 95%;
-    padding: 15px;
-  }
-  
-  .download-options {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .download-button {
-    width: 100%;
-    justify-content: center;
-  }
-}
 
 // === File: PreviewModal.jsx ===
 import React, { useRef } from 'react';
@@ -2455,433 +1790,7 @@ const PreviewModal = ({
 export default PreviewModal;
 
 // === File: SignatureManager.css ===
-.signature-manager {
-  width: 95%;
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  background: #ffffff;
-  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-}
 
-.manager-header {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.manager-header h2 {
-  color: #2c3e50;
-  margin-bottom: 15px;
-  font-weight: 600;
-  font-size: 1.5rem;
-}
-
-.tabs {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eaeaea;
-  flex-wrap: wrap;
-}
-
-.tab-btn {
-  padding: 10px 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: #7f8c8d;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.tab-btn.active {
-  color: #3498db;
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: #3498db;
-  border-radius: 3px 3px 0 0;
-}
-
-.signature-form-container {
-  display: block;
-}
-
-.form-section {
-  width: 100%;
-  padding: 20px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #34495e;
-  font-size: 14px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 15px;
-  transition: border 0.3s ease;
-}
-
-.form-group input:focus {
-  border-color: #3498db;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-}
-
-.upload-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-@media (min-width: 480px) {
-  .upload-options {
-    flex-direction: row;
-  }
-}
-
-.upload-btn, .draw-btn {
-  flex: 1;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.upload-btn {
-  background-color: #3498db;
-  color: white;
-}
-
-.upload-btn:hover {
-  background-color: #2980b9;
-}
-
-.draw-btn {
-  background-color: #f1f1f1;
-  color: #34495e;
-}
-
-.draw-btn:hover {
-  background-color: #e0e0e0;
-}
-
-.preview-section {
-  width: 100%;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-top: 20px;
-}
-
-.preview-section h4 {
-  color: #2c3e50;
-  margin-bottom: 15px;
-  font-weight: 500;
-  font-size: 1.1rem;
-}
-
-.signature-preview {
-  padding: 15px;
-  margin-bottom: 15px;
-}
-
-.signature-preview-box {
-  margin-bottom: 15px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
-  text-align: center;
-}
-
-.signature-preview img {
-  max-width: 100%;
-  max-height: 120px;
-  display: block;
-  margin: 0 auto;
-}
-
-.signature-details {
-  padding: 15px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.signature-details p {
-  margin: 8px 0;
-}
-
-.add-signature-btn {
-  width: 100%;
-  padding: 14px;
-  background-color: #2ecc71;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  margin-top: 15px;
-}
-
-.add-signature-btn:hover:not(:disabled) {
-  background-color: #27ae60;
-}
-
-.add-signature-btn:disabled {
-  background-color: #bdc3c7;
-  cursor: not-allowed;
-}
-
-.existing-signatures {
-  margin-top: 20px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #95a5a6;
-}
-
-.empty-state i {
-  font-size: 50px;
-  margin-bottom: 15px;
-  display: block;
-  color: #ecf0f1;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.signatures-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 480px) {
-  .signatures-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.signature-card {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.signature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-}
-
-.signature-image-container {
-  padding: 15px;
-  text-align: center;
-  border-bottom: 1px solid #eee;
-}
-
-.signature-image-container img {
-  max-width: 100%;
-  max-height: 80px;
-}
-
-.signature-info {
-  padding: 15px;
-}
-
-.signature-info h4 {
-  margin: 0 0 5px;
-  color: #2c3e50;
-}
-
-.signature-date {
-  margin: 0;
-  font-size: 13px;
-  color: #7f8c8d;
-}
-
-.remove-btn {
-  width: 100%;
-  padding: 10px;
-  background-color: #e74c3c;
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background 0.3s ease;
-}
-
-.remove-btn:hover {
-  background-color: #c0392b;
-}
-
-/* Drawing Modal Styles */
-.drawing-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.drawing-panel {
-  background: white;
-  border-radius: 10px;
-  width: 90%;
-  max-width: 600px;
-  padding: 20px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-}
-
-.drawing-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.drawing-header h3 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #7f8c8d;
-  transition: color 0.2s;
-}
-
-.close-btn:hover {
-  color: #e74c3c;
-}
-
-.signature-canvas-container {
-  border: 1px solid #e0e0e0;
-  border-radius: 5px;
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.signature-canvas {
-  background-color: white;
-  width: 100%;
-  height: 200px;
-}
-
-.drawing-controls {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.clear-btn, .save-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.clear-btn {
-  background-color: #f1f1f1;
-  color: #34495e;
-}
-
-.clear-btn:hover {
-  background-color: #e0e0e0;
-}
-
-.save-btn {
-  background-color: #2ecc71;
-  color: white;
-}
-
-.save-btn:hover {
-  background-color: #27ae60;
-}
-
-/* Icons */
-.icon-upload::before { content: '↑'; }
-.icon-draw::before { content: '✎'; }
-.icon-empty::before { content: '✖'; }
-.icon-delete::before { content: '🗑'; }
-
-/* Add these to your existing SignatureManager.css */
-.preview-name {
-  font-size: 0.8rem;
-  margin: 3px 0;
-}
-
-.preview-date {
-  font-size: 0.7rem;
-  margin: 3px 0;
-}
-
-.signature-card {
-  padding: 10px;
-}
-
-.signature-info h4 {
-  font-size: 0.9rem;
-  margin: 3px 0;
-}
-
-.signature-date {
-  font-size: 0.7rem;
-  margin: 3px 0;
-}
 
 // === File: SignatureManager.jsx ===
 import React, { useContext, useState, useRef } from 'react';
@@ -3168,242 +2077,3 @@ const SignatureManager = () => {
 };
 
 export default SignatureManager;
-
-/* App.css */
-/* Base Styles */
-:root {
-    --primary-color: #3498db;
-    --secondary-color: #2ecc71;
-    --dark-color: #2c3e50;
-    --light-color: #ecf0f1;
-    --danger-color: #e74c3c;
-    --border-radius: 4px;
-  }
-  
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    color: #333;
-    background-color: #f5f7fa;
-  }
-  
-  .app-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-  
-  .main-content {
-    display: flex;
-    flex: 1;
-    padding: 15px;
-    gap: 15px;
-    flex-direction: column;
-  }
-  
-  .controls-container,
-  .preview-container,
-  .bulk-container {
-    width: 100%;
-  }
-  
-  /* Certificate Styles */
-  .certificate-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    position: relative;
-    overflow-x: auto;
-  }
-  
-  .certificate-template {
-    width: 100%;
-    max-width: 1000px;
-    min-width: 300px;
-    height: auto;
-    min-height: 500px;
-    aspect-ratio: 4/3;
-    background-color: #fff;
-    border: 15px solid #f1c40f;
-    position: relative;
-    overflow: hidden;
-    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L100,0 L100,100 L0,100 Z" fill="none" stroke="%23f1c40f" stroke-width="2" stroke-dasharray="5,5"/></svg>');
-    background-size: 50px 50px;
-  }
-  
-  /* Responsive Layout */
-  @media (min-width: 768px) {
-    .main-content {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: flex-start;
-    }
-  
-    .controls-container {
-      order: 1;
-      width: 250px; /* Reduced width for controls */
-      flex-shrink: 0;
-    }
-  
-    .preview-container {
-      order: 2;
-      flex: 2; /* Takes twice the space of controls */
-      min-width: 0;
-    }
-  
-    .bulk-container {
-      order: 3;
-      width: 200px; /* Smallest width for bulk controls */
-      flex-shrink: 0;
-    }
-  }
-  
-  @media (min-width: 992px) {
-    .controls-container {
-      width: 280px; /* Slightly larger on bigger screens */
-    }
-  
-    .bulk-container {
-      width: 250px; /* Slightly larger on bigger screens */
-    }
-  
-    .certificate-title {
-      font-size: 28px;
-    }
-    
-    .recipient-name {
-      font-size: 28px;
-    }
-  }
-  
-  @media (min-width: 1200px) {
-    .main-content {
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 20px;
-      gap: 20px;
-    }
-  
-    .controls-container {
-      width: 300px;
-    }
-  
-    .bulk-container {
-      width: 280px;
-    }
-  
-    .certificate-template {
-      max-width: 1200px;
-      min-height: 600px;
-    }
-  }
-  
-  /* Rest of your existing styles... */
-  .certificate-content {
-    padding: 30px;
-    text-align: center;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .certificate-title {
-    font-size: 24px;
-    color: var(--dark-color);
-    margin-bottom: 20px;
-    font-weight: 700;
-  }
-  
-  .certificate-text {
-    font-size: 16px;
-    margin: 8px 0;
-  }
-  
-  .recipient-name {
-    font-size: 24px;
-    color: var(--primary-color);
-    margin: 15px 0;
-    font-weight: 600;
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 8px;
-  }
-  
-  .course-name {
-    font-size: 20px;
-    color: var(--secondary-color);
-    margin: 15px 0;
-    font-weight: 500;
-  }
-  
-  .signatures-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    width: 100%;
-    margin-top: 30px;
-    gap: 15px;
-  }
-  
-  .signature-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 120px;
-  }
-  
-  .signature-image {
-    height: 50px;
-    margin-bottom: 8px;
-  }
-  
-  .signature-name {
-    font-weight: 600;
-    margin-top: 5px;
-    font-size: 14px;
-  }
-  
-  .signature-date {
-    font-size: 12px;
-    color: #666;
-  }
-  
-  .certificate-logo {
-    max-height: 60px;
-    max-width: 120px;
-  }
-  
-  .barcode-container {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-  }
-  
-  /* Control panel styles */
-  .certificate-controls,
-  .bulk-certificate-controls {
-    background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    height: 100%;
-  }
-  
-  .bulk-certificate-controls h3 {
-    margin-bottom: 15px;
-    color: var(--dark-color);
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-  }
-
-  

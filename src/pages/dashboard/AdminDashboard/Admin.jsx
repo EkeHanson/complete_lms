@@ -41,12 +41,7 @@ import ActivityFeed from './ActivityFeed'; // Add this import
 import Messaging from './Messaging';
 import LearnerProfile from './LearnerProfile';
 import Advertorial from './Advertorial/Advertorial';
-import { CertificateProvider } from '../../../contexts/CertificateContext.jsx';
-import Certificate from '../Certificate/Certificate';
-import CertificateControls from '../Certificate/CertificateControls';
-import BulkCertificateControls from '../Certificate/BulkCertificateControls';
-import Toolsbar from '../UI/Toolbar.jsx';
-
+import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain';
 
 const drawerWidth = 240;
 
@@ -368,7 +363,7 @@ function Admin() {
             </ListItem>
           ))}
         </List>
-        
+
         <Divider sx={{ my: 1 }} />
         
         <List>
@@ -442,25 +437,7 @@ function Admin() {
             <Route path="/advertorial" element={<Advertorial />} />
 
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
-
-            <Route path="/builder" element={
-              <CertificateProvider>
-                <div className="app-container">
-                  <Toolsbar />
-                  <div className="main-content">
-                    <div className="controls-container">
-                      <CertificateControls />
-                    </div>
-                    <div className="preview-container">
-                      <Certificate />
-                    </div>
-                    <div className="bulk-container">
-                      <BulkCertificateControls />
-                    </div>
-                  </div>
-                </div>
-              </CertificateProvider>
-            } />
+            <Route path="/builder" element={<CertificateBuilderMain />} />
           </Routes>
         </Box>
       </Box>
