@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // const API_BASE_URL = 'http://localhost:9090/';
-const API_BASE_URL = 'https://complete-lms-api.onrender.com/';
+const API_BASE_URL = 'https://complete-lms-api.onrender.com';
 
 // Create base axios instance without default Content-Type
 const api = axios.create({
