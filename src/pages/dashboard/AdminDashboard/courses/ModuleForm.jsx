@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import {
   Box, Typography, TextField, Button, Paper, Divider,
   IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
-  FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
-  Accordion, AccordionSummary, AccordionDetails
+  FormControl, InputLabel, Select, MenuItem, Chip, useTheme, Dialog, DialogTitle,
+  Accordion, AccordionSummary, AccordionDetails, DialogContent, DialogActions,
+  ListItemIcon // Add this import
 } from '@mui/material';
 import {
   ExpandMore, AddCircle, Delete, Edit,
-  VideoLibrary, InsertDriveFile, Link as LinkIcon
+  VideoLibrary, InsertDriveFile, Link as LinkIcon,
+  CloudUpload // Add this import
 } from '@mui/icons-material';
 
 const lessonTypes = [

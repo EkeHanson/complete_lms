@@ -1,120 +1,61 @@
-import React, { useState } from 'react';
-import {
-  Box,  Container,  Typography,  Grid,  Paper,  Table,
-  TableBody,  TableCell,  TableContainer,  TableHead,
-  TableRow,  TablePagination,  Avatar,  Chip,  TextField,  MenuItem,
-  Divider,  IconButton,  useTheme,  useMediaQuery
+import React, { useState, useEffect } from 'react';
+import API_BASE_URL, { userAPI } from '../../../config';
+import {Box, Container, Typography, Grid, Paper, Table,
+  TableBody, TableCell, TableContainer, TableHead,Snackbar,
+  TableRow, TablePagination, Avatar, Chip, TextField, MenuItem,
+  Divider, IconButton, useTheme, useMediaQuery, Button,
+  Dialog, DialogTitle, DialogContent, DialogActions, Menu, Tooltip,
+  CircularProgress, Alert
 } from '@mui/material';
 import {
-  People as PeopleIcon,  PersonAdd as PersonAddIcon,
-  CheckCircle as ActiveIcon,
-  Warning as WarningIcon,  Lock as SuspendedIcon,
-  Schedule as PendingIcon,  Search as SearchIcon,
-  FilterList as FilterIcon,  Refresh as RefreshIcon,
-  MoreVert as MoreIcon
+  People as PeopleIcon, PersonAdd as PersonAddIcon,
+  CheckCircle as ActiveIcon, Warning as WarningIcon, 
+  Lock as SuspendedIcon, Schedule as PendingIcon, 
+  Search as SearchIcon, FilterList as FilterIcon, 
+  Refresh as RefreshIcon, MoreVert as MoreIcon,
+  Add as AddIcon, Upload as UploadIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useNavigate } from 'react-router-dom';
+import UserRegistration from './UserRegistration';
+import BulkUserUpload from './BulkUserUpload';
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
-
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
-  // Mock data - replace with API calls
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Alex Johnson',
-      email: 'alex@example.com',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2023-06-15T14:30:00Z',
-      ip: '192.168.1.1',
-      device: 'Chrome on Windows',
-      signupDate: '2023-01-10',
-      loginAttempts: 0
-    },
-    {
-      id: 2,
-      name: 'Sarah Williams',
-      email: 'sarah@example.com',
-      role: 'vendor',
-      status: 'active',
-      lastLogin: '2023-06-14T09:15:00Z',
-      ip: '203.0.113.42',
-      device: 'Safari on Mac',
-      signupDate: '2023-02-15',
-      loginAttempts: 0
-    },
-    {
-      id: 3,
-      name: 'Michael Chen',
-      email: 'michael@example.com',
-      role: 'customer',
-      status: 'pending',
-      lastLogin: null,
-      ip: null,
-      device: null,
-      signupDate: '2023-06-01',
-      loginAttempts: 0
-    },
-    {
-      id: 4,
-      name: 'Emily Davis',
-      email: 'emily@example.com',
-      role: 'customer',
-      status: 'suspended',
-      lastLogin: '2023-06-10T18:45:00Z',
-      ip: '198.51.100.15',
-      device: 'Firefox on Windows',
-      signupDate: '2023-03-22',
-      loginAttempts: 5
-    },
-    {
-      id: 5,
-      name: 'David Wilson',
-      email: 'david@example.com',
-      role: 'vendor',
-      status: 'active',
-      lastLogin: '2023-06-15T11:20:00Z',
-      ip: '203.0.113.75',
-      device: 'Chrome on Android',
-      signupDate: '2023-04-05',
-      loginAttempts: 0
-    }
-  ]);
 
-  // Stats data
-  const stats = [
-    { 
-      title: 'Total Users', 
-      value: '1,248', 
-      icon: <PeopleIcon fontSize="large" />,
-      change: '+12% from last month'
-    },
-    { 
-      title: 'Active Users', 
-      value: '843', 
-      icon: <ActiveIcon fontSize="large" />,
-      change: 'Active in last 30 days'
-    },
-    { 
-      title: 'New Signups', 
-      value: '128', 
-      icon: <PersonAddIcon fontSize="large" />,
-      change: 'This month'
-    },
-    { 
-      title: 'Suspicious Activity', 
-      value: '23', 
-      icon: <WarningIcon fontSize="large" />,
-      change: 'Failed login attempts'
-    }
-  ];
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' // can be 'success', 'error', 'warning', 'info'
+  });
+
+  // State for users, pagination, and loading
+  const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+    currentPage: 1
+  });
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // State for registration and bulk upload dialogs
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+
+  // State for action menu and confirmation modal
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [actionType, setActionType] = useState(null);
+  const [openConfirmModal, setOpenConfirmModal] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -125,9 +66,54 @@ const AdminUserManagement = () => {
     dateTo: null
   });
 
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  // Fetch users with pagination
+  
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const token = localStorage.getItem('access_token');
+        const params = {
+          page: pagination.currentPage,
+          page_size: rowsPerPage,
+          ...(filters.role !== 'all' && { role: filters.role }),
+          ...(filters.status !== 'all' && { status: filters.status }),
+          ...(filters.search && { search: filters.search }),
+          ...(filters.dateFrom && { date_from: filters.dateFrom.toISOString().split('T')[0] }),
+          ...(filters.dateTo && { date_to: filters.dateTo.toISOString().split('T')[0] })
+        };
+
+        const response = await fetch(`${API_BASE_URL.API_BASE_URL}/users/api/users/?${new URLSearchParams(params)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        const data = await response.json();
+        setUsers(data.results);
+        setPagination({
+          count: data.count,
+          next: data.next,
+          previous: data.previous,
+          currentPage: pagination.currentPage
+        });
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [pagination.currentPage, rowsPerPage, filters]);
+
 
   // Handle filter changes
   const handleFilterChange = (name, value) => {
@@ -135,30 +121,84 @@ const AdminUserManagement = () => {
       ...filters,
       [name]: value
     });
-    setPage(0); // Reset to first page when filters change
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
-
-  // Filter users based on current filters
-  const filteredUsers = users.filter(user => {
-    return (
-      (filters.role === 'all' || user.role === filters.role) &&
-      (filters.status === 'all' || user.status === filters.status) &&
-      (filters.search === '' || 
-        user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.email.toLowerCase().includes(filters.search.toLowerCase())) &&
-      (!filters.dateFrom || new Date(user.signupDate) >= new Date(filters.dateFrom)) &&
-      (!filters.dateTo || new Date(user.signupDate) <= new Date(filters.dateTo))
-    );
-  });
 
   // Handle pagination
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    setPagination(prev => ({ ...prev, currentPage: newPage + 1 }));
   };
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  // Reset login attempts
+  const resetLoginAttempts = async (userId) => {
+    try {
+      await userAPI.updateUser(userId, { login_attempts: 0 });
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, login_attempts: 0 } : user
+      ));
+    } catch (err) {
+      setError(err.message || 'Failed to reset login attempts');
+    }
+  };
+
+  // Handle action menu
+  const handleMenuOpen = (event, user) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedUser(user); // Make sure this is being called
+  };
+  
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    // Don't clear selectedUser here - we still need it for the confirmation
+  };
+
+  // Handle action selection
+  const handleActionSelect = (action) => {
+    setActionType(action);
+    setOpenConfirmModal(true);
+    handleMenuClose();
+  };
+
+  // Handle confirmation modal
+  const handleConfirmAction = async () => {
+    setActionError(null);
+    
+    // Add null check for selectedUser
+    if (!selectedUser) {
+      setActionError('No user selected');
+      return;
+    }
+  
+    try {
+      const token = localStorage.getItem('access_token');
+      if (actionType === 'delete') {
+
+        await userAPI.deleteUser(selectedUser.id);
+        setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
+        setPagination(prev => ({ ...prev, count: prev.count - 1 }));
+      } else {
+        const newStatus = actionType === 'suspend' ? 'suspended' : 'active';
+        await userAPI.updateUser(selectedUser.id, { status: newStatus });
+        setUsers(prev => prev.map(user =>
+          user.id === selectedUser.id ? { ...user, status: newStatus } : user
+        ));
+      }
+      setOpenConfirmModal(false);
+      setSelectedUser(null); // Clear after successful action
+    } catch (err) {
+      setActionError(err.message || 'Failed to perform action');
+    }
+  };
+
+  const handleCancelAction = () => {
+    setOpenConfirmModal(false);
+    setActionType(null);
+    setActionError(null);
   };
 
   // Status chip component
@@ -168,7 +208,7 @@ const AdminUserManagement = () => {
       pending: { color: 'warning', icon: <PendingIcon fontSize="small" /> },
       suspended: { color: 'error', icon: <SuspendedIcon fontSize="small" /> }
     };
-    
+
     return (
       <Chip
         icon={statusMap[status]?.icon}
@@ -184,10 +224,11 @@ const AdminUserManagement = () => {
   const RoleChip = ({ role }) => {
     const roleMap = {
       admin: { color: 'primary', label: 'Admin' },
-      vendor: { color: 'secondary', label: 'Vendor' },
-      customer: { color: 'default', label: 'Customer' }
+      instructor: { color: 'secondary', label: 'Instructor' },
+      learner: { color: 'default', label: 'Learner' },
+      owner: { color: 'info', label: 'Owner' }
     };
-    
+
     return (
       <Chip
         label={roleMap[role]?.label || role}
@@ -197,20 +238,97 @@ const AdminUserManagement = () => {
     );
   };
 
+  // Handle adding a new user
+  const handleAddUser = async (newUser) => {
+    try {
+      const response = await userAPI.createUser(newUser);
+      setUsers(prev => [...prev, {
+        ...response.data,
+        last_login: null,
+        last_login_ip: null,
+        last_login_device: null,
+        signup_date: new Date().toISOString(),
+        login_attempts: 0,
+        status: 'active'
+      }]);
+      setPagination(prev => ({ ...prev, count: prev.count + 1 }));
+      setShowRegistrationForm(false);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to add user');
+    }
+  };
+
+  const getInitial = (user) => {
+    if (user.first_name) return user.first_name.charAt(0).toUpperCase();
+    return user.email?.charAt(0).toUpperCase() || '?';
+  };
+
+  // Handle bulk user upload
+  const handleBulkUpload = async (newUsers) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', newUsers);
+      
+      const response = await userAPI.bulkUpload(formData);
+      
+      if (response.error_count > 0) {
+        setSnackbar({
+          open: true,
+          message: `Uploaded ${response.created_count} users with ${response.error_count} errors`,
+          severity: 'warning'
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: `Successfully uploaded ${response.created_count} users`,
+          severity: 'success'
+        });
+      }
+  
+      // Refresh user list
+      const usersResponse = await userAPI.getUsers();
+      setUsers(usersResponse.results);
+      setPagination({
+        count: usersResponse.count,
+        next: usersResponse.next,
+        previous: usersResponse.previous,
+        currentPage: 1
+      });
+      
+      setShowBulkUpload(false);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to process bulk upload',
+        severity: 'error'
+      });
+    }
+  };
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
           User Management
         </Typography>
-        
+
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          {stats.map((stat, index) => (
+          {[
+            { title: 'Total Users', value: pagination.count, icon: <PeopleIcon fontSize="large" />, change: '+12% from last month' },
+            { title: 'Active Users', value: users.filter(u => u.status === 'active').length, icon: <ActiveIcon fontSize="large" />, change: 'Active in last 30 days' },
+            { title: 'New Signups', value: users.filter(u => new Date(u.signup_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length, icon: <PersonAddIcon fontSize="large" />, change: 'This month' },
+            { title: 'Suspicious Activity', value: users.filter(u => u.login_attempts > 0).length, icon: <WarningIcon fontSize="large" />, change: 'Failed login attempts' }
+          ].map((stat, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
-              <Paper 
-                elevation={3} 
-                sx={{ 
+              <Paper
+                elevation={3}
+                sx={{
                   p: 3,
                   borderRadius: 2,
                   height: '100%',
@@ -218,20 +336,20 @@ const AdminUserManagement = () => {
                   flexDirection: 'column'
                 }}
               >
-                <Box sx={{ 
+                <Box sx={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   mb: 2
                 }}>
-                  <Typography 
-                    variant="subtitle1" 
+                  <Typography
+                    variant="subtitle1"
                     color="text.secondary"
                     sx={{ fontWeight: 500 }}
                   >
                     {stat.title}
                   </Typography>
-                  <Avatar sx={{ 
+                  <Avatar sx={{
                     bgcolor: theme.palette.primary.light,
                     color: theme.palette.primary.main
                   }}>
@@ -248,6 +366,24 @@ const AdminUserManagement = () => {
             </Grid>
           ))}
         </Grid>
+
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setShowRegistrationForm(true)}
+          >
+            Add User
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<UploadIcon />}
+            onClick={() => setShowBulkUpload(true)}
+          >
+            Bulk Upload
+          </Button>
+        </Box>
 
         {/* Filters Section */}
         <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -276,8 +412,9 @@ const AdminUserManagement = () => {
               >
                 <MenuItem value="all">All Roles</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="vendor">Vendor</MenuItem>
-                <MenuItem value="customer">Customer</MenuItem>
+                <MenuItem value="instructor">Instructor</MenuItem>
+                <MenuItem value="learner">Learner</MenuItem>
+                <MenuItem value="owner">Owner</MenuItem>
               </TextField>
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
@@ -301,9 +438,9 @@ const AdminUserManagement = () => {
                 value={filters.dateFrom}
                 onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
                 renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    fullWidth 
+                  <TextField
+                    {...params}
+                    fullWidth
                     size="small"
                   />
                 )}
@@ -315,16 +452,25 @@ const AdminUserManagement = () => {
                 value={filters.dateTo}
                 onChange={(newValue) => handleFilterChange('dateTo', newValue)}
                 renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    fullWidth 
+                  <TextField
+                    {...params}
+                    fullWidth
                     size="small"
                   />
                 )}
               />
             </Grid>
             <Grid item xs={12} md={1} sx={{ textAlign: 'right' }}>
-              <IconButton>
+              <IconButton onClick={() => {
+                setFilters({
+                  role: 'all',
+                  status: 'all',
+                  search: '',
+                  dateFrom: null,
+                  dateTo: null
+                });
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}>
                 <RefreshIcon />
               </IconButton>
               <IconButton>
@@ -350,25 +496,43 @@ const AdminUserManagement = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredUsers
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((user) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <Typography color="error">{error}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <Typography>No users found</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
                     <TableRow key={user.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar 
-                            sx={{ 
-                              width: 36, 
-                              height: 36, 
+                          <Avatar
+                            sx={{
+                              width: 36,
+                              height: 36,
                               mr: 2,
                               bgcolor: theme.palette.primary.light,
                               color: theme.palette.primary.main
-                            }} onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
+                            }}
+                            onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
                           >
-                            {user.name.charAt(0)}
+                            {getInitial(user)}
                           </Avatar>
                           <Box>
-                            <Typography variant="subtitle2">{user.name}</Typography>
+                            <Typography variant="subtitle2">{user.email}</Typography>
                             <Typography variant="caption" color="text.secondary">
                               {user.email}
                             </Typography>
@@ -382,13 +546,13 @@ const AdminUserManagement = () => {
                         <StatusChip status={user.status} />
                       </TableCell>
                       <TableCell>
-                        {user.lastLogin ? (
+                        {user.last_login ? (
                           <>
                             <Typography variant="body2">
-                              {new Date(user.lastLogin).toLocaleDateString()}
+                              {new Date(user.last_login).toLocaleDateString()}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {user.ip} • {user.device}
+                              {user.last_login_ip || 'Unknown'} • {user.last_login_device || 'Unknown'}
                             </Typography>
                           </>
                         ) : (
@@ -398,41 +562,131 @@ const AdminUserManagement = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        {new Date(user.signupDate).toLocaleDateString()}
+                        {new Date(user.signup_date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {user.loginAttempts > 0 ? (
-                          <Chip 
-                            label={user.loginAttempts} 
-                            color="error" 
-                            size="small" 
-                            variant="outlined" 
-                          />
+                        {user.login_attempts > 0 ? (
+                          <Tooltip title="Click to reset">
+                            <Chip
+                              label={user.login_attempts}
+                              color="error"
+                              size="small"
+                              variant="outlined"
+                              onClick={() => resetLoginAttempts(user.id)}
+                              clickable
+                            />
+                          </Tooltip>
                         ) : (
-                          <Typography variant="body2">-</Typography>
+                          <Typography variant="body2">0</Typography>
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        <IconButton size="small">
+                        <IconButton
+                          size="small"
+                          onClick={(event) => handleMenuOpen(event, user)}
+                        >
                           <MoreIcon />
                         </IconButton>
+                        <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleMenuClose}
+                      >
+                        <MenuItem
+                          onClick={() => {
+                            setActionType('activate');
+                            setOpenConfirmModal(true);
+                            handleMenuClose();
+                          }}
+                          disabled={selectedUser?.status === 'active'}
+                        >
+                          Activate
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            setActionType('suspend');
+                            setOpenConfirmModal(true);
+                            handleMenuClose();
+                          }}
+                          disabled={selectedUser?.status === 'suspended'}
+                        >
+                          Suspend
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            setActionType('delete');
+                            setOpenConfirmModal(true);
+                            handleMenuClose();
+                          }}
+                        >
+                          Delete
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            resetLoginAttempts(selectedUser?.id);
+                            handleMenuClose();
+                          }}
+                          disabled={selectedUser?.login_attempts === 0}
+                        >
+                          Reset Login Attempts
+                        </MenuItem>
+                      </Menu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={filteredUsers.length}
+            count={pagination.count}
             rowsPerPage={rowsPerPage}
-            page={page}
+            page={pagination.currentPage - 1} // MUI pagination is 0-based
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </Paper>
 
+        {/* Confirmation Modal */}
+        <Dialog
+          open={openConfirmModal}
+          onClose={handleCancelAction}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            {actionType === 'delete' ? 'Delete User' : 
+            actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
+          </DialogTitle>
+          <DialogContent>
+            {actionError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {actionError}
+              </Alert>
+            )}
+            {selectedUser ? (
+              <Typography>
+                Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
+                {actionType === 'delete' && ' This action cannot be undone.'}
+              </Typography>
+            ) : (
+              <Typography color="error">No user selected</Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelAction}>Cancel</Button>
+            <Button
+              onClick={handleConfirmAction}
+              variant="contained"
+              color={actionType === 'delete' ? 'error' : 'primary'}
+              disabled={!selectedUser}
+            >
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
         {/* User Roles & Permissions Summary */}
         <Paper elevation={3} sx={{ p: 3, mt: 4, borderRadius: 2 }}>
           <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
@@ -445,42 +699,110 @@ const AdminUserManagement = () => {
                   Administrators
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  5 users • Full system access
+                  {users.filter(u => u.role === 'admin').length} users • Full system access
                 </Typography>
                 <Typography variant="caption">
-                  Can manage all users, listings, and system settings
+                  Can manage all users, courses, and system settings
                 </Typography>
               </Box>
             </Grid>
             <Grid item xs={12} md={4}>
               <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.secondary.main}` }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Vendors
+                  Instructors
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  342 users • Can post and manage listings
+                  {users.filter(u => u.role === 'instructor').length} users • Can create and manage courses
                 </Typography>
                 <Typography variant="caption">
-                  Can create listings, manage bookings, and view earnings
+                  Can create course content, manage learners, and view analytics
                 </Typography>
               </Box>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.info.main}` }}>
+              <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.success.main}` }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Customers
+                  Learners
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  901 users • Can browse and book items
+                  {users.filter(u => u.role === 'learner').length} users • Can enroll in courses
                 </Typography>
                 <Typography variant="caption">
-                  Can search listings, make bookings, and leave reviews
+                  Can browse courses, enroll in programs, and track progress
                 </Typography>
               </Box>
             </Grid>
           </Grid>
         </Paper>
+
+        {/* Registration Dialog */}
+        <Dialog
+          open={showRegistrationForm}
+          onClose={() => setShowRegistrationForm(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Register New User
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowRegistrationForm(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <UserRegistration onRegister={handleAddUser} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Upload Dialog */}
+        <Dialog
+          open={showBulkUpload}
+          onClose={() => setShowBulkUpload(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Bulk User Upload
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowBulkUpload(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <BulkUserUpload onUpload={handleBulkUpload} />
+          </DialogContent>
+        </Dialog>
       </Container>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </LocalizationProvider>
   );
 };

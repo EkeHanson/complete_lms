@@ -1,0 +1,11 @@
+firstName,lastName,email,password,role
+Amina,Bello,amina.bello@example.com,Password123!,learner
+Sani,Abubakar,sani.abubakar@example.com,Password123!,instructor
+Hajara,Shehu,hajara.shehu@example.com,Password123!,owner
+Kabiru,Usman,kabiru.usman@example.com,Password123!,admin
+Zainab,Muhammad,zainab.muhammad@example.com,Password123!,learner
+Muktar,Garba,muktar.garba@example.com,Password123!,instructor
+Fatima,Nasir,fatima.nasir@example.com,Password123!,learner
+Ibrahim,Haruna,ibrahim.haruna@example.com,Password123!,admin
+Khadija,Tanko,khadija.tanko@example.com,Password123!,owner
+Yahaya,Ali,yahaya.ali@example.com,Password123!,learner

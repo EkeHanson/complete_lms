@@ -1,4 +1,5 @@
 import React from 'react';
+import { QueryClient, QueryClientProvider } from 'react-query';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import Home from './pages/Home';
@@ -16,11 +17,16 @@ import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashb
 import { CertificateProvider } from './contexts/CertificateContext';
 
 import './App.css'
+
+const queryClient = new QueryClient();
+
+
 function App() {
 
   const theme = useTheme();
 
   return (
+    <QueryClientProvider client={queryClient}>
     <Router>
       <CertificateProvider>
       {/* <Navbar /> */}
@@ -50,6 +56,7 @@ function App() {
       {/* <Footer /> */}
       </CertificateProvider>
     </Router>
+    </QueryClientProvider>
   );
 }
 

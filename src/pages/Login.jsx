@@ -13,31 +13,34 @@ import {
   InputAdornment,
   CircularProgress,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Alert
 } from '@mui/material';
 import {
   Email as EmailIcon,
   Lock as PasswordIcon,
   Visibility as ShowPasswordIcon,
   VisibilityOff as HidePasswordIcon,
-  Google as GoogleIcon,
-  Facebook as FacebookIcon,
-  Apple as AppleIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { login } from '../services/auth';
 
 const Login = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [errors, setErrors] = useState({
-    email: false,
-    password: false
+    email: '',
+    password: '',
+    general: ''
   });
   const [loading, setLoading] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,7 +52,8 @@ const Login = () => {
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: false
+        [name]: '',
+        general: ''
       }));
     }
   };
@@ -57,17 +61,24 @@ const Login = () => {
   const validateForm = () => {
     let valid = true;
     const newErrors = {
-      email: false,
-      password: false
+      email: '',
+      password: '',
+      general: ''
     };
 
-    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = true;
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
       valid = false;
     }
 
-    if (!formData.password || formData.password.length < 6) {
-      newErrors.password = true;
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+      valid = false;
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
       valid = false;
     }
 
@@ -75,21 +86,76 @@ const Login = () => {
     return valid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setLoading(false);
-        // Handle successful login (redirect, etc.)
-      }, 1500);
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    setRemainingAttempts(null); // Reset remaining attempts on new submission
+    setErrors(prev => ({ ...prev, general: '' })); // Clear previous errors
+    
+    try {
+      const response = await login(formData.email, formData.password);
+      
+      // Store tokens and user data
+      localStorage.setItem('access_token', response.access);
+      localStorage.setItem('refresh_token', response.refresh);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Redirect based on role
+      switch(response.user.role) {
+        case 'admin':
+          navigate('/admin');
+          break;
+        case 'instructor':
+          navigate('/instructor-dashboard');
+          break;
+        case 'learner':
+          navigate('/learner-dashboard');
+          break;
+        case 'owner':
+          navigate('/owner-dashboard');
+          break;
+        default:
+          navigate('/dashboard');
+      }
+      
+    } catch (error) {
+      let errorMessage = 'Login failed. Please try again.';
+      
+      // Handle specific error cases from backend
+      if (error.response) {
+        const { data } = error.response;
+        
+        // Check for account suspension message
+        if (data.detail && data.detail.includes('Account suspended')) {
+          errorMessage = 'Your account has been suspended due to too many failed attempts. Please contact support.';
+        } 
+        // Check for remaining attempts message
+        else if (data.detail && data.detail.includes('attempts remaining')) {
+          const attemptsLeft = parseInt(data.detail.match(/\d+/)[0]);
+          setRemainingAttempts(attemptsLeft);
+          errorMessage = data.detail;
+        }
+        // Check for custom validation errors
+        else if (data.email || data.password) {
+          setErrors(prev => ({
+            ...prev,
+            email: data.email || '',
+            password: data.password || ''
+          }));
+          errorMessage = 'Please fix the errors above';
+        }
+      }
+      
+      setErrors(prev => ({
+        ...prev,
+        general: errorMessage
+      }));
+      
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleSocialLogin = (provider) => {
-    console.log(`Logging in with ${provider}`);
-    // Implement social login logic
   };
 
   return (
@@ -112,75 +178,30 @@ const Login = () => {
           </Typography>
         </Box>
 
-        {/* Social Login Buttons */}
-        <Box sx={{ mb: 4 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleSocialLogin('google')}
-                sx={{
-                  py: 1.5,
-                  borderColor: theme.palette.divider,
-                  '&:hover': {
-                    borderColor: theme.palette.divider
-                  }
-                }}
-              >
-                <GoogleIcon />
-              </Button>
-            </Grid>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleSocialLogin('facebook')}
-                sx={{
-                  py: 1.5,
-                  borderColor: theme.palette.divider,
-                  '&:hover': {
-                    borderColor: theme.palette.divider
-                  }
-                }}
-              >
-                <FacebookIcon />
-              </Button>
-            </Grid>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleSocialLogin('apple')}
-                sx={{
-                  py: 1.5,
-                  borderColor: theme.palette.divider,
-                  '&:hover': {
-                    borderColor: theme.palette.divider
-                  }
-                }}
-              >
-                <AppleIcon />
-              </Button>
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* Divider */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          my: 4
-        }}>
-          <Divider sx={{ flexGrow: 1 }} />
-          <Typography variant="body2" sx={{ 
-            px: 2, 
-            color: theme.palette.text.secondary
-          }}>
-            OR
-          </Typography>
-          <Divider sx={{ flexGrow: 1 }} />
-        </Box>
+        {/* Error message */}
+        {errors.general && (
+          <Alert 
+            severity={
+              remainingAttempts !== null && remainingAttempts <= 2 ? 
+              'warning' : 'error'
+            } 
+            sx={{ mb: 3 }}
+          >
+            {errors.general}
+            {remainingAttempts !== null && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2">
+                  Remaining attempts: {remainingAttempts}
+                </Typography>
+                {remainingAttempts <= 2 && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <Link href="/forgot-password">Reset your password</Link> if you've forgotten it
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </Alert>
+        )}
 
         {/* Login Form */}
         <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
@@ -191,8 +212,8 @@ const Login = () => {
             type="email"
             value={formData.email}
             onChange={handleChange}
-            error={errors.email}
-            helperText={errors.email ? 'Please enter a valid email address' : ''}
+            error={!!errors.email}
+            helperText={errors.email}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -210,8 +231,8 @@ const Login = () => {
             type={showPassword ? 'text' : 'password'}
             value={formData.password}
             onChange={handleChange}
-            error={errors.password}
-            helperText={errors.password ? 'Password must be at least 6 characters' : ''}
+            error={!!errors.password}
+            helperText={errors.password}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">

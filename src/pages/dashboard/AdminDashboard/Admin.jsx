@@ -43,6 +43,10 @@ import LearnerProfile from './LearnerProfile';
 import Advertorial from './Advertorial/Advertorial';
 import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain';
 
+import UserRegistration from './UserRegistration';
+import BulkUserUpload from './BulkUserUpload';
+import UserGroupsManagement from './UserGroupsManagement';
+
 const drawerWidth = 240;
 
 function Admin() {
@@ -78,7 +82,7 @@ function Admin() {
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
-    { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
+    // { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
   ];
 
   const settingsMenuItems = [
@@ -438,6 +442,7 @@ function Admin() {
 
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
             <Route path="/builder" element={<CertificateBuilderMain />} />
+
           </Routes>
         </Box>
       </Box>

@@ -1,2079 +1,2931 @@
 
 
-// === File: DraggableElement.jsx ===
-import React, { useState, useRef, useEffect, useContext } from 'react';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-
-const DraggableElement = ({ id, children, defaultPosition, isDisabled = false }) => {
-  const { updateElementPosition } = useContext(CertificateContext);
-  const [position, setPosition] = useState(defaultPosition);
-  const [isDragging, setIsDragging] = useState(false);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const elementRef = useRef(null);
-  const containerRef = useRef(document.querySelector('.certificate-template'));
-
-  const handleMouseDown = (e) => {
-    if (isDisabled) return;
-    
-    setIsDragging(true);
-    const rect = elementRef.current.getBoundingClientRect();
-    setOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging || isDisabled) return;
-    
-    if (!containerRef.current) {
-      containerRef.current = document.querySelector('.certificate-template');
-      if (!containerRef.current) return;
-    }
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const elementRect = elementRef.current.getBoundingClientRect();
-    
-    // Calculate new position with full container bounds
-    let newX = e.clientX - containerRect.left - offset.x;
-    let newY = e.clientY - containerRect.top - offset.y;
-    
-    // Allow dragging to edges by considering element width/height
-    newX = Math.max(0, Math.min(newX, containerRect.width - elementRect.width));
-    newY = Math.max(0, Math.min(newY, containerRect.height - elementRect.height));
-    
-    const newPosition = { x: newX, y: newY };
-    
-    setPosition(newPosition);
-    updateElementPosition(id, newPosition);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, offset]);
-
-  const style = {
-    position: 'absolute',
-    left: `${position.x}px`,
-    top: `${position.y}px`,
-    cursor: isDragging ? 'grabbing' : (isDisabled ? 'default' : 'grab'),
-    zIndex: isDragging ? 1000 : 1
-  };
-
-  return (
-    <div
-      ref={elementRef}
-      id={id}
-      style={style}
-      onMouseDown={handleMouseDown}
-      className="draggable-element"
-    >
-      {children}
-    </div>
-  );
-};
-
-export default DraggableElement;
-
-// === File: PreviewPanel.css ===
-
-
-// === File: PreviewPanel.jsx ===
-import React, { useContext } from 'react';
-import { CertificateContext } from '../../contexts/CertificateContext';
-import { toPng, toJpeg } from 'html-to-image';
-import { saveAs } from 'file-saver';
-import Certificate from '../Certificate/Certificate';
-import './PreviewPanel.css';
-
-const PreviewPanel = () => {
-  const { certificate } = useContext(CertificateContext);
-  const certificateRef = React.useRef(null);
-
-  const downloadCertificate = async (format) => {
-    if (!certificateRef.current) return;
-
-    try {
-      let dataUrl;
-      const options = {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff'
-      };
-
-      switch (format) {
-        case 'png':
-          dataUrl = await toPng(certificateRef.current, options);
-          saveAs(dataUrl, `${certificate.recipientName || 'certificate'}.png`);
-          break;
-        case 'jpeg':
-          dataUrl = await toJpeg(certificateRef.current, options);
-          saveAs(dataUrl, `${certificate.recipientName || 'certificate'}.jpg`);
-          break;
-        case 'pdf':
-          alert('PDF export would be implemented with jsPDF');
-          break;
-        default:
-          break;
-      }
-    } catch (error) {
-      console.error('Error generating image:', error);
-    }
-  };
-
-  return (
-    <div className="preview-panel">
-      <h3>Preview & Export</h3>
-      
-      <div className="preview-container">
-        <div className="certificate-preview" ref={certificateRef}>
-          <Certificate isPreview={true} />
-        </div>
-      </div>
-
-      <div className="export-options">
-        <h4>Export Options</h4>
-        <div className="export-buttons">
-          <button onClick={() => downloadCertificate('png')}>PNG</button>
-          <button onClick={() => downloadCertificate('jpeg')}>JPEG</button>
-          <button onClick={() => downloadCertificate('pdf')}>PDF</button>
-        </div>
-      </div>
-
-      <div className="certificate-info">
-        <h4>Certificate Details</h4>
-        <ul>
-          <li><strong>Recipient:</strong> {certificate.recipientName || "Not specified"}</li>
-          <li><strong>Course:</strong> {certificate.courseName || "Not specified"}</li>
-          <li><strong>Date:</strong> {certificate.date}</li>
-          <li><strong>Signatures:</strong> {certificate.signatures.length}</li>
-          <li><strong>Logos:</strong> {certificate.logos.length}</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
-
-export default PreviewPanel;
-
-// === File: Toolbar.css ===
-
-
-// === File: Toolbar.jsx ===
-import React, { useState, useContext } from 'react'; // Added useContext import here
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import { FaFileAlt, FaDownload, FaUndo, FaRedo, FaSave, FaShareAlt } from 'react-icons/fa';
-import PreviewModal from '../Certificate/PreviewModal';
-import './Toolbar.css';
-
-const Toolbar = () => {
-  const { certificate, updateCertificate } = useContext(CertificateContext);
-  const [showPreview, setShowPreview] = useState(false);
-
-  const handleNewCertificate = () => {
-    if (window.confirm('Are you sure you want to create a new certificate? All current changes will be lost.')) {
-      updateCertificate({
-        title: "Certificate of Completion",
-        recipientName: "",
-        courseName: "",
-        date: new Date().toLocaleDateString(),
-        signatures: [],
-        logos: [],
-        template: "classic",
-        barcodeData: "https://cmvp.net/verification/4b832a6e-bba1-4e15-b7d5-6da5657512f0/ARTS/"
-      });
-    }
-  };
-
-  const handleSave = () => {
-    // First save to local storage
-    localStorage.setItem('certificateData', JSON.stringify(certificate));
-    // Then show preview
-    setShowPreview(true);
-  };
-
-  const handleLoad = () => {
-    const savedData = localStorage.getItem('certificateData');
-    if (savedData) {
-      if (window.confirm('Load saved certificate? Current changes will be lost.')) {
-        updateCertificate(JSON.parse(savedData));
-      }
-    } else {
-      alert('No saved certificate found');
-    }
-  };
-
-  return (
-    <>
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <h1 className="app-title">Certificate Builder</h1>
-        </div>
-        
-        <div className="toolbar-center">
-          <button className="toolbar-button" onClick={handleNewCertificate}>
-            <FaFileAlt className="toolbar-icon" />
-            <span>New</span>
-          </button>
-          
-          <button className="toolbar-button" onClick={handleSave}>
-            <FaSave className="toolbar-icon" />
-            <span>Preview & Save </span>
-          </button>
-          
-          <button className="toolbar-button" onClick={handleLoad}>
-            <FaFileAlt className="toolbar-icon" />
-            <span>Load</span>
-          </button>
-        </div>
-      </div>
-
-      {showPreview && (
-        <PreviewModal onClose={() => setShowPreview(false)} />
-      )}
-    </>
-  );
-};
-
-export default Toolbar;
-
-import React, { createContext, useState, useCallback } from 'react';
-
-export const CertificateContext = createContext();
-
-export const CertificateProvider = ({ children }) => {
-  const [history, setHistory] = useState([{
-    title: "Certificate of Completion",
-    recipientName: "",
-    courseName: "",
-    date: new Date().toLocaleDateString(),
-    signatures: [],
-    logos: [],
-    template: "classic",
-    templateImage: null,
-    barcodeData: "https://cmvp.net/verification/4b832a6e-bba1-4e15-b7d5-6da5657512f0/ARTS/",
-    backgroundColor: 'transparent',
-    borderColor: '#f1c40f',
-    borderWidth: '15px',
-    borderStyle: 'solid',
-    completionText: 'has successfully completed the course',
-  }]);
-  
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const certificate = history[historyIndex];
-
-  const updateCertificate = useCallback((updates, recordHistory = false) => {
-    if (recordHistory) {
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push({ ...certificate, ...updates });
-      setHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
-    } else {
-      setHistory(prev => {
-        const newHistory = [...prev];
-        newHistory[historyIndex] = { ...certificate, ...updates };
-        return newHistory;
-      });
-    }
-  }, [certificate, history, historyIndex]);
-
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      setHistoryIndex(prev => prev - 1);
-    }
-  }, [historyIndex]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
-    }
-  }, [history, historyIndex]);
-
-  const addSignature = useCallback((signature) => {
-    updateCertificate({
-      signatures: [...certificate.signatures, signature]
-    }, true);
-  }, [certificate.signatures, updateCertificate]);
-
-  const updateSignature = useCallback((index, updates) => {
-    const updatedSignatures = [...certificate.signatures];
-    updatedSignatures[index] = { ...updatedSignatures[index], ...updates };
-    updateCertificate({ signatures: updatedSignatures }, true);
-  }, [certificate.signatures, updateCertificate]);
-
-  const removeSignature = useCallback((index) => {
-    updateCertificate({
-      signatures: certificate.signatures.filter((_, i) => i !== index)
-    }, true);
-  }, [certificate.signatures, updateCertificate]);
-
-  const addLogo = useCallback((logo) => {
-    updateCertificate({
-      logos: [...certificate.logos, logo]
-    }, true);
-  }, [certificate.logos, updateCertificate]);
-
-  const updateLogo = useCallback((index, updates) => {
-    const updatedLogos = [...certificate.logos];
-    updatedLogos[index] = { ...updatedLogos[index], ...updates };
-    updateCertificate({ logos: updatedLogos }, true);
-  }, [certificate.logos, updateCertificate]);
-
-  const removeLogo = useCallback((index) => {
-    updateCertificate({
-      logos: certificate.logos.filter((_, i) => i !== index)
-    }, true);
-  }, [certificate.logos, updateCertificate]);
-
-  const updateCompletionTextPosition = useCallback((position) => {
-    updateCertificate({
-      completionTextPosition: position
-    });
-  }, [updateCertificate]);
-
-  return (
-    <CertificateContext.Provider value={{
-      certificate,
-      updateCertificate,
-      history,
-      historyIndex,
-      undo,
-      redo,
-      addSignature,
-      updateSignature,
-      removeSignature,
-      addLogo,
-      updateLogo,
-      removeLogo,
-      updateCompletionTextPosition
-    }}>
-      {children}
-    </CertificateContext.Provider>
-  );
-};
-
-// === File: BarcodeGenerator.jsx ===
-// BarcodeGenerator.jsx
-import React, { useEffect, useRef } from 'react';
-import QRCode from 'qrcode';
-
-const BarcodeGenerator = ({ data }) => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    if (data && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, data, { width: 120 }, (error) => {
-        if (error) console.error('Error generating QR code:', error);
-      });
-    }
-  }, [data]);
-
-  return <canvas ref={canvasRef} />;
-};
-
-export default BarcodeGenerator;
-
-// === File: BulkCertificateControls.css ===
-
-
-// === File: BulkCertificateControls.jsx ===
-import React, { useState, useContext, useEffect } from 'react';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import * as XLSX from 'xlsx';
-import PreviewModal from '../Certificate/PreviewModal';
-import './BulkCertificateControls.css';
-
-const dummyRecipients = [
-  { id: 1, fullName: "John Doe", email: "john@example.com", course: "Advanced React" },
-  { id: 2, fullName: "Jane Smith", email: "jane@example.com", course: "Node.js Fundamentals" },
-  { id: 3, fullName: "Alex Johnson", email: "alex@example.com", course: "UI/UX Design" },
-  { id: 4, fullName: "Alex Ekwueme", email: "john@example.com", course: "Advanced React" },
-  { id: 5, fullName: "Sarah Williams", email: "sarah@example.com", course: "Data Science" },
-  { id: 6, fullName: "Michael Brown", email: "michael@example.com", course: "DevOps Engineering" },
-  { id: 7, fullName: "Emily Davis", email: "emily@example.com", course: "Cloud Computing" },
-];
-
-const BulkCertificateControls = () => {
-  const { certificate, updateCertificate } = useContext(CertificateContext);
-  const [recipients, setRecipients] = useState([]);
-  const [selectedRecipients, setSelectedRecipients] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [templateData, setTemplateData] = useState({});
-  const [dataSource, setDataSource] = useState('api');
-  const [columns, setColumns] = useState([]);
-  const [nameColumn, setNameColumn] = useState('fullName');
-  const [courseColumn, setCourseColumn] = useState('course');
-  const [generatedCertificates, setGeneratedCertificates] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
-
-  useEffect(() => {
-    if (dataSource === 'api') {
-      const fetchRecipients = async () => {
-        setIsLoading(true);
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setRecipients(dummyRecipients);
-          setColumns(['id', 'fullName', 'email', 'course']);
-        } catch (error) {
-          console.error("Error fetching recipients:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchRecipients();
-    }
-  }, [dataSource]);
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      setIsLoading(true);
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-        
-        if (jsonData.length > 0) {
-          setRecipients(jsonData);
-          setColumns(Object.keys(jsonData[0]));
-          const firstRow = jsonData[0];
-          const autoNameCol = Object.keys(firstRow).find(k => 
-            k.match(/name|fullname|student/i)
-          );
-          const autoCourseCol = Object.keys(firstRow).find(k => 
-            k.match(/course|subject|class/i)
-          );
-          if (autoNameCol) setNameColumn(autoNameCol);
-          if (autoCourseCol) setCourseColumn(autoCourseCol);
-        }
-      } catch (error) {
-        console.error("Error processing Excel file:", error);
-        alert("Error processing Excel file. Please check the format.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    reader.readAsArrayBuffer(file);
-  };
-
-  const toggleRecipientSelection = (id) => {
-    setSelectedRecipients(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id) 
-        : [...prev, id]
-    );
-  };
-
-  const saveTemplateData = () => {
-    const { recipientName, ...currentTemplate } = certificate;
-    setTemplateData(currentTemplate);
-    alert('Template settings saved! These will be applied to all generated certificates.');
-  };
-
-  const previewCertificate = (recipientId) => {
-    const recipient = recipients.find(r => 
-      dataSource === 'api' ? r.id === recipientId : r === recipientId
-    );
-    if (recipient) {
-      updateCertificate({
-        ...templateData,
-        recipientName: recipient[nameColumn],
-        courseName: recipient[courseColumn] || ''
-      });
-    }
-  };
-
-  const generateAllCertificates = async () => {
-    if (selectedRecipients.length === 0) return;
-    
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const certs = selectedRecipients.map(id => {
-        const recipient = recipients.find(r => 
-          dataSource === 'api' ? r.id === id : r === id
-        );
-        return {
-          ...templateData,
-          recipientName: recipient[nameColumn],
-          courseName: recipient[courseColumn] || ''
-        };
-      });
-
-      setGeneratedCertificates(certs);
-      alert(`Successfully processed ${certs.length} certificates!`);
-      
-      if (certs.length > 0) {
-        updateCertificate(certs[0]);
-        setCurrentPreviewIndex(0);
-        setShowPreview(true);
-      }
-    } catch (error) {
-      console.error("Error generating certificates:", error);
-      alert("Failed to generate certificates. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const navigatePreview = (direction) => {
-    let newIndex = currentPreviewIndex;
-    if (direction === 'prev' && currentPreviewIndex > 0) {
-      newIndex = currentPreviewIndex - 1;
-    } else if (direction === 'next' && currentPreviewIndex < generatedCertificates.length - 1) {
-      newIndex = currentPreviewIndex + 1;
-    }
-    
-    if (newIndex !== currentPreviewIndex) {
-      setCurrentPreviewIndex(newIndex);
-      updateCertificate(generatedCertificates[newIndex]);
-    }
-  };
-
-  const downloadAllCertificates = async (format) => {
-    if (generatedCertificates.length === 0) return;
-    
-    setIsLoading(true);
-    try {
-      for (let i = 0; i < generatedCertificates.length; i++) {
-        const cert = generatedCertificates[i];
-        updateCertificate(cert);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        console.log(`Would download certificate for ${cert.recipientName} as ${format}`);
-      }
-      alert(`Download process completed for ${generatedCertificates.length} certificates!`);
-    } catch (error) {
-      console.error("Error downloading certificates:", error);
-      alert("Failed to download certificates. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const selectAllRecipients = () => {
-    if (selectedRecipients.length === recipients.length) {
-      setSelectedRecipients([]);
-    } else {
-      setSelectedRecipients(
-        dataSource === 'api' 
-          ? recipients.map(r => r.id) 
-          : [...recipients]
-      );
-    }
-  };
-
-  return (
-    <div className="bulk-certificate-controls">
-      <h3>Bulk Certificate Generator</h3>
-      
-      <div className="data-source-selector">
-        <label>
-          <input
-            type="radio"
-            checked={dataSource === 'api'}
-            onChange={() => setDataSource('api')}
-          />
-          Use Sample API Data
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={dataSource === 'excel'}
-            onChange={() => setDataSource('excel')}
-          />
-          Upload Excel File
-        </label>
-      </div>
-      
-      {dataSource === 'excel' && (
-        <div className="form-group">
-          <label>Upload Excel File</label>
-          <input 
-            type="file" 
-            accept=".xlsx, .xls, .csv" 
-            onChange={handleFileUpload} 
-            disabled={isLoading}
-          />
-        </div>
-      )}
-      
-      {columns.length > 0 && dataSource === 'excel' && (
-        <div className="column-mapping">
-          <div className="form-group">
-            <label>Name Column</label>
-            <select 
-              value={nameColumn} 
-              onChange={(e) => setNameColumn(e.target.value)}
-              disabled={isLoading}
-            >
-              {columns.map((col, i) => (
-                <option key={i} value={col}>{col}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Course Column (optional)</label>
-            <select 
-              value={courseColumn} 
-              onChange={(e) => setCourseColumn(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">None</option>
-              {columns.map((col, i) => (
-                <option key={i} value={col}>{col}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-      
-      <div className="api-status">
-        {isLoading ? (
-          <div className="loading-indicator">Loading data...</div>
-        ) : (
-          <div className="success-message">
-            {recipients.length} {dataSource === 'api' ? 'sample' : 'uploaded'} recipients available
-          </div>
-        )}
-      </div>
-      
-      {recipients.length > 0 && (
-        <>
-          <div className="recipients-header">
-            <h4>Select Recipients ({selectedRecipients.length} selected)</h4>
-            <button 
-              onClick={selectAllRecipients}
-              className="select-all-btn"
-            >
-              {selectedRecipients.length === recipients.length ? 'Deselect All' : 'Select All'}
-            </button>
-          </div>
-          <div className="recipients-scroll">
-            {recipients.map((recipient, index) => {
-              const id = dataSource === 'api' ? recipient.id : index;
-              return (
-                <div 
-                  key={dataSource === 'api' ? recipient.id : index}
-                  className={`recipient-item ${selectedRecipients.includes(id) ? 'selected' : ''}`}
-                  onClick={() => toggleRecipientSelection(id)}
-                >
-                  <div className="recipient-name">{recipient[nameColumn]}</div>
-                  {courseColumn && recipient[courseColumn] && (
-                    <div className="recipient-course">{recipient[courseColumn]}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-      
-      <div className="bulk-actions">
-        <button 
-          onClick={saveTemplateData} 
-          className="secondary"
-          disabled={isLoading}
-        >
-          Save Template Settings
-        </button>
-        
-        <button 
-          onClick={() => previewCertificate(selectedRecipients[0])} 
-          disabled={selectedRecipients.length === 0 || isLoading}
-        >
-          Preview Selected Certificate
-        </button>
-        
-        <button 
-          onClick={generateAllCertificates} 
-          disabled={selectedRecipients.length === 0 || isLoading}
-          className="primary"
-        >
-          {isLoading ? 'Generating...' : `Generate All (${selectedRecipients.length})`}
-        </button>
-        
-        {generatedCertificates.length > 0 && (
-          <>
-            <button 
-              onClick={() => {
-                setCurrentPreviewIndex(0);
-                updateCertificate(generatedCertificates[0]);
-                setShowPreview(true);
-              }}
-              className="secondary"
-            >
-              Preview All Certificates
-            </button>
-            <button 
-              onClick={() => downloadAllCertificates('pdf')}
-              className="primary"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Processing...' : `Download All (${generatedCertificates.length})`}
-            </button>
-          </>
-        )}
-      </div>
-
-      {showPreview && generatedCertificates.length > 0 && (
-        <PreviewModal 
-          onClose={() => setShowPreview(false)}
-          onNavigate={navigatePreview}
-          currentIndex={currentPreviewIndex}
-          totalCertificates={generatedCertificates.length}
-          onDownloadAll={() => downloadAllCertificates('pdf')}
-        />
-      )}
-    </div>
-  );
-};
-
-export default BulkCertificateControls;
-
-// === File: Certificate.css ===
-
-
-// === File: Certificate.jsx ===
-// === File: Certificate.jsx ===
-import React, { useContext } from 'react';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import { Box, Paper, Typography } from '@mui/material';
-import BarcodeGenerator from './BarcodeGenerator';
-import DraggableElement from '../UI/DraggableElement';
-
-// Import template images
-import classicTemplate from '../../../assets/templates/classic.jpg';
-import modernTemplate from '../../../assets/templates/modern.jpg';
-import elegantTemplate from '../../../assets/templates/elegant.png';
-import minimalTemplate from '../../../assets/templates/minimal.jpg';
-
-const Certificate = () => {
-  const { certificate } = useContext(CertificateContext);
-  const { 
-    title, 
-    recipientName, 
-    courseName, 
-    completionText,
-    date, 
-    signatures, 
-    logos, 
-    barcodeData,
-    template = 'classic', 
-    templateImage,
-    borderColor = '#f1c40f',
-    borderWidth = '15px',
-    borderStyle = 'solid'
-  } = certificate;
-
-  // Map template IDs to their image files
-  const templateImages = {
-    classic: classicTemplate,
-    modern: modernTemplate,
-    elegant: elegantTemplate,
-    minimal: minimalTemplate
-  };
-
-  // Use custom template if available, otherwise use predefined
-  const backgroundImage = templateImage || templateImages[template];
-
-  return (
-    <Paper 
-      elevation={3}
-      sx={{
-        width: '100%',
-        maxWidth: '1000px',
-        aspectRatio: '4/3',
-        position: 'relative',
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        borderColor,
-        borderWidth,
-        borderStyle,
-        p: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        mx: 'auto',
-        my: 2
-      }}
-    >
-      <Typography 
-        variant="h3" 
-        component="h1" 
-        sx={{ 
-          fontWeight: 700,
-          color: 'text.primary',
-          mb: 2,
-          textAlign: 'center'
-        }}
-      >
-        {title}
-      </Typography>
-      
-      <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
-        This is to certify that
-      </Typography>
-      
-      <Typography 
-        variant="h2" 
-        component="h2" 
-        sx={{ 
-          fontWeight: 600,
-          color: 'primary.main',
-          mb: 2,
-          textAlign: 'center'
-        }}
-      >
-        {recipientName || "[Recipient Name]"}
-      </Typography>
-      
-      <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
-        {completionText || "has successfully completed the course"}
-      </Typography>
-      
-      <Typography 
-        variant="h4" 
-        component="h3" 
-        sx={{ 
-          fontWeight: 500,
-          color: 'text.secondary',
-          mb: 2,
-          textAlign: 'center'
-        }}
-      >
-        {courseName || "[Course Name]"}
-      </Typography>
-      
-      <Typography variant="body1" sx={{ mb: 4, textAlign: 'center' }}>
-        on this {date}
-      </Typography>
-      
-      <Box 
-        sx={{ 
-          display: 'flex',
-          justifyContent: 'space-around',
-          width: '100%',
-          mt: 'auto',
-          position: 'relative',
-          height: '120px'
-        }}
-      >
-        {signatures.map((sig, index) => (
-          <DraggableElement 
-            key={index} 
-            id={`signature-${index}`} 
-            defaultPosition={sig.position}
-            bounds="parent"
-          >
-            <Box sx={{ 
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
-            }}>
-              <Box 
-                component="img"
-                src={sig.image} 
-                alt="Signature" 
-                sx={{ 
-                  width: '120px', 
-                  height: 'auto',
-                  mb: 1
-                }}
-              />
-              <Typography variant="body2">{sig.name || "[Name]"}</Typography>
-              <Typography variant="caption">{sig.date || "[Date]"}</Typography>
-            </Box>
-          </DraggableElement>
-        ))}
-      </Box>
-
-      {/* Logos */}
-      {logos.map((logo, index) => (
-        <DraggableElement 
-          key={`logo-${index}`} 
-          id={`logo-${index}`} 
-          defaultPosition={logo?.position || { x: 50, y: 50 }}
-          bounds="parent"
-        >
-          <Box 
-            component="img"
-            src={logo?.image} 
-            alt={`Logo ${index + 1}`}
-            sx={{
-              width: '100px',
-              height: 'auto',
-            }}
-          />
-        </DraggableElement>
-      ))}
-
-      {/* Barcode */}
-      <Box sx={{ 
-        position: 'absolute',
-        bottom: 16,
-        right: 16
-      }}>
-        <BarcodeGenerator data={barcodeData} />
-      </Box>
-    </Paper>
-  );
-};
-
-export default Certificate;
-
-// === File: CertificateControls.css ===
-
-
-// === File: CertificateControls.jsx ===
-// === File: BulkCertificateControls.jsx ===
-import React, { useState, useContext } from 'react';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import * as XLSX from 'xlsx';
+// === File: ContentUpload.jsx ===
+import React, { useState } from 'react';
 import { 
   Box, 
-  Typography, 
   Button, 
-  Radio, 
-  RadioGroup, 
-  FormControlLabel, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem,
-  CircularProgress,
-  Paper,
-  Checkbox,
-  Divider
+  Typography, 
+  IconButton,
+  useTheme
 } from '@mui/material';
-import PreviewModal from '../Certificate/PreviewModal';
+import { CloudUpload, Delete } from '@mui/icons-material';
 
-const dummyRecipients = [
-  { id: 1, fullName: "John Doe", email: "john@example.com", course: "Advanced React" },
-  { id: 2, fullName: "Jane Smith", email: "jane@example.com", course: "Node.js Fundamentals" },
-  { id: 3, fullName: "Alex Johnson", email: "alex@example.com", course: "UI/UX Design" },
-];
+const ContentUpload = ({ label, onFileChange }) => {
+  const theme = useTheme();
+  const [file, setFile] = useState(null);
 
-const BulkCertificateControls = () => {
-  const { certificate, updateCertificate } = useContext(CertificateContext);
-  const [recipients, setRecipients] = useState([]);
-  const [selectedRecipients, setSelectedRecipients] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [templateData, setTemplateData] = useState({});
-  const [dataSource, setDataSource] = useState('api');
-  const [columns, setColumns] = useState([]);
-  const [nameColumn, setNameColumn] = useState('fullName');
-  const [courseColumn, setCourseColumn] = useState('course');
-  const [generatedCertificates, setGeneratedCertificates] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setIsLoading(true);
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-        
-        if (jsonData.length > 0) {
-          setRecipients(jsonData);
-          setColumns(Object.keys(jsonData[0]));
-          const firstRow = jsonData[0];
-          const autoNameCol = Object.keys(firstRow).find(k => 
-            k.match(/name|fullname|student/i)
-          );
-          const autoCourseCol = Object.keys(firstRow).find(k => 
-            k.match(/course|subject|class/i)
-          );
-          if (autoNameCol) setNameColumn(autoNameCol);
-          if (autoCourseCol) setCourseColumn(autoCourseCol);
-        }
-      } catch (error) {
-        console.error("Error processing Excel file:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  const toggleRecipientSelection = (id) => {
-    setSelectedRecipients(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id) 
-        : [...prev, id]
-    );
-  };
-
-  const saveTemplateData = () => {
-    const { recipientName, ...currentTemplate } = certificate;
-    setTemplateData(currentTemplate);
-  };
-
-  const generateAllCertificates = async () => {
-    if (selectedRecipients.length === 0) return;
-    
-    setIsLoading(true);
-    try {
-      const certs = selectedRecipients.map(id => {
-        const recipient = recipients.find(r => 
-          dataSource === 'api' ? r.id === id : r === id
-        );
-        return {
-          ...templateData,
-          recipientName: recipient[nameColumn],
-          courseName: recipient[courseColumn] || ''
-        };
-      });
-
-      setGeneratedCertificates(certs);
-      
-      if (certs.length > 0) {
-        updateCertificate(certs[0]);
-        setCurrentPreviewIndex(0);
-        setShowPreview(true);
-      }
-    } catch (error) {
-      console.error("Error generating certificates:", error);
-    } finally {
-      setIsLoading(false);
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      onFileChange(selectedFile);
     }
   };
 
-  const navigatePreview = (direction) => {
-    let newIndex = currentPreviewIndex;
-    if (direction === 'prev' && currentPreviewIndex > 0) {
-      newIndex = currentPreviewIndex - 1;
-    } else if (direction === 'next' && currentPreviewIndex < generatedCertificates.length - 1) {
-      newIndex = currentPreviewIndex + 1;
-    }
-    
-    if (newIndex !== currentPreviewIndex) {
-      setCurrentPreviewIndex(newIndex);
-      updateCertificate(generatedCertificates[newIndex]);
-    }
-  };
-
-  const selectAllRecipients = () => {
-    if (selectedRecipients.length === recipients.length) {
-      setSelectedRecipients([]);
-    } else {
-      setSelectedRecipients(
-        dataSource === 'api' 
-          ? recipients.map(r => r.id) 
-          : [...recipients]
-      );
-    }
+  const handleRemove = () => {
+    setFile(null);
+    onFileChange(null);
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>Bulk Certificate Generator</Typography>
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+        {label}
+      </Typography>
       
-      <FormControl component="fieldset" sx={{ mb: 3 }}>
-        <RadioGroup 
-          row 
-          value={dataSource} 
-          onChange={(e) => setDataSource(e.target.value)}
-        >
-          <FormControlLabel 
-            value="api" 
-            control={<Radio />} 
-            label="Use Sample API Data" 
-          />
-          <FormControlLabel 
-            value="excel" 
-            control={<Radio />} 
-            label="Upload Excel File" 
-          />
-        </RadioGroup>
-      </FormControl>
-      
-      {dataSource === 'excel' && (
-        <Box sx={{ mb: 3 }}>
-          <Button 
-            variant="contained"
-            component="label"
-            disabled={isLoading}
-          >
-            Upload Excel File
-            <input 
-              type="file" 
-              hidden 
-              accept=".xlsx, .xls, .csv" 
-              onChange={handleFileUpload} 
-            />
-          </Button>
-        </Box>
-      )}
-      
-      {columns.length > 0 && dataSource === 'excel' && (
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Name Column</InputLabel>
-            <Select 
-              value={nameColumn} 
-              onChange={(e) => setNameColumn(e.target.value)}
-              disabled={isLoading}
-            >
-              {columns.map((col, i) => (
-                <MenuItem key={i} value={col}>{col}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl fullWidth size="small">
-            <InputLabel>Course Column</InputLabel>
-            <Select 
-              value={courseColumn} 
-              onChange={(e) => setCourseColumn(e.target.value)}
-              disabled={isLoading}
-            >
-              <MenuItem value="">None</MenuItem>
-              {columns.map((col, i) => (
-                <MenuItem key={i} value={col}>{col}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-      
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-          <CircularProgress />
+      {file ? (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          p: 1, 
+          border: `1px dashed ${theme.palette.divider}`,
+          borderRadius: 1
+        }}>
+          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+            {file.name}
+          </Typography>
+          <IconButton onClick={handleRemove} size="small">
+            <Delete fontSize="small" />
+          </IconButton>
         </Box>
       ) : (
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          {recipients.length} {dataSource === 'api' ? 'sample' : 'uploaded'} recipients available
-        </Typography>
-      )}
-      
-      {recipients.length > 0 && (
-        <>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="subtitle1">
-              Select Recipients ({selectedRecipients.length} selected)
-            </Typography>
-            <Button 
-              onClick={selectAllRecipients}
-              size="small"
-            >
-              {selectedRecipients.length === recipients.length ? 'Deselect All' : 'Select All'}
-            </Button>
-          </Box>
-          
-          <Paper sx={{ maxHeight: 300, overflow: 'auto', mb: 3 }}>
-            {recipients.map((recipient, index) => {
-              const id = dataSource === 'api' ? recipient.id : index;
-              return (
-                <Box 
-                  key={dataSource === 'api' ? recipient.id : index}
-                  sx={{
-                    p: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: selectedRecipients.includes(id) ? 'action.selected' : 'background.paper',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                      cursor: 'pointer'
-                    }
-                  }}
-                  onClick={() => toggleRecipientSelection(id)}
-                >
-                  <Checkbox 
-                    checked={selectedRecipients.includes(id)}
-                    onChange={() => toggleRecipientSelection(id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <Box sx={{ ml: 1 }}>
-                    <Typography>{recipient[nameColumn]}</Typography>
-                    {courseColumn && recipient[courseColumn] && (
-                      <Typography variant="body2" color="text.secondary">
-                        {recipient[courseColumn]}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              );
-            })}
-          </Paper>
-        </>
-      )}
-      
-      <Divider sx={{ my: 2 }} />
-      
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Button 
+        <Button
+          component="label"
           variant="outlined"
-          onClick={saveTemplateData} 
-          disabled={isLoading}
+          fullWidth
+          startIcon={<CloudUpload />}
         >
-          Save Template Settings
+          Upload File
+          <input
+            type="file"
+            hidden
+            onChange={handleFileChange}
+            accept="image/*"
+          />
         </Button>
-        
-        <Button 
-          variant="outlined"
-          onClick={() => previewCertificate(selectedRecipients[0])} 
-          disabled={selectedRecipients.length === 0 || isLoading}
-        >
-          Preview Selected Certificate
-        </Button>
-        
-        <Button 
-          variant="contained"
-          onClick={generateAllCertificates} 
-          disabled={selectedRecipients.length === 0 || isLoading}
-        >
-          {isLoading ? 'Generating...' : `Generate All (${selectedRecipients.length})`}
-        </Button>
-        
-        {generatedCertificates.length > 0 && (
-          <>
-            <Button 
-              variant="outlined"
-              onClick={() => {
-                setCurrentPreviewIndex(0);
-                updateCertificate(generatedCertificates[0]);
-                setShowPreview(true);
-              }}
-            >
-              Preview All Certificates
-            </Button>
-            <Button 
-              variant="contained"
-              onClick={() => downloadAllCertificates('pdf')}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Processing...' : `Download All (${generatedCertificates.length})`}
-            </Button>
-          </>
-        )}
-      </Box>
-
-      {showPreview && generatedCertificates.length > 0 && (
-        <PreviewModal 
-          onClose={() => setShowPreview(false)}
-          onNavigate={navigatePreview}
-          currentIndex={currentPreviewIndex}
-          totalCertificates={generatedCertificates.length}
-          onDownloadAll={() => downloadAllCertificates('pdf')}
-        />
       )}
     </Box>
   );
 };
 
-export default BulkCertificateControls;
+export default ContentUpload;
 
-// === File: CertificateTemplates.css ===
+// === File: CourseCard.jsx ===
+import React from 'react';
+import {  Card,  CardMedia,  CardContent,  CardActions,
+  Typography,  Button,  Chip,  Box,  Avatar,  useTheme
+} from '@mui/material';
+import { School, People, AccessTime, Star } from '@mui/icons-material';
 
+const CourseCard = ({ 
+  course, 
+  onView, 
+  onEdit, 
+  onEnroll,
+  variant = 'default' // 'default' or 'minimal'
+}) => {
+  const theme = useTheme();
 
-// === File: CertificateTemplates.jsx ===
-import React, { useContext, useState } from 'react';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import './CertificateTemplates.css';
+  if (variant === 'minimal') {
+    return (
+      <Card sx={{ 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 0.2s',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: theme.shadows[4]
+        }
+      }}>
+        <CardMedia
+          component="img"
+          height="140"
+          image={course.thumbnail || '/default-course.jpg'}
+          alt={course.title}
+        />
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Typography gutterBottom variant="h6" component="div">
+            {course.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {course.instructor}
+          </Typography>
+          <Chip 
+            label={course.level} 
+            size="small" 
+            sx={{ 
+              mr: 1,
+              backgroundColor: 
+                course.level === 'Advanced' ? theme.palette.error.light :
+                course.level === 'Intermediate' ? theme.palette.warning.light :
+                theme.palette.success.light
+            }} 
+          />
+          <Chip 
+            label={course.category} 
+            size="small" 
+            variant="outlined" 
+          />
+        </CardContent>
+        <CardActions sx={{ justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <People fontSize="small" sx={{ mr: 0.5 }} />
+            <Typography variant="body2">{course.enrolled}</Typography>
+          </Box>
+          <Button size="small" onClick={onView}>View</Button>
+        </CardActions>
+      </Card>
+    );
+  }
 
-// Static imports
-import classicImg from '../../../assets/templates/classic.jpg'; 
-import modernImg from '../../../assets/templates/modern.jpg';
-import elegantImg from '../../../assets/templates/elegant.png';
-import minimalImg from '../../../assets/templates/minimal.jpg';
+  // Default variant
+  return (
+    <Card sx={{ 
+      display: 'flex',
+      height: '100%',
+      flexDirection: 'column',
+      boxShadow: 'none',
+      border: `1px solid ${theme.palette.divider}`,
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        boxShadow: theme.shadows[4],
+        borderColor: 'transparent'
+      }
+    }}>
+      <Box sx={{ position: 'relative' }}>
+        <CardMedia
+          component="img"
+          height="160"
+          image={course.thumbnail || '/default-course.jpg'}
+          alt={course.title}
+          sx={{ objectFit: 'cover' }}
+        />
+        <Chip
+          label={course.status}
+          size="small"
+          color={
+            course.status === 'Published' ? 'success' :
+            course.status === 'Draft' ? 'warning' : 'default'
+          }
+          sx={{ 
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            fontWeight: 600
+          }}
+        />
+      </Box>
+      
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          {course.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {course.shortDescription || 'No description available'}
+        </Typography>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Avatar 
+            src={course.instructorAvatar} 
+            sx={{ 
+              width: 32, 
+              height: 32, 
+              mr: 1,
+              bgcolor: theme.palette.primary.main
+            }}
+          >
+            {course.instructor?.charAt(0)}
+          </Avatar>
+          <Typography variant="body2">
+            {course.instructor || 'Unknown Instructor'}
+          </Typography>
+        </Box>
+        
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+          <Chip 
+            icon={<AccessTime fontSize="small" />}
+            label={course.duration || 'N/A'} 
+            size="small" 
+          />
+          <Chip 
+            icon={<School fontSize="small" />}
+            label={course.level || 'All Levels'} 
+            size="small" 
+          />
+          {course.rating && (
+            <Chip 
+              icon={<Star fontSize="small" sx={{ color: theme.palette.warning.main }} />}
+              label={course.rating} 
+              size="small" 
+            />
+          )}
+        </Box>
+      </CardContent>
+      
+      <CardActions sx={{ p: 2, justifyContent: 'space-between' }}>
+        <Typography variant="h6" fontWeight={600}>
+          {course.price ? `$${course.price}` : 'Free'}
+        </Typography>
+        <Box>
+          {onEdit && (
+            <Button 
+              size="small" 
+              onClick={onEdit}
+              sx={{ mr: 1 }}
+            >
+              Edit
+            </Button>
+          )}
+          <Button 
+            variant="contained" 
+            size="small" 
+            onClick={onView || onEnroll}
+          >
+            {onEdit ? 'Preview' : 'Enroll Now'}
+          </Button>
+        </Box>
+      </CardActions>
+    </Card>
+  );
+};
 
-const CertificateTemplates = () => {
-  const { certificate, updateCertificate } = useContext(CertificateContext);
-  const [customTemplates, setCustomTemplates] = useState([]);
+export default CourseCard;
 
-  const templates = [
-    {
-      id: 'classic',
-      name: 'Classic',
-      thumbnail: classicImg,
-      image: classicImg
-    },
-    {
-      id: 'modern',
-      name: 'Modern', 
-      thumbnail: modernImg,
-      image: modernImg
-    },
-    {
-      id: 'elegant',
-      name: 'Elegant',
-      thumbnail: elegantImg,
-      image: elegantImg
-    },
-    {
-      id: 'minimal',
-      name: 'Minimal',
-      thumbnail: minimalImg,
-      image: minimalImg
-    },
-    ...customTemplates
+// === File: CourseForm.jsx ===
+import React, { useState, useEffect } from 'react';
+import {
+  Box, Typography, TextField, Button, Grid, Paper, Divider,
+  FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
+  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
+  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
+  ListItemIcon, Checkbox, FormControlLabel, Tab, Tabs, Avatar
+} from '@mui/material';
+import {
+  Save, Cancel, CloudUpload, AddCircle, Delete,
+  Link as LinkIcon, PictureAsPdf, VideoLibrary,
+  InsertDriveFile, Edit, Person, People, School
+} from '@mui/icons-material';
+import { useNavigate, useParams } from 'react-router-dom';
+import ModuleForm from './ModuleForm';
+import InstructorAssignmentDialog from './InstructorAssignmentDialog';
+
+const resourceTypes = [
+  { value: 'link', label: 'Web Link', icon: <LinkIcon /> },
+  { value: 'pdf', label: 'PDF Document', icon: <PictureAsPdf /> },
+  { value: 'video', label: 'Video', icon: <VideoLibrary /> },
+  { value: 'file', label: 'File', icon: <InsertDriveFile /> }
+];
+
+const CourseForm = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
+  const [activeTab, setActiveTab] = useState(0);
+  
+  const [course, setCourse] = useState({
+    title: '',
+    code: '',
+    description: '',
+    category: '',
+    level: 'Beginner',
+    status: 'Draft',
+    duration: '',
+    price: 0,
+    discountPrice: null,
+    currency: 'NGN',
+    learningOutcomes: [],
+    prerequisites: [],
+    thumbnail: null,
+    modules: [],
+    resources: [],
+    instructors: []
+  });
+
+  const [newOutcome, setNewOutcome] = useState('');
+  const [newPrerequisite, setNewPrerequisite] = useState('');
+  const [errors, setErrors] = useState({});
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [instructorDialogOpen, setInstructorDialogOpen] = useState(false);
+  const [currentResource, setCurrentResource] = useState({
+    id: null,
+    title: '',
+    type: 'link',
+    url: '',
+    file: null
+  });
+
+  const categories = [
+    'Web Development', 'Mobile Development', 'Data Science',
+    'Design', 'Business', 'Marketing', 'Photography'
   ];
 
-  const handleTemplateSelect = (template) => {
-    updateCertificate({
-      template: template.id,
-      templateImage: template.image
-    });
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const newTemplate = {
-        id: `custom-${Date.now()}`,
-        name: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
-        thumbnail: e.target.result,
-        image: e.target.result
-      };
-      setCustomTemplates(prev => [...prev, newTemplate]);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div className="templates-container">
-      <h3 className="templates-title">Select Template</h3>
-      
-      <div className="template-upload">
-        <label className="upload-button">
-          Upload Custom Template
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-        </label>
-      </div>
-      
-      <div className="templates-scrollable">
-        <div className="templates-grid">
-          {templates.map(template => (
-            <div
-              key={template.id}
-              className={`template-card ${certificate.template === template.id ? 'active' : ''}`}
-              onClick={() => handleTemplateSelect(template)}
-            >
-              <img
-                src={template.thumbnail}
-                alt={template.name}
-                className="template-image"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/120x80?text=Template';
-                }}
-              />
-              <span className="template-label">{template.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default CertificateTemplates;
-
-// === File: CompletionTextControl.jsx ===
-import React, { useContext } from 'react';
-import { CertificateContext } from '../contexts/CertificateContext';
-
-const CompletionTextControl = () => {
-  const { certificate, updateCertificateField } = useContext(CertificateContext);
-
-  return (
-    <div className="form-group">
-      <label>Completion Text</label>
-      <input
-        type="text"
-        value={certificate.completionText}
-        onChange={(e) => updateCertificateField('completionText', e.target.value)}
-        placeholder="e.g., 'has successfully completed the course'"
-        className="form-control"
-      />
-      <small className="form-text text-muted">
-        This text appears between the recipient name and course name
-      </small>
-    </div>
-  );
-};
-
-export default CompletionTextControl;
-
-// === File: DownloadOptionsModal.css ===
-
-
-// === File: DownloadOptionsModal.jsx ===
-import React from 'react';
-import { FiDownload, FiX, FiImage, FiFileText } from 'react-icons/fi';
-import { FaFilePdf } from 'react-icons/fa';
-import './DownloadOptionsModal.css';
-
-const DownloadOptionsModal = ({ onClose, onDownload }) => {
-  return (
-    <div className="download-modal-overlay">
-      <div className="download-modal">
-        <button className="close-button" onClick={onClose}>
-          <FiX />
-        </button>
-        
-        <h3>Download Options</h3>
-        
-        <div className="download-options">
-          <button 
-            className="download-option"
-            onClick={() => onDownload('png')}
-          >
-            <FiImage className="option-icon" />
-            <span>PNG Image</span>
-          </button>
-          
-          <button 
-            className="download-option"
-            onClick={() => onDownload('jpeg')}
-          >
-            <FiImage className="option-icon" />
-            <span>JPEG Image</span>
-          </button>
-          
-          <button 
-            className="download-option"
-            onClick={() => onDownload('pdf')}
-          >
-            <FaFilePdf className="option-icon" />
-            <span>PDF Document</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default DownloadOptionsModal;
-
-// === File: DraggableElement.css ===
-
-
-// === File: DraggableElement.jsx ===
-import React, { useState, useRef, useEffect } from 'react';
-import './DraggableElement.css';
-
-const DraggableElement = ({ 
-  id, 
-  children, 
-  defaultPosition = { x: 0, y: 0 },
-  bounds = 'parent'
-}) => {
-  const [position, setPosition] = useState(defaultPosition);
-  const [isDragging, setIsDragging] = useState(false);
-  const elementRef = useRef(null);
-  const startPos = useRef({ x: 0, y: 0 });
+  // Sample instructors data - in a real app, this would come from an API
+  const availableInstructors = [
+    { id: 1, name: 'John Doe', email: 'john@example.com', avatar: '', expertise: ['Web Development', 'React'] },
+    { id: 2, name: 'Jane Smith', email: 'jane@example.com', avatar: '', expertise: ['Data Science', 'Python'] },
+    { id: 3, name: 'Alex Johnson', email: 'alex@example.com', avatar: '', expertise: ['Design', 'UX'] }
+  ];
 
   useEffect(() => {
-    setPosition(defaultPosition);
-  }, [defaultPosition]);
+    if (isEdit) {
+      // Simulate API fetch
+      setTimeout(() => {
+        setCourse({
+          title: 'Advanced React Development',
+          code: 'REACT-401',
+          description: 'Master advanced React concepts',
+          category: 'Web Development',
+          level: 'Advanced',
+          status: 'Published',
+          duration: '8 weeks',
+          price: 199,
+          discountPrice: 149,
+          currency: 'NGN',
+          learningOutcomes: ['Build complex React apps', 'Optimize performance'],
+          prerequisites: ['Basic JavaScript', 'React fundamentals'],
+          thumbnail: null,
+          modules: [{
+            id: 1,
+            title: 'React Hooks Deep Dive',
+            description: 'Learn about hooks',
+            lessons: [
+              { id: 1, title: 'Introduction to Hooks', duration: '30 min', type: 'video', url: 'https://example.com/video1' }
+            ]
+          }],
+          resources: [
+            {
+              id: 1,
+              title: 'React Documentation',
+              type: 'link',
+              url: 'https://reactjs.org/docs'
+            }
+          ],
+          instructors: [
+            {
+              instructorId: 1,
+              name: 'John Doe',
+              email: 'john@example.com',
+              isActive: true,
+              assignedModules: 'all' // 'all' or array of module IDs
+            }
+          ]
+        });
+      }, 500);
+    }
+  }, [id, isEdit]);
 
-  const handleMouseDown = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-    const rect = elementRef.current.getBoundingClientRect();
-    startPos.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCourse(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
+  const handlePriceChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setCourse(prev => ({ ...prev, price: value }));
+  };
+
+  const handleDiscountChange = (e) => {
+    const value = e.target.value === '' ? null : parseFloat(e.target.value);
+    setCourse(prev => ({ ...prev, discountPrice: value }));
+  };
+
+  const addLearningOutcome = () => {
+    if (newOutcome.trim()) {
+      setCourse(prev => ({
+        ...prev,
+        learningOutcomes: [...prev.learningOutcomes, newOutcome.trim()]
+      }));
+      setNewOutcome('');
+    }
+  };
+
+  const removeLearningOutcome = (index) => {
+    setCourse(prev => ({
+      ...prev,
+      learningOutcomes: prev.learningOutcomes.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addPrerequisite = () => {
+    if (newPrerequisite.trim()) {
+      setCourse(prev => ({
+        ...prev,
+        prerequisites: [...prev.prerequisites, newPrerequisite.trim()]
+      }));
+      setNewPrerequisite('');
+    }
+  };
+
+  const removePrerequisite = (index) => {
+    setCourse(prev => ({
+      ...prev,
+      prerequisites: prev.prerequisites.filter((_, i) => i !== index)
+    }));
+  };
+
+  const openResourceDialog = (resource = null) => {
+    setCurrentResource(resource || {
+      id: null,
+      title: '',
+      type: 'link',
+      url: '',
+      file: null
+    });
+    setResourceDialogOpen(true);
+  };
+
+  const handleResourceChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentResource(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleResourceFileChange = (e) => {
+    setCurrentResource(prev => ({ ...prev, file: e.target.files[0] }));
+  };
+
+  const saveResource = () => {
+    if (!currentResource.title.trim()) return;
+
+    const updatedResources = [...course.resources];
+    if (currentResource.id) {
+      // Update existing resource
+      const index = updatedResources.findIndex(r => r.id === currentResource.id);
+      updatedResources[index] = currentResource;
+    } else {
+      // Add new resource
+      updatedResources.push({
+        ...currentResource,
+        id: Date.now()
+      });
+    }
+
+    setCourse(prev => ({ ...prev, resources: updatedResources }));
+    setResourceDialogOpen(false);
+  };
+
+  const deleteResource = (id) => {
+    setCourse(prev => ({
+      ...prev,
+      resources: prev.resources.filter(r => r.id !== id)
+    }));
+  };
+
+  const addModule = () => {
+    setCourse(prev => ({
+      ...prev,
+      modules: [...prev.modules, {
+        id: Date.now(),
+        title: '',
+        description: '',
+        lessons: []
+      }]
+    }));
+  };
+
+  const handleModuleChange = (moduleId, updatedModule) => {
+    setCourse(prev => ({
+      ...prev,
+      modules: prev.modules.map(m => m.id === moduleId ? updatedModule : m)
+    }));
+  };
+
+  const deleteModule = (moduleId) => {
+    setCourse(prev => ({
+      ...prev,
+      modules: prev.modules.filter(m => m.id !== moduleId),
+      instructors: prev.instructors.map(instructor => {
+        if (instructor.assignedModules !== 'all') {
+          return {
+            ...instructor,
+            assignedModules: instructor.assignedModules.filter(id => id !== moduleId)
+          };
+        }
+        return instructor;
+      })
+    }));
+  };
+
+  const handleInstructorAssignment = (instructor, assignedModules) => {
+    const existingIndex = course.instructors.findIndex(i => i.instructorId === instructor.id);
     
-    const container = bounds === 'parent' 
-      ? elementRef.current.parentElement 
-      : document.querySelector(bounds);
+    const newInstructor = {
+      instructorId: instructor.id,
+      name: instructor.name,
+      email: instructor.email,
+      isActive: true,
+      assignedModules: assignedModules
+    };
+
+    if (existingIndex >= 0) {
+      // Update existing assignment
+      const updatedInstructors = [...course.instructors];
+      updatedInstructors[existingIndex] = newInstructor;
+      setCourse(prev => ({ ...prev, instructors: updatedInstructors }));
+    } else {
+      // Add new assignment
+      setCourse(prev => ({
+        ...prev,
+        instructors: [...prev.instructors, newInstructor]
+      }));
+    }
+  };
+
+  const toggleInstructorStatus = (instructorId) => {
+    setCourse(prev => ({
+      ...prev,
+      instructors: prev.instructors.map(instructor => 
+        instructor.instructorId === instructorId 
+          ? { ...instructor, isActive: !instructor.isActive }
+          : instructor
+      )
+    }));
+  };
+
+  const removeInstructor = (instructorId) => {
+    setCourse(prev => ({
+      ...prev,
+      instructors: prev.instructors.filter(i => i.instructorId !== instructorId)
+    }));
+  };
+
+  const getAssignedModulesText = (instructor) => {
+    if (instructor.assignedModules === 'all') return 'Entire course';
+    if (instructor.assignedModules.length === 0) return 'No modules assigned';
+    if (instructor.assignedModules.length === 1) {
+      const module = course.modules.find(m => m.id === instructor.assignedModules[0]);
+      return module ? module.title : '1 module';
+    }
+    return `${instructor.assignedModules.length} modules`;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newErrors = {};
+    if (!course.title) newErrors.title = 'Title is required';
+    if (!course.code) newErrors.code = 'Course code is required';
+    if (!course.description) newErrors.description = 'Description is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    console.log('Submitting course:', course);
+    navigate('/admin/courses');
+  };
+
+  const getResourceIcon = (type) => {
+    const resourceType = resourceTypes.find(t => t.value === type);
+    return resourceType ? resourceType.icon : <InsertDriveFile />;
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ fontWeight: 600, mb: 3 }}>
+        {isEdit ? 'Edit Course' : 'Create New Course'}
+      </Typography>
+
+      <Tabs 
+        value={activeTab} 
+        onChange={(e, newValue) => setActiveTab(newValue)}
+        sx={{ mb: 3 }}
+      >
+        <Tab label="Course Details" />
+        <Tab label="Content & Modules" />
+        <Tab label="Instructors" />
+        <Tab label="Resources" />
+      </Tabs>
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <form onSubmit={handleSubmit}>
+          {activeTab === 0 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={8}>
+                <TextField
+                  fullWidth
+                  label="Course Title"
+                  name="title"
+                  value={course.title}
+                  onChange={handleChange}
+                  error={!!errors.title}
+                  helperText={errors.title}
+                  sx={{ mb: 2 }}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="Course Code"
+                  name="code"
+                  value={course.code}
+                  onChange={handleChange}
+                  error={!!errors.code}
+                  helperText={errors.code}
+                  sx={{ mb: 2 }}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="Description"
+                  name="description"
+                  value={course.description}
+                  onChange={handleChange}
+                  error={!!errors.description}
+                  helperText={errors.description}
+                  multiline
+                  rows={4}
+                  sx={{ mb: 2 }}
+                />
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Learning Outcomes
+                </Typography>
+
+                <Box sx={{ mb: 2 }}>
+                  {course.learningOutcomes.map((outcome, index) => (
+                    <Chip
+                      key={index}
+                      label={outcome}
+                      onDelete={() => removeLearningOutcome(index)}
+                      sx={{ m: 0.5 }}
+                    />
+                  ))}
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    placeholder="What will students learn?"
+                    value={newOutcome}
+                    onChange={(e) => setNewOutcome(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome()}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    onClick={addLearningOutcome}
+                    disabled={!newOutcome.trim()}
+                  >
+                    Add
+                  </Button>
+                </Box>
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Prerequisites
+                </Typography>
+
+                <Box sx={{ mb: 2 }}>
+                  {course.prerequisites.map((prereq, index) => (
+                    <Chip
+                      key={index}
+                      label={prereq}
+                      onDelete={() => removePrerequisite(index)}
+                      sx={{ m: 0.5 }}
+                    />
+                  ))}
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    placeholder="What should students know beforehand?"
+                    value={newPrerequisite}
+                    onChange={(e) => setNewPrerequisite(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addPrerequisite()}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    onClick={addPrerequisite}
+                    disabled={!newPrerequisite.trim()}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    name="category"
+                    value={course.category}
+                    onChange={handleChange}
+                    label="Category"
+                  >
+                    {categories.map(cat => (
+                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Level</InputLabel>
+                  <Select
+                    name="level"
+                    value={course.level}
+                    onChange={handleChange}
+                    label="Level"
+                  >
+                    <MenuItem value="Beginner">Beginner</MenuItem>
+                    <MenuItem value="Intermediate">Intermediate</MenuItem>
+                    <MenuItem value="Advanced">Advanced</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    name="status"
+                    value={course.status}
+                    onChange={handleChange}
+                    label="Status"
+                  >
+                    <MenuItem value="Draft">Draft</MenuItem>
+                    <MenuItem value="Published">Published</MenuItem>
+                    <MenuItem value="Archived">Archived</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  fullWidth
+                  label="Duration"
+                  name="duration"
+                  value={course.duration}
+                  onChange={handleChange}
+                  placeholder="e.g. 8 weeks, 30 hours"
+                  sx={{ mb: 2 }}
+                />
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                  Pricing
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  label="Price"
+                  type="number"
+                  value={course.price}
+                  onChange={handlePriceChange}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        {course.currency}
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ mb: 2 }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Discount Price (optional)"
+                  type="number"
+                  value={course.discountPrice || ''}
+                  onChange={handleDiscountChange}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        {course.currency}
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                <Divider sx={{ my: 2 }} />
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{ mb: 2 }}
+                >
+                  Upload Thumbnail
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => setCourse(prev => ({ ...prev, thumbnail: e.target.files[0] }))}
+                    accept="image/*"
+                  />
+                </Button>
+
+                {course.thumbnail && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                      {course.thumbnail.name || 'Thumbnail selected'}
+                    </Typography>
+                    <IconButton onClick={() => setCourse(prev => ({ ...prev, thumbnail: null }))}>
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                )}
+              </Grid>
+            </Grid>
+          )}
+
+          {activeTab === 1 && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Course Modules
+              </Typography>
+
+              {course.modules.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <School sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No modules added yet
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    Add modules to structure your course content
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddCircle />}
+                    onClick={addModule}
+                  >
+                    Add First Module
+                  </Button>
+                </Box>
+              )}
+
+              {course.modules.map((module, index) => (
+                <ModuleForm 
+                  key={module.id}
+                  module={module}
+                  index={index}
+                  onChange={handleModuleChange}
+                  onDelete={deleteModule}
+                />
+              ))}
+
+              {course.modules.length > 0 && (
+                <Button
+                  startIcon={<AddCircle />}
+                  onClick={addModule}
+                  sx={{ mt: 2 }}
+                >
+                  Add Another Module
+                </Button>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 2 && (
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Course Instructors
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<People />}
+                  onClick={() => setInstructorDialogOpen(true)}
+                >
+                  Assign Instructor
+                </Button>
+              </Box>
+
+              {course.instructors.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Person sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No instructors assigned
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    Assign instructors to teach this course
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<People />}
+                    onClick={() => setInstructorDialogOpen(true)}
+                  >
+                    Assign Instructor
+                  </Button>
+                </Box>
+              )}
+
+              <List>
+                {course.instructors.map((instructor) => (
+                  <ListItem key={instructor.instructorId} divider>
+                    <ListItemAvatar>
+                      <Avatar>
+                        {instructor.name.charAt(0)}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={instructor.name}
+                      secondary={
+                        <>
+                          <Typography component="span" variant="body2" color="text.primary">
+                            {instructor.email}
+                          </Typography>
+                          {` • Assigned to: ${getAssignedModulesText(instructor)}`}
+                        </>
+                      }
+                    />
+                    <ListItemSecondaryAction>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={instructor.isActive}
+                            onChange={() => toggleInstructorStatus(instructor.instructorId)}
+                          />
+                        }
+                        label="Active"
+                        labelPlacement="start"
+                        sx={{ mr: 2 }}
+                      />
+                      <IconButton 
+                        edge="end" 
+                        onClick={() => {
+                          const instructorData = availableInstructors.find(
+                            i => i.id === instructor.instructorId
+                          );
+                          setCurrentResource({
+                            ...instructor,
+                            assignedModules: instructor.assignedModules
+                          });
+                          setInstructorDialogOpen(true);
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton 
+                        edge="end" 
+                        onClick={() => removeInstructor(instructor.instructorId)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+
+          {activeTab === 3 && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Course Resources
+              </Typography>
+
+              <List dense>
+                {course.resources.map((resource) => (
+                  <ListItem key={resource.id}>
+                    <ListItemIcon>
+                      {getResourceIcon(resource.type)}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={resource.title}
+                      secondary={resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton onClick={() => openResourceDialog(resource)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => deleteResource(resource.id)}>
+                        <Delete />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+
+              <Button
+                variant="outlined"
+                startIcon={<AddCircle />}
+                onClick={() => openResourceDialog()}
+                sx={{ mt: 1 }}
+              >
+                Add Resource
+              </Button>
+            </Box>
+          )}
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Cancel />}
+              onClick={() => navigate('/admin/courses')}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<Save />}
+            >
+              {isEdit ? 'Update Course' : 'Create Course'}
+            </Button>
+          </Box>
+        </form>
+      </Paper>
+
+      {/* Resource Dialog */}
+      <Dialog open={resourceDialogOpen} onClose={() => setResourceDialogOpen(false)}>
+        <DialogTitle>
+          {currentResource.id ? 'Edit Resource' : 'Add Resource'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Resource Title"
+            fullWidth
+            name="title"
+            value={currentResource.title}
+            onChange={handleResourceChange}
+            sx={{ mb: 2 }}
+          />
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Resource Type</InputLabel>
+            <Select
+              name="type"
+              value={currentResource.type}
+              onChange={handleResourceChange}
+              label="Resource Type"
+            >
+              {resourceTypes.map(type => (
+                <MenuItem key={type.value} value={type.value}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {type.icon}
+                    {type.label}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {currentResource.type === 'link' && (
+            <TextField
+              margin="dense"
+              label="URL"
+              fullWidth
+              name="url"
+              value={currentResource.url}
+              onChange={handleResourceChange}
+            />
+          )}
+
+          {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
+            <Button
+              fullWidth
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUpload />}
+              sx={{ mt: 1 }}
+            >
+              Upload File
+              <input
+                type="file"
+                hidden
+                onChange={handleResourceFileChange}
+                accept={
+                  currentResource.type === 'pdf' ? 'application/pdf' : 
+                  currentResource.type === 'video' ? 'video/*' : '*'
+                }
+              />
+            </Button>
+          )}
+
+          {currentResource.file && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Selected: {currentResource.file.name || currentResource.file}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResourceDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={saveResource} 
+            disabled={!currentResource.title.trim()}
+            variant="contained"
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Instructor Assignment Dialog */}
+      <InstructorAssignmentDialog
+        open={instructorDialogOpen}
+        onClose={() => setInstructorDialogOpen(false)}
+        instructors={availableInstructors}
+        modules={course.modules}
+        currentAssignment={currentResource}
+        onAssign={handleInstructorAssignment}
+      />
+    </Box>
+  );
+};
+
+export default CourseForm;
+
+// === File: CourseList.jsx ===
+import React, { useState } from 'react';
+import {
+  Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Paper, Chip, IconButton, Box, 
+  useTheme, Typography, Menu, MenuItem, TablePagination,
+  TextField, Button, Grid, Tabs, Tab, Divider
+} from '@mui/material';
+import { 
+  Edit, Visibility, MoreVert, 
+  Search, FilterList, Refresh 
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+
+// Dummy data for courses
+const dummyCourses = Array.from({ length: 25 }, (_, i) => ({
+  id: i + 1,
+  title: `Course ${i + 1}`,
+  code: `CODE-${i + 100}`,
+  category: ['Web Development', 'Backend Development', 'Design', 'Data Science'][i % 4],
+  level: ['Beginner', 'Intermediate', 'Advanced'][i % 3],
+  price: 100 + (i * 10),
+  discountPrice: i % 2 === 0 ? 80 + (i * 8) : null,
+  currency: 'NGN',
+  status: ['Published', 'Draft', 'Archived'][i % 3],
+  learningOutcomes: [
+    'Master key concepts',
+    'Build practical applications',
+    'Implement advanced techniques',
+    'Develop professional skills'
+  ].slice(0, (i % 4) + 1),
+  createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)).toISOString()
+}));
+
+const CourseList = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [activeStatusTab, setActiveStatusTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    category: 'all',
+    level: 'all'
+  });
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+
+  // Filter courses based on active tab, search term and other filters
+  const filteredCourses = dummyCourses.filter(course => {
+    const matchesStatus = activeStatusTab === 'all' || course.status === activeStatusTab;
+    const matchesSearch = searchTerm === '' || 
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      course.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filters.category === 'all' || course.category === filters.category;
+    const matchesLevel = filters.level === 'all' || course.level === filters.level;
+    
+    return matchesStatus && matchesSearch && matchesCategory && matchesLevel;
+  });
+
+  const handleMenuOpen = (event, course) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedCourse(course);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedCourse(null);
+  };
+
+  const handleEdit = (courseId) => {
+    navigate(`/admin/courses/edit/${courseId}`);
+    handleMenuClose();
+  };
+
+  const handleView = (courseId) => {
+    navigate(`/admin/courses/view/${courseId}`);
+    handleMenuClose();
+  };
+
+  const handleDelete = (courseId) => {
+    console.log('Delete course', courseId);
+    handleMenuClose();
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleStatusTabChange = (event, newValue) => {
+    setActiveStatusTab(newValue);
+    setPage(0);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+    setPage(0);
+  };
+
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({ ...prev, [name]: value }));
+    setPage(0);
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      category: 'all',
+      level: 'all'
+    });
+    setSearchTerm('');
+    setActiveStatusTab('all');
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Published': return 'success';
+      case 'Draft': return 'warning';
+      case 'Archived': return 'default';
+      default: return 'info';
+    }
+  };
+
+  const formatPrice = (price, currency) => {
+    const priceNumber = typeof price === 'string' ? parseFloat(price) : price;
+    
+    if (priceNumber === undefined || priceNumber === null || isNaN(priceNumber)) {
+      return 'Price not set';
+    }
+    
+    const currencyToUse = currency || 'NGN';
+    
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyToUse
+      }).format(priceNumber);
+    } catch (e) {
+      return `${currencyToUse} ${priceNumber.toFixed(2)}`;
+    }
+  };
+
+  return (
+    <Box>
+      {/* Filter and Search Bar */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search courses..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: <Search sx={{ color: theme.palette.text.secondary, mr: 1 }} />
+              }}
+            />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<FilterList />}
+              sx={{ height: '56px' }}
+              onClick={() => setFilterDialogOpen(true)}
+            >
+              Filters
+            </Button>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<Refresh />}
+              sx={{ height: '56px' }}
+              onClick={resetFilters}
+            >
+              Reset
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Status Tabs */}
+        <Tabs 
+          value={activeStatusTab} 
+          onChange={handleStatusTabChange}
+          sx={{
+            mt: 3,
+            '& .MuiTabs-indicator': {
+              backgroundColor: theme.palette.primary.main,
+              height: 3
+            }
+          }}
+        >
+          <Tab label="All" value="all" />
+          <Tab label="Published" value="Published" />
+          <Tab label="Draft" value="Draft" />
+          <Tab label="Archived" value="Archived" />
+        </Tabs>
+        <Divider />
+      </Paper>
+
+      {/* Filter Dialog - Would implement as a separate modal component in a real app */}
+      {filterDialogOpen && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>Advanced Filters</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                fullWidth
+                label="Category"
+                value={filters.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+              >
+                <MenuItem value="all">All Categories</MenuItem>
+                <MenuItem value="Web Development">Web Development</MenuItem>
+                <MenuItem value="Backend Development">Backend Development</MenuItem>
+                <MenuItem value="Design">Design</MenuItem>
+                <MenuItem value="Data Science">Data Science</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                fullWidth
+                label="Level"
+                value={filters.level}
+                onChange={(e) => handleFilterChange('level', e.target.value)}
+              >
+                <MenuItem value="all">All Levels</MenuItem>
+                <MenuItem value="Beginner">Beginner</MenuItem>
+                <MenuItem value="Intermediate">Intermediate</MenuItem>
+                <MenuItem value="Advanced">Advanced</MenuItem>
+              </TextField>
+            </Grid>
+          </Grid>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant="contained" 
+              onClick={() => setFilterDialogOpen(false)}
+              sx={{ ml: 2 }}
+            >
+              Apply Filters
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Courses Table */}
+      <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 650 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ minWidth: 200 }}>Title</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>Code</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Price</TableCell>
+              <TableCell sx={{ minWidth: 200 }}>Outcomes</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>Status</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredCourses
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((course) => (
+                <TableRow key={course.id} hover>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 500 }}>{course.title}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {course.category} • {course.level}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{course.code}</TableCell>
+                  <TableCell>
+                    {course.discountPrice ? (
+                      <>
+                        <Typography sx={{ textDecoration: 'line-through' }}>
+                          {formatPrice(course.price, course.currency)}
+                        </Typography>
+                        <Typography color="error" sx={{ fontWeight: 600 }}>
+                          {formatPrice(course.discountPrice, course.currency)}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography>{formatPrice(course.price, course.currency)}</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ maxWidth: 200 }}>
+                      {course.learningOutcomes && course.learningOutcomes.length > 0 ? (
+                        <>
+                          {course.learningOutcomes.slice(0, 2).map((outcome, i) => (
+                            <Typography 
+                              key={i} 
+                              variant="body2" 
+                              sx={{ 
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              • {outcome}
+                            </Typography>
+                          ))}
+                          {course.learningOutcomes.length > 2 && (
+                            <Typography variant="caption">
+                              +{course.learningOutcomes.length - 2} more
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          No outcomes specified
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={course.status} 
+                      size="small" 
+                      color={getStatusColor(course.status)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleEdit(course.id)}
+                      aria-label="edit"
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleView(course.id)}
+                      aria-label="view"
+                    >
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      onClick={(e) => handleMenuOpen(e, course)}
+                      aria-label="more options"
+                    >
+                      <MoreVert fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredCourses.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+
+        {/* More options menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          <MenuItem onClick={() => handleEdit(selectedCourse?.id)}>
+            <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+          </MenuItem>
+          <MenuItem onClick={() => handleView(selectedCourse?.id)}>
+            <Visibility fontSize="small" sx={{ mr: 1 }} /> View Details
+          </MenuItem>
+          <MenuItem onClick={() => handleDelete(selectedCourse?.id)} sx={{ color: 'error.main' }}>
+            Delete
+          </MenuItem>
+        </Menu>
+      </TableContainer>
+    </Box>
+  );
+};
+
+export default CourseList;
+
+// === File: CourseManagement.jsx ===
+import React, { useState } from 'react';
+import { 
+  Box,   Typography,   Button,   Grid,   Paper,   TextField,  Divider,  Tabs,  Tab,  useTheme,  Card,
+  CardContent,  LinearProgress,  Chip,  Avatar,  List,  ListItem,
+  ListItemAvatar,  ListItemText,  IconButton,  Stack,  useMediaQuery, ListItemSecondaryAction 
+} from '@mui/material';
+import { 
+  Add,   Search,   FilterList,  People,
+  School,  CheckCircle,  TrendingUp,  Warning,
+  Star,  Category,  AccessTime,  Menu as MenuIcon
+} from '@mui/icons-material';
+import CourseList from './CourseList';
+import { useNavigate } from 'react-router-dom';
+
+const CourseManagement = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Dummy data
+  const courseStats = {
+    totalCourses: 42,
+    totalEnrollments: 1256,
+    mostPopularCourse: {
+      title: "Advanced React Development",
+      enrollments: 342,
+      instructor: "Jane Smith"
+    },
+    leastPopularCourse: {
+      title: "Introduction to Cobol",
+      enrollments: 3,
+      instructor: "John Doe"
+    },
+    noEnrollmentCourses: 5,
+    completedCourses: 689,
+    ongoingCourses: 567,
+    averageCompletionRate: 68,
+    recentCourses: [
+      { title: "AI Fundamentals", date: "2023-05-15", instructor: "Dr. Chen" },
+      { title: "DevOps Crash Course", date: "2023-05-10", instructor: "Alex Johnson" },
+      { title: "UX Design Principles", date: "2023-05-05", instructor: "Sarah Williams" }
+    ],
+    categories: [
+      { name: "Programming", count: 18 },
+      { name: "Design", count: 8 },
+      { name: "Business", count: 7 },
+      { name: "Data Science", count: 9 }
+    ],
+    averageRating: 4.3,
+    attentionNeeded: [
+      { title: "Outdated: AngularJS Basics", issue: "content outdated" },
+      { title: "Unpublished: Advanced Docker", issue: "needs review" }
+    ]
+  };
+
+  const StatCard = ({ icon, title, value, color }) => (
+    <Card sx={{ height: '100%' }}>
+      <CardContent>
+        <Stack direction={isMobile ? "column" : "row"} alignItems="center" spacing={2}>
+          <Avatar sx={{ 
+            bgcolor: `${color}.light`, 
+            color: `${color}.dark`,
+            ...(isMobile && { mb: 1 })
+          }}>
+            {icon}
+          </Avatar>
+          <Box sx={{ textAlign: isMobile ? 'center' : 'left' }}>
+            <Typography variant="subtitle2" color="text.secondary">{title}</Typography>
+            <Typography variant={isMobile ? "h6" : "h5"}>{value}</Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+
+  const handleAddCourse = () => {
+    navigate('/admin/courses/new');
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  return (
+    <Box sx={{ p: isMobile ? 1 : 3 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'center',
+        mb: 3,
+        gap: isMobile ? 2 : 0
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 600 }}>
+          Course Management
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={handleAddCourse}
+          fullWidth={isMobile}
+          size={isMobile ? "small" : "medium"}
+        >
+          {isMobile ? 'New Course' : 'Add New Course'}
+        </Button>
+      </Box>
+
+      {/* Quick Stats Section */}
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
+          <StatCard 
+            icon={<School />} 
+            title="Total Courses" 
+            value={courseStats.totalCourses} 
+            color="primary" 
+          />
+        </Grid>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
+          <StatCard 
+            icon={<People />} 
+            title="Enrollments" 
+            value={courseStats.totalEnrollments} 
+            color="secondary" 
+          />
+        </Grid>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
+          <StatCard 
+            icon={<CheckCircle />} 
+            title="Completed" 
+            value={courseStats.completedCourses} 
+            color="success" 
+          />
+        </Grid>
+        <Grid item xs={6} sm={6} md={6} lg={3}>
+          <StatCard 
+            icon={<TrendingUp />} 
+            title="Completion %" 
+            value={`${courseStats.averageCompletionRate}%`} 
+            color="info" 
+          />
+        </Grid>
+      </Grid>
+
+      {/* Detailed Stats Section */}
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
+        {/* Most Popular Course */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Star color="warning" sx={{ mr: 1 }} /> Most Popular
+              </Typography>
+              <Typography variant={isMobile ? "h6" : "h5"}>{courseStats.mostPopularCourse.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Instructor: {courseStats.mostPopularCourse.instructor}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <People color="action" sx={{ mr: 1 }} />
+                <Typography variant="body2">{courseStats.mostPopularCourse.enrollments} enrollments</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Least Popular Course */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Warning color="error" sx={{ mr: 1 }} /> Least Popular
+              </Typography>
+              <Typography variant={isMobile ? "h6" : "h5"}>{courseStats.leastPopularCourse.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Instructor: {courseStats.leastPopularCourse.instructor}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <People color="action" sx={{ mr: 1 }} />
+                <Typography variant="body2">{courseStats.leastPopularCourse.enrollments} enrollments</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Categories Distribution */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Category sx={{ mr: 1, color: 'purple' }} /> Categories
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                {courseStats.categories.map((category) => (
+                  <Box key={category.name} sx={{ mb: 1 }}>
+                    <Typography variant="body2">{category.name} ({category.count})</Typography>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(category.count / courseStats.totalCourses) * 100} 
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
+                  </Box>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Recent Courses */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <AccessTime sx={{ mr: 1, color: 'orange' }} /> Recent Courses
+              </Typography>
+              <List dense={isMobile}>
+                {courseStats.recentCourses.map((course, index) => (
+                  <ListItem key={index} secondaryAction={
+                    !isMobile && <Chip label="New" color="info" size="small" />
+                  }>
+                    <ListItemText
+                      primary={course.title}
+                      secondary={`Added: ${course.date} • ${course.instructor}`}
+                      primaryTypographyProps={{ variant: isMobile ? "body2" : "body1" }}
+                      secondaryTypographyProps={{ variant: isMobile ? "caption" : "body2" }}
+                    />
+                    {isMobile && (
+                      <ListItemSecondaryAction>
+                        <Chip label="New" color="info" size="small" />
+                      </ListItemSecondaryAction>
+                    )}
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
       
-    const containerRect = container.getBoundingClientRect();
-    const elementRect = elementRef.current.getBoundingClientRect();
+      {/* Courses List Section */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: theme.palette.primary.main,
+              height: 3
+            }
+          }}
+        >
+          <Tab label="All Courses" />
+          <Tab label="Published" />
+          <Tab label="Drafts" />
+          <Tab label="Archived" />
+        </Tabs>
+        <Divider />
+        <CourseList isMobile={isMobile} />
+      </Paper>
+    </Box>
+  );
+};
+
+export default CourseManagement;
+
+// === File: CourseStats.jsx ===
+import React from 'react';
+import {  Box,  Typography,  Card,  CardContent,  LinearProgress,  Chip,
+  Avatar,  List,  ListItem,  ListItemText,  Stack,  Grid
+} from '@mui/material';
+import {
+  People,  School,  Star,  Warning,  Category,  AccessTime
+} from '@mui/icons-material';
+
+
+
+
+
+const CourseStats = () => {
+
+      // Dummy data
+  const stats = {
+    totalCourses: 42,
+    totalEnrollments: 1256,
+    mostPopularCourse: {
+      title: "Advanced React Development",
+      enrollments: 342,
+      instructor: "Jane Smith"
+    },
+    leastPopularCourse: {
+      title: "Introduction to Cobol",
+      enrollments: 3,
+      instructor: "John Doe"
+    },
+    noEnrollmentCourses: 5,
+    completedCourses: 689,
+    ongoingCourses: 567,
+    averageCompletionRate: 68,
+    recentCourses: [
+      { title: "AI Fundamentals", date: "2023-05-15", instructor: "Dr. Chen" },
+      { title: "DevOps Crash Course", date: "2023-05-10", instructor: "Alex Johnson" },
+      { title: "UX Design Principles", date: "2023-05-05", instructor: "Sarah Williams" }
+    ],
+    categories: [
+      { name: "Programming", count: 18 },
+      { name: "Design", count: 8 },
+      { name: "Business", count: 7 },
+      { name: "Data Science", count: 9 }
+    ],
+    averageRating: 4.3
+  };
+
+
+
+
+  return (
+    <Grid container spacing={2} sx={{ mb: 3 }}>
+      {/* Most Popular Course - Compact Version */}
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent sx={{ p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Star color="warning" fontSize="small" />
+              <Typography variant="subtitle2">Most Popular</Typography>
+            </Stack>
+            <Typography variant="body2" noWrap>{stats.mostPopularCourse.title}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {stats.mostPopularCourse.enrollments} enrollments
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Least Popular Course - Compact Version */}
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent sx={{ p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Warning color="error" fontSize="small" />
+              <Typography variant="subtitle2">Least Popular</Typography>
+            </Stack>
+            <Typography variant="body2" noWrap>{stats.leastPopularCourse.title}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {stats.leastPopularCourse.enrollments} enrollments
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Categories Distribution - Compact Version */}
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent sx={{ p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Category fontSize="small" sx={{ color: 'purple' }} />
+              <Typography variant="subtitle2">Categories</Typography>
+            </Stack>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {stats.categories.slice(0, 3).map((category) => (
+                <Chip 
+                  key={category.name} 
+                  label={`${category.name} (${category.count})`} 
+                  size="small" 
+                />
+              ))}
+              {stats.categories.length > 3 && (
+                <Chip label={`+${stats.categories.length - 3}`} size="small" />
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Recently Added Courses - Compact Version */}
+      <Grid item xs={12} sm={6} md={3}>
+        <Card sx={{ height: '100%' }}>
+          <CardContent sx={{ p: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <AccessTime fontSize="small" sx={{ color: 'orange' }} />
+              <Typography variant="subtitle2">Recent</Typography>
+            </Stack>
+            <List dense sx={{ py: 0 }}>
+              {stats.recentCourses.slice(0, 2).map((course, index) => (
+                <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" noWrap>
+                        {course.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" noWrap>
+                        {course.instructor}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+};
+
+export default CourseStats;
+
+// === File: CourseView .jsx ===
+import React, { useState, useEffect } from 'react';
+import {  Box,  Typography,  Paper,  Button,  Chip,
+  Divider,  Grid,  List,  ListItem,  ListItemText,  Avatar,ListItemIcon,  Tabs,
+  Tab,  useTheme,  IconButton,  CircularProgress
+} from '@mui/material';
+import {
+  ArrowBack,  Edit,  People,  Schedule,
+  MonetizationOn,  Assessment,  InsertDriveFile,
+  VideoLibrary,  Quiz,  Assignment
+} from '@mui/icons-material';
+import { useNavigate, useParams } from 'react-router-dom';
+
+// Dummy data - replace with API calls
+const dummyCourseData = {
+  id: 1,
+  title: 'Advanced React Development',
+  code: 'REACT-401',
+  description: 'Master advanced React concepts including hooks, context, and performance optimization. This course will take you from intermediate to advanced React developer.',
+  category: 'Web Development',
+  level: 'Advanced',
+  price: 200.47,
+  discountPrice: 149,
+  currency: 'NGN',
+  status: 'Published',
+  thumbnail: 'https://source.unsplash.com/random/800x400/?react',
+  duration: '8 weeks',
+  totalStudents: 42,
+  createdAt: '2023-05-15',
+  lastUpdated: '2023-06-20',
+  learningOutcomes: [
+    'Master React hooks and context API',
+    'Build performant React applications',
+    'Implement advanced state management',
+    'Optimize React application performance',
+    'Create reusable component libraries'
+  ],
+  modules: [
+    {
+      id: 1,
+      title: 'React Hooks Deep Dive',
+      description: 'Learn all about useState, useEffect, and custom hooks',
+      lessons: [
+        { id: 1, title: 'Introduction to Hooks', duration: '30 min', type: 'video' },
+        { id: 2, title: 'useState in Depth', duration: '45 min', type: 'video' },
+        { id: 3, title: 'useEffect Patterns', duration: '60 min', type: 'video' }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Context API & State Management',
+      description: 'Learn to manage global state with Context API',
+      lessons: [
+        { id: 4, title: 'Context API Fundamentals', duration: '40 min', type: 'video' },
+        { id: 5, title: 'Combining Context with Hooks', duration: '50 min', type: 'video' }
+      ]
+    }
+  ],
+  resources: [
+    { id: 1, title: 'React Official Documentation', type: 'link', url: 'https://reactjs.org/docs' },
+    { id: 2, title: 'Performance Cheat Sheet', type: 'pdf' },
+    { id: 3, title: 'Component Design Patterns', type: 'pdf' }
+  ]
+};
+
+const CourseView = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    // Simulate API call
+    setLoading(true);
+    setTimeout(() => {
+      setCourse(dummyCourseData);
+      setLoading(false);
+    }, 800);
+  }, [id]);
+
+  const handleBack = () => {
+    navigate('/admin/courses');
+  };
+
+  const handleEdit = () => {
+    navigate(`/admin/courses/edit/${id}`);
+  };
+
+  const formatPrice = (price, currency) => {
+    const priceNumber = typeof price === 'string' ? parseFloat(price) : price;
     
-    let newX = e.clientX - containerRect.left - startPos.current.x;
-    let newY = e.clientY - containerRect.top - startPos.current.y;
+    if (priceNumber === undefined || priceNumber === null || isNaN(priceNumber)) {
+      return 'Price not set';
+    }
     
-    // Constrain to container bounds
-    newX = Math.max(0, Math.min(containerRect.width - elementRect.width, newX));
-    newY = Math.max(0, Math.min(containerRect.height - elementRect.height, newY));
+    const currencyToUse = currency || 'NGN';
     
-    setPosition({
-      x: (newX / containerRect.width) * 100,
-      y: (newY / containerRect.height) * 100
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyToUse
+      }).format(priceNumber);
+    } catch (e) {
+      return `${currencyToUse} ${priceNumber.toFixed(2)}`;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Published': return 'success';
+      case 'Draft': return 'warning';
+      case 'Archived': return 'default';
+      default: return 'info';
+    }
+  };
+
+  const getLessonIcon = (type) => {
+    switch (type) {
+      case 'video': return <VideoLibrary color="primary" />;
+      case 'quiz': return <Quiz color="secondary" />;
+      case 'assignment': return <Assignment color="info" />;
+      default: return <InsertDriveFile color="action" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!course) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6">Course not found</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <IconButton onClick={handleBack} sx={{ mr: 2 }}>
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+          {course.title}
+        </Typography>
+        <Chip 
+          label={course.status} 
+          size="small" 
+          color={getStatusColor(course.status)}
+          sx={{ ml: 2 }}
+        />
+        <Button
+          variant="contained"
+          startIcon={<Edit />}
+          onClick={handleEdit}
+          sx={{ ml: 'auto' }}
+        >
+          Edit Course
+        </Button>
+      </Box>
+
+      <Grid container spacing={3}>
+        {/* Left Column - Course Details */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+              Course Description
+            </Typography>
+            <Typography paragraph>
+              {course.description}
+            </Typography>
+
+            <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 600 }}>
+              Learning Outcomes
+            </Typography>
+            <List dense>
+              {course.learningOutcomes.map((outcome, index) => (
+                <ListItem key={index} sx={{ py: 0.5 }}>
+                  <ListItemText primary={`• ${outcome}`} />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+
+          {/* Course Content Tabs */}
+          <Paper sx={{ mb: 3 }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{
+                '& .MuiTabs-indicator': {
+                  backgroundColor: theme.palette.primary.main,
+                  height: 3
+                }
+              }}
+            >
+              <Tab label="Modules" />
+              <Tab label="Resources" />
+            </Tabs>
+            <Divider />
+
+            {activeTab === 0 && (
+              <Box sx={{ p: 3 }}>
+                {course.modules.map((module) => (
+                  <Box key={module.id} sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+                      {module.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      {module.description}
+                    </Typography>
+                    <List>
+                      {module.lessons.map((lesson) => (
+                        <ListItem 
+                          key={lesson.id} 
+                          sx={{ 
+                            py: 1,
+                            borderBottom: `1px solid ${theme.palette.divider}`,
+                            '&:hover': {
+                              backgroundColor: theme.palette.action.hover
+                            }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 40 }}>
+                            {getLessonIcon(lesson.type)}
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={lesson.title} 
+                            secondary={lesson.duration} 
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {activeTab === 1 && (
+              <Box sx={{ p: 3 }}>
+                <List>
+                  {course.resources.map((resource) => (
+                    <ListItem 
+                      key={resource.id}
+                      sx={{ 
+                        py: 1,
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        '&:hover': {
+                          backgroundColor: theme.palette.action.hover
+                        }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        {resource.type === 'link' ? (
+                          <InsertDriveFile color="primary" />
+                        ) : (
+                          <InsertDriveFile color="action" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={resource.title} 
+                        secondary={resource.type === 'link' ? resource.url : 'PDF Document'} 
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Right Column - Course Meta */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ 
+              width: '100%', 
+              height: 200, 
+              mb: 2,
+              borderRadius: 1,
+              overflow: 'hidden',
+              backgroundColor: theme.palette.grey[200],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {course.thumbnail ? (
+                <img 
+                  src={course.thumbnail} 
+                  alt={course.title} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <Typography color="text.secondary">No thumbnail</Typography>
+              )}
+            </Box>
+
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  <People fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Students
+                </Typography>
+                <Typography variant="h6">
+                  {course.totalStudents}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  <Schedule fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Duration
+                </Typography>
+                <Typography variant="h6">
+                  {course.duration}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  <MonetizationOn fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Price
+                </Typography>
+                <Typography variant="h6">
+                  {course.discountPrice ? (
+                    <>
+                      <Typography component="span" sx={{ textDecoration: 'line-through', mr: 1 }}>
+                        {formatPrice(course.price, course.currency)}
+                      </Typography>
+                      <Typography component="span" color="error">
+                        {formatPrice(course.discountPrice, course.currency)}
+                      </Typography>
+                    </>
+                  ) : (
+                    formatPrice(course.price, course.currency)
+                  )}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">
+                  <Assessment fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Status
+                </Typography>
+                <Typography variant="h6">
+                  <Chip 
+                    label={course.status} 
+                    size="small" 
+                    color={getStatusColor(course.status)}
+                  />
+                </Typography>
+              </Grid>
+            </Grid>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="body2" color="text.secondary">
+              Course Code
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {course.code}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              Category
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {course.category}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              Level
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {course.level}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              Created
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {course.createdAt}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              Last Updated
+            </Typography>
+            <Typography variant="body1">
+              {course.lastUpdated}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+export default CourseView;
+
+// === File: InstructorAssignmentDialog.jsx ===
+import React, { useState } from 'react';
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Typography, List, ListItem, ListItemText,
+  Checkbox, FormControlLabel, Divider, Chip, Box
+} from '@mui/material';
+import { People, School } from '@mui/icons-material';
+
+const InstructorAssignmentDialog = ({
+  open,
+  onClose,
+  instructors,
+  modules,
+  currentAssignment,
+  onAssign
+}) => {
+  const [selectedInstructor, setSelectedInstructor] = useState(
+    currentAssignment?.instructorId || null
+  );
+  const [assignmentType, setAssignmentType] = useState(
+    currentAssignment?.assignedModules === 'all' ? 'all' : 'specific'
+  );
+  const [selectedModules, setSelectedModules] = useState(
+    currentAssignment?.assignedModules !== 'all' 
+      ? currentAssignment?.assignedModules || [] 
+      : []
+  );
+
+  const instructor = instructors.find(i => i.id === selectedInstructor) || {};
+
+  const handleInstructorSelect = (instructorId) => {
+    setSelectedInstructor(instructorId);
+  };
+
+  const handleAssignmentTypeChange = (e) => {
+    setAssignmentType(e.target.checked ? 'specific' : 'all');
+    if (!e.target.checked) {
+      setSelectedModules([]);
+    }
+  };
+
+  const toggleModuleSelection = (moduleId) => {
+    setSelectedModules(prev =>
+      prev.includes(moduleId)
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!selectedInstructor) return;
+
+    const assignedModules = assignmentType === 'all' ? 'all' : selectedModules;
+    onAssign(instructor, assignedModules);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>
+        {currentAssignment ? 'Edit Instructor Assignment' : 'Assign Instructor'}
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+          Select Instructor
+        </Typography>
+        
+        <List sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
+          {instructors.map((instructor) => (
+            <ListItem 
+              key={instructor.id}
+              button
+              selected={selectedInstructor === instructor.id}
+              onClick={() => handleInstructorSelect(instructor.id)}
+            >
+              <ListItemText
+                primary={instructor.name}
+                secondary={
+                  <>
+                    {instructor.email}
+                    <Box sx={{ mt: 0.5 }}>
+                      {instructor.expertise.map(skill => (
+                        <Chip 
+                          key={skill} 
+                          label={skill} 
+                          size="small" 
+                          sx={{ mr: 0.5, mb: 0.5 }} 
+                        />
+                      ))}
+                    </Box>
+                  </>
+                }
+              />
+            </ListItem>
+          ))}
+        </List>
+
+        {selectedInstructor && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+              Assignment Scope
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={assignmentType === 'specific'}
+                  onChange={handleAssignmentTypeChange}
+                />
+              }
+              label="Assign to specific modules only"
+              sx={{ mb: 2 }}
+            />
+
+            {assignmentType === 'specific' && (
+              <>
+                {modules.length === 0 ? (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    py: 3,
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    borderRadius: 1
+                  }}>
+                    <School sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                    <Typography color="text.secondary">
+                      No modules available for assignment
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Create modules first to assign specific ones
+                    </Typography>
+                  </Box>
+                ) : (
+                  <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                    {modules.map((module) => (
+                      <ListItem 
+                        key={module.id}
+                        button
+                        onClick={() => toggleModuleSelection(module.id)}
+                      >
+                        <ListItemText
+                          primary={module.title || 'Untitled Module'}
+                          secondary={module.description || 'No description'}
+                        />
+                        <Checkbox
+                          edge="end"
+                          checked={selectedModules.includes(module.id)}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button 
+          onClick={handleSubmit}
+          disabled={!selectedInstructor || (assignmentType === 'specific' && selectedModules.length === 0)}
+          variant="contained"
+        >
+          {currentAssignment ? 'Update Assignment' : 'Assign Instructor'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default InstructorAssignmentDialog;
+
+// === File: LessonItem.jsx ===
+import React, { useState } from 'react';
+import {
+  Box,  TextField,  IconButton,  Divider,  useTheme,  Menu,  MenuItem,  Typography // <-- Add this line
+} from '@mui/material';
+import { Edit, Delete, MoreVert } from '@mui/icons-material';
+
+const LessonItem = ({ lesson, onUpdate, onDelete }) => {
+  const theme = useTheme();
+  const [editing, setEditing] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [editedLesson, setEditedLesson] = useState(lesson);
+  const open = Boolean(anchorEl);
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleEdit = () => {
+    setEditing(true);
+    handleMenuClose();
+  };
+
+  const handleSave = () => {
+    onUpdate(lesson.id, editedLesson);
+    setEditing(false);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEditedLesson(prev => ({ ...prev, [name]: value }));
+  };
+
+  return (
+    <Box sx={{ mb: 1 }}>
+      {editing ? (
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <TextField
+            fullWidth
+            size="small"
+            name="title"
+            value={editedLesson.title}
+            onChange={handleChange}
+            sx={{ flexGrow: 1 }}
+          />
+          <TextField
+            size="small"
+            name="duration"
+            value={editedLesson.duration}
+            onChange={handleChange}
+            sx={{ width: '100px' }}
+          />
+          <IconButton onClick={handleSave} size="small" color="primary">
+            <Edit fontSize="small" />
+          </IconButton>
+        </Box>
+      ) : (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          p: 1,
+          backgroundColor: theme.palette.grey[100],
+          borderRadius: 1
+        }}>
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {lesson.title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {lesson.duration}
+            </Typography>
+          </Box>
+          
+          <IconButton
+            size="small"
+            onClick={handleMenuClick}
+          >
+            <MoreVert fontSize="small" />
+          </IconButton>
+          
+          <Menu
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleMenuClose}
+            PaperProps={{
+              elevation: 1,
+              sx: {
+                minWidth: '120px'
+              }
+            }}
+          >
+            <MenuItem onClick={handleEdit}>
+              <Edit fontSize="small" sx={{ mr: 1 }} />
+              Edit
+            </MenuItem>
+            <MenuItem onClick={() => {
+              onDelete(lesson.id);
+              handleMenuClose();
+            }}>
+              <Delete fontSize="small" sx={{ mr: 1 }} color="error" />
+              Delete
+            </MenuItem>
+          </Menu>
+        </Box>
+      )}
+      <Divider sx={{ my: 1 }} />
+    </Box>
+  );
+};
+
+export default LessonItem;
+
+// === File: ModuleForm.jsx ===
+import React, { useState } from 'react';
+import {
+  Box, Typography, TextField, Button, Paper, Divider,
+  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
+  FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
+  Accordion, AccordionSummary, AccordionDetails
+} from '@mui/material';
+import {
+  ExpandMore, AddCircle, Delete, Edit,
+  VideoLibrary, InsertDriveFile, Link as LinkIcon
+} from '@mui/icons-material';
+
+const lessonTypes = [
+  { value: 'video', label: 'Video', icon: <VideoLibrary /> },
+  { value: 'file', label: 'File', icon: <InsertDriveFile /> },
+  { value: 'link', label: 'Link', icon: <LinkIcon /> }
+];
+
+const ModuleForm = ({ module, index, onChange, onDelete }) => {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(true);
+  const [newLesson, setNewLesson] = useState({
+    title: '',
+    type: 'video',
+    url: '',
+    file: null
+  });
+  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState(null);
+
+  const handleModuleChange = (field, value) => {
+    onChange(module.id, { ...module, [field]: value });
+  };
+
+  const handleLessonChange = (e) => {
+    const { name, value } = e.target;
+    setNewLesson(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLessonFileChange = (e) => {
+    setNewLesson(prev => ({ ...prev, file: e.target.files[0] }));
+  };
+
+  const addLesson = () => {
+    if (!newLesson.title.trim()) return;
+
+    const lesson = {
+      id: Date.now(),
+      title: newLesson.title.trim(),
+      type: newLesson.type,
+      duration: '10 min', // Default duration, could be made editable
+      ...(newLesson.type === 'link' ? { url: newLesson.url } : {}),
+      ...(newLesson.type !== 'link' ? { file: newLesson.file } : {})
+    };
+
+    onChange(module.id, {
+      ...module,
+      lessons: [...module.lessons, lesson]
+    });
+
+    setNewLesson({
+      title: '',
+      type: 'video',
+      url: '',
+      file: null
     });
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+  const editLesson = (lesson) => {
+    setEditingLesson(lesson);
+    setNewLesson({
+      title: lesson.title,
+      type: lesson.type,
+      url: lesson.url || '',
+      file: lesson.file || null
+    });
+    setLessonDialogOpen(true);
   };
 
-  const style = {
-    position: 'absolute',
-    left: `${position.x}%`,
-    top: `${position.y}%`,
-    transform: 'translate(-50%, -50%)',
-    cursor: isDragging ? 'grabbing' : 'grab',
-    zIndex: isDragging ? 100 : 10
+  const updateLesson = () => {
+    if (!editingLesson || !newLesson.title.trim()) return;
+
+    const updatedLessons = module.lessons.map(lesson => 
+      lesson.id === editingLesson.id ? {
+        ...lesson,
+        title: newLesson.title.trim(),
+        type: newLesson.type,
+        ...(newLesson.type === 'link' ? { url: newLesson.url } : {}),
+        ...(newLesson.type !== 'link' ? { file: newLesson.file } : {})
+      } : lesson
+    );
+
+    onChange(module.id, {
+      ...module,
+      lessons: updatedLessons
+    });
+
+    setLessonDialogOpen(false);
+    setEditingLesson(null);
+    setNewLesson({
+      title: '',
+      type: 'video',
+      url: '',
+      file: null
+    });
+  };
+
+  const deleteLesson = (lessonId) => {
+    onChange(module.id, {
+      ...module,
+      lessons: module.lessons.filter(l => l.id !== lessonId)
+    });
+  };
+
+  const getLessonIcon = (type) => {
+    const lessonType = lessonTypes.find(t => t.value === type);
+    return lessonType ? lessonType.icon : <InsertDriveFile />;
   };
 
   return (
-    <div
-      ref={elementRef}
-      className={`draggable-element ${isDragging ? 'dragging' : ''}`}
-      style={style}
-      onMouseDown={handleMouseDown}
+    <Accordion 
+      expanded={expanded}
+      onChange={() => setExpanded(!expanded)}
+      sx={{ mb: 2 }}
     >
-      {children}
-    </div>
-  );
-};
-
-export default DraggableElement;
-
-// === File: LogoManager.jsx ===
-import React, { useContext, useState, useRef } from 'react';
-import  {CertificateContext}  from '../../../contexts/CertificateContext';
-import './Certificate.css';
-
-const LogoManager = () => {
-  const { certificate, addLogo, removeLogo } = useContext(CertificateContext);
-  const fileInputRef = useRef(null);
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        addLogo({
-          image: event.target.result,
-          position: getDefaultLogoPosition(certificate.logos.length)
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const getDefaultLogoPosition = (index) => {
-    const positions = [
-      { x: 50, y: 50 },        // Top-left
-      { x: '80%', y: 50 },     // Top-right
-      { x: 50, y: '80%' },     // Bottom-left
-      { x: '80%', y: '80%' }  // Bottom-right (but we'll use this for barcode)
-    ];
-    return positions[index] || { x: 50, y: 50 };
-  };
-
-  return (
-    <div className="logo-manager">
-      <h3>Add Logos</h3>
-      <p>You can add up to 3 logos that will be placed in the corners of the certificate.</p>
-      
-      <div className="logo-controls">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleLogoUpload}
-          accept="image/*"
-          style={{ display: 'none' }}
-        />
-        <button 
-          onClick={() => fileInputRef.current.click()}
-          disabled={certificate.logos.length >= 3}
+      <AccordionSummary expandIcon={<ExpandMore />}>
+        <Typography sx={{ flexGrow: 1, fontWeight: 600 }}>
+          Module {index + 1}: {module.title || 'Untitled Module'}
+        </Typography>
+        <IconButton 
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(module.id);
+          }}
+          sx={{ mr: 1 }}
         >
-          Add Logo
-        </button>
-      </div>
-
-      <div className="existing-logos">
-        <h3>Current Logos</h3>
-        {certificate.logos.length === 0 ? (
-          <p>No logos added yet</p>
-        ) : (
-          <div className="logo-grid">
-            {certificate.logos.map((logo, index) => (
-              <div key={index} className="logo-item">
-                <img src={logo.image} alt={`Logo ${index + 1}`} />
-                <button 
-                  onClick={() => removeLogo(index)}
-                  className="danger"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default LogoManager;
-
-// === File: PreviewModal.css ===
-
-
-// === File: PreviewModal.jsx ===
-import React, { useRef } from 'react';
-import { toPng, toJpeg } from 'html-to-image';
-import { saveAs } from 'file-saver';
-import { jsPDF } from 'jspdf';
-import Certificate from './Certificate';
-import { FaTimes, FaDownload, FaFilePdf, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import './PreviewModal.css';
-
-const PreviewModal = ({ 
-  onClose, 
-  onNavigate, 
-  currentIndex = 0, 
-  totalCertificates = 1,
-  onDownloadAll 
-}) => {
-  const certificateRef = useRef(null);
-  const isBulkMode = totalCertificates > 1;
-
-  const downloadCertificate = async (format) => {
-    if (!certificateRef.current) return;
-
-    try {
-      let dataUrl;
-      const options = {
-        quality: 0.95,
-        pixelRatio: 3,
-        backgroundColor: '#ffffff'
-      };
-
-      switch (format) {
-        case 'png':
-          dataUrl = await toPng(certificateRef.current, options);
-          saveAs(dataUrl, `certificate-${Date.now()}.png`);
-          break;
-        case 'jpeg':
-          dataUrl = await toJpeg(certificateRef.current, options);
-          saveAs(dataUrl, `certificate-${Date.now()}.jpg`);
-          break;
-        case 'pdf':
-          dataUrl = await toPng(certificateRef.current, options);
-          const pdf = new jsPDF('landscape');
-          const imgProps = pdf.getImageProperties(dataUrl);
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          
-          pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-          pdf.save(`certificate-${Date.now()}.pdf`);
-          break;
-        default:
-          break;
-      }
-    } catch (error) {
-      console.error('Error generating image:', error);
-      alert('Failed to generate certificate image');
-    }
-  };
-
-  return (
-    <div className="preview-modal">
-      <div className="preview-content">
-        <div className="preview-header">
-          <h2>
-            {isBulkMode ? `Certificate Preview (${currentIndex + 1} of ${totalCertificates})` : 'Certificate Preview'}
-          </h2>
-          <button className="close-button" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
+          <Delete />
+        </IconButton>
+      </AccordionSummary>
+      <AccordionDetails>
+        <TextField
+          fullWidth
+          label="Module Title"
+          value={module.title}
+          onChange={(e) => handleModuleChange('title', e.target.value)}
+          sx={{ mb: 2 }}
+        />
         
-        {isBulkMode && (
-          <div className="bulk-navigation">
-            <button 
-              className="nav-button"
-              onClick={() => onNavigate('prev')}
-              disabled={currentIndex === 0}
-            >
-              <FaChevronLeft /> Previous
-            </button>
-            <span className="nav-status">
-              {currentIndex + 1} / {totalCertificates}
-            </span>
-            <button 
-              className="nav-button"
-              onClick={() => onNavigate('next')}
-              disabled={currentIndex === totalCertificates - 1}
-            >
-              Next <FaChevronRight />
-            </button>
-          </div>
-        )}
-        
-        <div className="certificate-container">
-          <div className="certificate-preview" ref={certificateRef}>
-            <Certificate />
-          </div>
-        </div>
+        <TextField
+          fullWidth
+          label="Description"
+          value={module.description}
+          onChange={(e) => handleModuleChange('description', e.target.value)}
+          multiline
+          rows={3}
+          sx={{ mb: 3 }}
+        />
 
-        <div className="download-options">
-          <button 
-            className="download-button"
-            onClick={() => downloadCertificate('png')}
+        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+          Lessons
+        </Typography>
+
+        {module.lessons.length === 0 && (
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            No lessons added to this module yet
+          </Typography>
+        )}
+
+        <List dense>
+          {module.lessons.map((lesson) => (
+            <ListItem key={lesson.id} divider>
+              <ListItemIcon>
+                {getLessonIcon(lesson.type)}
+              </ListItemIcon>
+              <ListItemText 
+                primary={lesson.title}
+                secondary={
+                  lesson.type === 'link' ? lesson.url : 
+                  lesson.file?.name || lesson.file || 'No file selected'
+                }
+              />
+              <ListItemSecondaryAction>
+                <IconButton onClick={() => editLesson(lesson)}>
+                  <Edit />
+                </IconButton>
+                <IconButton onClick={() => deleteLesson(lesson.id)}>
+                  <Delete />
+                </IconButton>
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))}
+        </List>
+
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<AddCircle />}
+            onClick={() => setLessonDialogOpen(true)}
           >
-            <FaDownload /> Download PNG
-          </button>
-          <button 
-            className="download-button"
-            onClick={() => downloadCertificate('jpeg')}
-          >
-            <FaDownload /> Download JPEG
-          </button>
-          <button 
-            className="download-button pdf"
-            onClick={() => downloadCertificate('pdf')}
-          >
-            <FaFilePdf /> Download PDF
-          </button>
-          
-          {isBulkMode && (
-            <button 
-              className="download-button primary"
-              onClick={onDownloadAll}
+            Add Lesson
+          </Button>
+        </Box>
+      </AccordionDetails>
+
+      {/* Lesson Dialog */}
+      <Dialog open={lessonDialogOpen} onClose={() => setLessonDialogOpen(false)}>
+        <DialogTitle>
+          {editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Lesson Title"
+            fullWidth
+            name="title"
+            value={newLesson.title}
+            onChange={handleLessonChange}
+            sx={{ mb: 2 }}
+          />
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Lesson Type</InputLabel>
+            <Select
+              name="type"
+              value={newLesson.type}
+              onChange={handleLessonChange}
+              label="Lesson Type"
             >
-              <FaDownload /> Download All as PDF
-            </button>
+              {lessonTypes.map(type => (
+                <MenuItem key={type.value} value={type.value}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {type.icon}
+                    {type.label}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {newLesson.type === 'link' && (
+            <TextField
+              margin="dense"
+              label="URL"
+              fullWidth
+              name="url"
+              value={newLesson.url}
+              onChange={handleLessonChange}
+            />
           )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
-export default PreviewModal;
-
-// === File: SignatureManager.css ===
-
-
-// === File: SignatureManager.jsx ===
-import React, { useContext, useState, useRef } from 'react';
-import SignatureCanvas from 'react-signature-canvas';
-import { CertificateContext } from '../../../contexts/CertificateContext';
-import './SignatureManager.css';
-
-const SignatureManager = () => {
-  const { certificate, addSignature, updateSignature, removeSignature } = useContext(CertificateContext);
-  const [newSignature, setNewSignature] = useState({
-    name: '',
-    date: new Date().toISOString().split('T')[0],
-    image: ''
-  });
-  const [isDrawing, setIsDrawing] = useState(false);
-  const fileInputRef = useRef(null);
-  const sigCanvasRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('add');
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewSignature(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setNewSignature(prev => ({
-          ...prev,
-          image: event.target.result
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAddSignature = () => {
-    if (newSignature.name && newSignature.image) {
-      addSignature({
-        ...newSignature,
-        position: { 
-          x: 100 + (certificate.signatures.length * 200), 
-          y: 400 
-        }
-      });
-      setNewSignature({
-        name: '',
-        date: new Date().toISOString().split('T')[0],
-        image: ''
-      });
-      if (sigCanvasRef.current) {
-        sigCanvasRef.current.clear();
-      }
-    }
-  };
-
-  const openDrawingPanel = () => {
-    setIsDrawing(true);
-  };
-
-  const closeDrawingPanel = () => {
-    setIsDrawing(false);
-  };
-
-  const trimCanvas = (canvas) => {
-    const ctx = canvas.getContext('2d');
-    const copy = document.createElement('canvas').getContext('2d');
-    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const l = pixels.data.length;
-    let i, bound = {
-      top: null,
-      left: null,
-      right: null,
-      bottom: null
-    };
-    
-    for (i = 0; i < l; i += 4) {
-      if (pixels.data[i+3] !== 0) {
-        const x = (i / 4) % canvas.width;
-        const y = Math.floor((i / 4) / canvas.width);
-        
-        if (bound.top === null) bound.top = y;
-        if (bound.left === null || x < bound.left) bound.left = x;
-        if (bound.right === null || x > bound.right) bound.right = x;
-        if (bound.bottom === null || y > bound.bottom) bound.bottom = y;
-      }
-    }
-    
-    const trimHeight = bound.bottom - bound.top;
-    const trimWidth = bound.right - bound.left;
-    const trimmed = ctx.getImageData(bound.left, bound.top, trimWidth, trimHeight);
-    
-    const trimmedCanvas = document.createElement('canvas');
-    trimmedCanvas.width = trimWidth;
-    trimmedCanvas.height = trimHeight;
-    trimmedCanvas.getContext('2d').putImageData(trimmed, 0, 0);
-    
-    return trimmedCanvas;
-  };
-
-  const saveDrawing = () => {
-    if (sigCanvasRef.current) {
-      const canvas = sigCanvasRef.current.getCanvas();
-      const trimmedCanvas = trimCanvas(canvas);
-      const signatureData = trimmedCanvas.toDataURL('image/png');
-      
-      setNewSignature(prev => ({
-        ...prev,
-        image: signatureData
-      }));
-      setIsDrawing(false);
-    }
-  };
-
-  const clearDrawing = () => {
-    if (sigCanvasRef.current) {
-      sigCanvasRef.current.clear();
-    }
-  };
-
-  return (
-    <div className="signature-manager">
-      <div className="manager-header">
-        <h2>Signature Manager</h2>
-        <div className="tabs">
-          <button 
-            className={`tab-btn ${activeTab === 'add' ? 'active' : ''}`}
-            onClick={() => setActiveTab('add')}
-          >
-            Add Signature
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'manage' ? 'active' : ''}`}
-            onClick={() => setActiveTab('manage')}
-          >
-            Manage Signatures
-          </button>
-        </div>
-      </div>
-
-      {isDrawing && (
-        <div className="drawing-modal">
-          <div className="drawing-panel">
-            <div className="drawing-header">
-              <h3>Draw Your Signature</h3>
-              <button className="close-btn" onClick={closeDrawingPanel}>
-                &times;
-              </button>
-            </div>
-            <div className="signature-canvas-container">
-              <SignatureCanvas
-                ref={sigCanvasRef}
-                penColor="black"
-                canvasProps={{
-                  width: 500,
-                  height: 200,
-                  className: 'signature-canvas'
-                }}
-              />
-            </div>
-            <div className="drawing-controls">
-              <button className="clear-btn" onClick={clearDrawing}>
-                Clear
-              </button>
-              <button className="save-btn" onClick={saveDrawing}>
-                Save Signature
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'add' ? (
-        <div className="signature-form-container">
-          <div className="form-section">
-            <div className="form-group">
-              <label>Signer's Name</label>
-              <input
-                type="text"
-                name="name"
-                value={newSignature.name}
-                onChange={handleInputChange}
-                placeholder="Enter full name"
-              />
-            </div>
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={newSignature.date}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label>Signature Method</label>
-              <div className="upload-options">
-                <button 
-                  className="upload-btn"
-                  onClick={() => fileInputRef.current.click()}
-                >
-                  <i className="icon-upload"></i> Upload Image
-                </button>
-                <button 
-                  className="draw-btn"
-                  onClick={openDrawingPanel}
-                >
-                  <i className="icon-draw"></i> Draw Signature
-                </button>
-              </div>
+          {(newLesson.type === 'video' || newLesson.type === 'file') && (
+            <Button
+              fullWidth
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUpload />}
+              sx={{ mt: 1 }}
+            >
+              Upload File
               <input
                 type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                style={{ display: 'none' }}
+                hidden
+                onChange={handleLessonFileChange}
+                accept={newLesson.type === 'video' ? 'video/*' : '*'}
               />
-            </div>
-          </div>
+            </Button>
+          )}
 
-          {newSignature.image && (
-            <div className="preview-section">
-              <h4>Signature Preview</h4>
-              <div className="signature-preview">
-                <div className="signature-preview-box">
-                  <img 
-                    src={newSignature.image} 
-                    alt="Signature Preview" 
-                    onError={(e) => {
-                      e.target.src = '';
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <div className="signature-details">
-                  <p><strong>Name:</strong> {newSignature.name || 'Not specified'}</p>
-                  <p><strong>Date:</strong> {newSignature.date}</p>
-                </div>
-              </div>
-              <button 
-                className="add-signature-btn"
-                onClick={handleAddSignature}
-                disabled={!newSignature.name || !newSignature.image}
-              >
-                Add Signature to Document
-              </button>
-            </div>
+          {newLesson.file && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Selected: {newLesson.file.name || newLesson.file}
+            </Typography>
           )}
-        </div>
-      ) : (
-        <div className="existing-signatures">
-          {certificate.signatures.length === 0 ? (
-            <div className="empty-state">
-              <i className="icon-empty"></i>
-              <p>No signatures added yet</p>
-            </div>
-          ) : (
-            <div className="signatures-grid">
-              {certificate.signatures.map((sig, index) => (
-                <div key={index} className="signature-card">
-                  <div className="signature-image-container">
-                    <img src={sig.image} alt={`Signature ${index + 1}`} />
-                  </div>
-                  <div className="signature-info">
-                    <h4>{sig.name}</h4>
-                    <p className="signature-date">{sig.date}</p>
-                  </div>
-                  <button 
-                    className="remove-btn"
-                    onClick={() => removeSignature(index)}
-                  >
-                    <i className="icon-delete"></i> Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLessonDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={editingLesson ? updateLesson : addLesson}
+            disabled={!newLesson.title.trim()}
+            variant="contained"
+          >
+            {editingLesson ? 'Update' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Accordion>
   );
 };
 
-export default SignatureManager;
+export default ModuleForm;

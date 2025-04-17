@@ -4,14 +4,16 @@ import {
   Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Paper, Select, MenuItem, 
   FormControl, InputLabel, IconButton, Badge,
-  useMediaQuery, useTheme, Chip, TablePagination
+  useMediaQuery, useTheme, Chip, TablePagination,
+  CircularProgress, Alert
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
   FilterList as FilterIcon,
   Notifications as NotificationsIcon
 } from '@mui/icons-material';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { userAPI } from '../../../config';
 
 const ActivityFeed = () => {
   const theme = useTheme();
@@ -21,126 +23,35 @@ const ActivityFeed = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Sample data - in a real app, this would come from an API
+  // Fetch activities from API
   useEffect(() => {
-    const sampleActivities = [
-      {
-        id: 1,
-        user: 'John Doe',
-        role: 'Learner',
-        activity: 'Assignment Submission',
-        details: 'Submitted assignment for Introduction to Programming',
-        timestamp: new Date('2023-06-15T10:30:00'),
-        status: 'completed'
-      },
-      {
-        id: 2,
-        user: 'Admin User',
-        role: 'Admin',
-        activity: 'Login',
-        details: 'Successful login from IP 192.168.1.1',
-        timestamp: new Date('2023-06-15T09:15:00'),
-        status: 'success'
-      },
-      {
-        id: 3,
-        user: 'Jane Smith',
-        role: 'Learner',
-        activity: 'Course Progress',
-        details: 'Completed 75% of Data Science course',
-        timestamp: new Date('2023-06-14T14:45:00'),
-        status: 'in-progress'
-      },
-      {
-        id: 4,
-        user: 'Unknown',
-        role: 'Unknown',
-        activity: 'Failed Login',
-        details: 'Failed login attempt for user admin',
-        timestamp: new Date('2023-06-14T08:20:00'),
-        status: 'failed'
-      },
-      {
-        id: 5,
-        user: 'Super Admin',
-        role: 'Super Admin',
-        activity: 'System Update',
-        details: 'Performed system maintenance',
-        timestamp: new Date('2023-06-13T22:00:00'),
-        status: 'system'
-      },
-      {
-        id: 6,
-        user: 'Michael Brown',
-        role: 'Learner',
-        activity: 'Exam Completion',
-        details: 'Completed final exam for Mathematics with 85% score',
-        timestamp: new Date('2023-06-12T16:30:00'),
-        status: 'completed'
-      },
-      {
-        id: 7,
-        user: 'Admin User',
-        role: 'Admin',
-        activity: 'User Management',
-        details: 'Created new user account for Sarah Johnson',
-        timestamp: new Date('2023-06-12T11:15:00'),
-        status: 'success'
-      },
-      {
-        id: 8,
-        user: 'Emma Wilson',
-        role: 'Learner',
-        activity: 'Course Enrollment',
-        details: 'Enrolled in Web Development Fundamentals',
-        timestamp: new Date('2023-06-11T14:20:00'),
-        status: 'completed'
-      },
-      {
-        id: 9,
-        user: 'Unknown',
-        role: 'Unknown',
-        activity: 'Failed Login',
-        details: 'Failed login attempt for user emma.wilson',
-        timestamp: new Date('2023-06-10T19:45:00'),
-        status: 'failed'
-      },
-      {
-        id: 10,
-        user: 'Super Admin',
-        role: 'Super Admin',
-        activity: 'System Update',
-        details: 'Updated system security policies',
-        timestamp: new Date('2023-06-09T23:10:00'),
-        status: 'system'
-      },
-      {
-        id: 11,
-        user: 'David Lee',
-        role: 'Learner',
-        activity: 'Course Progress',
-        details: 'Completed 50% of Artificial Intelligence course',
-        timestamp: new Date('2023-06-09T15:30:00'),
-        status: 'in-progress'
-      },
-      {
-        id: 12,
-        user: 'Admin User',
-        role: 'Admin',
-        activity: 'Content Update',
-        details: 'Updated course materials for Physics 101',
-        timestamp: new Date('2023-06-08T10:45:00'),
-        status: 'success'
-      }
-    ];
-    
-    setActivities(sampleActivities);
-    setFilteredActivities(sampleActivities);
+// In the fetchActivities function:
+const fetchActivities = async () => {
+  try {
+    setLoading(true);
+    const response = await userAPI.getUserActivities({
+      page: page + 1,  // API pages are typically 1-based
+      page_size: rowsPerPage
+    });
+    setActivities(response.data.results);
+    setFilteredActivities(response.data.results);
+    setTotalCount(response.data.count);
+    setLoading(false);
+  } catch (err) {
+    setError(err.message || 'Failed to fetch activities');
+    setLoading(false);
+  }
+};
+
+    fetchActivities();
   }, []);
 
   // Filter activities based on search and filters
@@ -158,30 +69,27 @@ const ActivityFeed = () => {
     // Filter by activity type
     if (activityFilter !== 'all') {
       results = results.filter(activity => 
-        activity.activity.toLowerCase().includes(activityFilter.toLowerCase())
+        activity.activity_type.toLowerCase().includes(activityFilter.toLowerCase())
       );
     }
     
-    // Filter by date (simplified for demo)
+    // Filter by date
     if (dateFilter !== 'all') {
-      const today = new Date();
+      const now = new Date();
+      let cutoffDate;
+      
       if (dateFilter === 'today') {
-        results = results.filter(activity => 
-          activity.timestamp.toDateString() === today.toDateString()
-        );
+        cutoffDate = new Date(now.setHours(0, 0, 0, 0));
       } else if (dateFilter === 'week') {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        results = results.filter(activity => 
-          activity.timestamp > weekAgo
-        );
+        cutoffDate = new Date(now.setDate(now.getDate() - 7));
       } else if (dateFilter === 'month') {
-        const monthAgo = new Date();
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        results = results.filter(activity => 
-          activity.timestamp > monthAgo
-        );
+        cutoffDate = new Date(now.setMonth(now.getMonth() - 1));
       }
+      
+      results = results.filter(activity => {
+        const activityDate = new Date(activity.timestamp);
+        return activityDate >= cutoffDate;
+      });
     }
     
     setFilteredActivities(results);
@@ -190,29 +98,37 @@ const ActivityFeed = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed':
       case 'success':
+      case 'completed':
         return 'success';
-      case 'in-progress':
-        return 'warning';
       case 'failed':
         return 'error';
-      case 'system':
-        return 'info';
       default:
         return 'default';
     }
   };
 
   // Handle pagination
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+// Update your handleChangePage and handleChangeRowsPerPage:
+const handleChangePage = async (event, newPage) => {
+  setPage(newPage);
+  await fetchActivities();
+};
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+const handleChangeRowsPerPage = async (event) => {
+  const newRowsPerPage = parseInt(event.target.value, 10);
+  setRowsPerPage(newRowsPerPage);
+  setPage(0);
+  await fetchActivities();
+};
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: isMobile ? 1 : 3 }}>
@@ -270,10 +186,10 @@ const ActivityFeed = () => {
               onChange={(e) => setActivityFilter(e.target.value)}
             >
               <MenuItem value="all">All Activities</MenuItem>
-              <MenuItem value="Submission">Submissions</MenuItem>
-              <MenuItem value="Login">Logins</MenuItem>
-              <MenuItem value="Course">Course Progress</MenuItem>
-              <MenuItem value="System">System</MenuItem>
+              <MenuItem value="login">Logins</MenuItem>
+              <MenuItem value="logout">Logouts</MenuItem>
+              <MenuItem value="password">Password Changes</MenuItem>
+              <MenuItem value="profile">Profile Updates</MenuItem>
             </Select>
           </FormControl>
           
@@ -289,75 +205,87 @@ const ActivityFeed = () => {
         </Box>
       </Box>
       
-      <TableContainer component={Paper} elevation={0} sx={{ 
-        border: `1px solid ${theme.palette.divider}`,
-        borderRadius: 2,
-        maxHeight: 'calc(100vh - 250px)',
-        overflow: 'auto'
-      }}>
-        <Table stickyHeader aria-label="activity feed table">
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Activity</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Details</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredActivities.length > 0 ? (
-              filteredActivities
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((activity) => (
-                  <TableRow key={activity.id} hover>
-                    <TableCell>{activity.user}</TableCell>
-                    <TableCell>{activity.role}</TableCell>
-                    <TableCell>{activity.activity}</TableCell>
-                    <TableCell sx={{ maxWidth: 300 }}>{activity.details}</TableCell>
-                    <TableCell>
-                      {format(activity.timestamp, 'MMM d, yyyy - h:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={activity.status.replace('-', ' ')} 
-                        size="small"
-                        color={getStatusColor(activity.status)}
-                        variant="outlined"
-                      />
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <TableContainer component={Paper} elevation={0} sx={{ 
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+            maxHeight: 'calc(100vh - 250px)',
+            overflow: 'auto'
+          }}>
+            <Table stickyHeader aria-label="activity feed table">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Activity</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Details</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>IP Address</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Device</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredActivities.length > 0 ? (
+                  filteredActivities.map((activity) => (
+                    <TableRow key={activity.id} hover>
+                      <TableCell>{activity.user}</TableCell>
+                      <TableCell>{activity.activity_type}</TableCell>
+                      <TableCell sx={{ maxWidth: 300 }}>{activity.details}</TableCell>
+                      <TableCell>
+                        {format(parseISO(activity.timestamp), 'MMM d, yyyy - h:mm a')}
+                      </TableCell>
+                      <TableCell>{activity.ip_address}</TableCell>
+                      <TableCell sx={{ maxWidth: 200 }}>
+                        {activity.device_info && activity.device_info.length > 30 
+                          ? `${activity.device_info.substring(0, 30)}...` 
+                          : activity.device_info}
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={activity.status} 
+                          size="small"
+                          color={getStatusColor(activity.status)}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                      <Typography variant="body1" color="textSecondary">
+                        No activities found matching your criteria
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body1" color="textSecondary">
-                    No activities found matching your criteria
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      {/* Pagination */}
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={filteredActivities.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        sx={{
-          borderBottom: 'none',
-          '& .MuiTablePagination-toolbar': {
-            paddingLeft: 0
-          }
-        }}
-      />
+          {/* Pagination */}
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 50]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{
+              borderBottom: 'none',
+              '& .MuiTablePagination-toolbar': {
+                paddingLeft: 0
+              }
+            }}
+          />
+        </>
+      )}
     </Box>
   );
 };
