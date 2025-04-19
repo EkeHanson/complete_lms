@@ -14,7 +14,7 @@ import {
   ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
   Notifications as NotificationsIcon, Settings as SettingsIcon,
   Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
-  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon,
+  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon,Groups as GroupsIcon,
   Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Mail as MessagesIcon
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -82,6 +82,7 @@ function Admin() {
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
+    { path: '/admin/groups', name: 'User Groups', icon: <GroupsIcon /> },
     // { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
   ];
 
@@ -439,6 +440,7 @@ function Admin() {
             <Route path="/activity-feed" element={<ActivityFeed />} />
             <Route path="/messaging" element={<Messaging />} /> 
             <Route path="/advertorial" element={<Advertorial />} />
+            <Route path="/groups" element={<UserGroupsManagement />} />
 
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
             <Route path="/builder" element={<CertificateBuilderMain />} />

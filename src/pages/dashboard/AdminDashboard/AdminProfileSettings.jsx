@@ -1,20 +1,28 @@
-// AdminProfileSettings.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Box,  Typography,  TextField,  Button,
-  Avatar,  Divider,  Grid,  Paper,  IconButton,  InputAdornment,  Container
+  Box, Typography, TextField, Button,
+  Avatar, Divider, Grid, Paper, IconButton,
+  InputAdornment, Container, CircularProgress, Alert
 } from '@mui/material';
 import { CloudUpload, Visibility, VisibilityOff } from '@mui/icons-material';
+import axios from 'axios';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const AdminProfileSettings = () => {
+  const { user, updateUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [profileData, setProfileData] = useState({
-    firstName: 'Ekene-onwon',
-    lastName: 'Hanson',
-    email: 'ekenehanson@gmail.com',
-    facebookLink: '',
-    twitterLink: 'https://x.com/EkeneHanso34391',
-    linkedinLink: 'https://www.linkedin.com/in/ekene-onwon-abraham-4370a0228/',
+    first_name: '',
+    last_name: '',
+    email: '',
+    facebook_link: '',
+    twitter_link: '',
+    linkedin_link: '',
     title: '',
+    bio: '',
+    phone: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -30,6 +38,24 @@ const AdminProfileSettings = () => {
   });
 
   const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        facebook_link: user.facebook_link || '',
+        twitter_link: user.twitter_link || '',
+        linkedin_link: user.linkedin_link || '',
+        title: user.title || '',
+        bio: user.bio || '',
+        phone: user.phone || ''
+      });
+      setImagePreview(user.profile_picture ? `${process.env.REACT_APP_API_URL}${user.profile_picture}` : '');
+    }
+  }, [user]);
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -41,28 +67,11 @@ const AdminProfileSettings = () => {
     setPasswordData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSkillKeyDown = (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) {
-      setProfileData(prev => ({
-        ...prev,
-        skills: [...prev.skills, e.target.value.trim()],
-        skillInput: ''
-      }));
-      e.target.value = '';
-      e.preventDefault();
-    }
-  };
-
-  const removeSkill = (index) => {
-    setProfileData(prev => ({
-      ...prev,
-      skills: prev.skills.filter((_, i) => i !== index)
-    }));
-  };
-
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedImage(URL.createObjectURL(e.target.files[0]));
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -70,14 +79,66 @@ const AdminProfileSettings = () => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
-    console.log('Profile updated:', profileData);
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const formData = new FormData();
+      
+      // Append profile data
+      Object.keys(profileData).forEach(key => {
+        formData.append(key, profileData[key]);
+      });
+      
+      // Append image if selected
+      if (selectedImage) {
+        formData.append('profile_picture', selectedImage);
+      }
+
+      const response = await axios.put('/api/profile/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      updateUser(response.data);
+      setSuccess('Profile updated successfully!');
+      setSelectedImage(null);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    console.log('Password updated:', passwordData);
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError("New passwords don't match");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await axios.post('/api/password/change/', passwordData);
+      setSuccess('Password updated successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -85,6 +146,18 @@ const AdminProfileSettings = () => {
       <Typography variant="h4" gutterBottom>
         Manage Profile
       </Typography>
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {success}
+        </Alert>
+      )}
       
       <Grid container spacing={3}>
         {/* Left Column - Profile Information */}
@@ -99,8 +172,8 @@ const AdminProfileSettings = () => {
                 <TextField
                   fullWidth
                   label="First name"
-                  name="firstName"
-                  value={profileData.firstName}
+                  name="first_name"
+                  value={profileData.first_name}
                   onChange={handleProfileChange}
                 />
               </Grid>
@@ -108,8 +181,8 @@ const AdminProfileSettings = () => {
                 <TextField
                   fullWidth
                   label="Last name"
-                  name="lastName"
-                  value={profileData.lastName}
+                  name="last_name"
+                  value={profileData.last_name}
                   onChange={handleProfileChange}
                 />
               </Grid>
@@ -123,12 +196,21 @@ const AdminProfileSettings = () => {
                   onChange={handleProfileChange}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  name="phone"
+                  value={profileData.phone}
+                  onChange={handleProfileChange}
+                />
+              </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Facebook link"
-                  name="facebookLink"
-                  value={profileData.facebookLink}
+                  name="facebook_link"
+                  value={profileData.facebook_link}
                   onChange={handleProfileChange}
                 />
               </Grid>
@@ -136,76 +218,41 @@ const AdminProfileSettings = () => {
                 <TextField
                   fullWidth
                   label="Twitter link"
-                  name="twitterLink"
-                  value={profileData.twitterLink}
+                  name="twitter_link"
+                  value={profileData.twitter_link}
                   onChange={handleProfileChange}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
-                  label="Linkedin link"
-                  name="linkedinLink"
-                  value={profileData.linkedinLink}
+                  label="LinkedIn link"
+                  name="linkedin_link"
+                  value={profileData.linkedin_link}
                   onChange={handleProfileChange}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="A short title about yourself"
+                  label="Title"
                   name="title"
                   value={profileData.title}
                   onChange={handleProfileChange}
-                />
-              </Grid>
-              {/* <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Skills (write your skill and click the enter button)"
-                  onKeyDown={handleSkillKeyDown}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                        {profileData.skills.map((skill, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              bgcolor: 'primary.light',
-                              color: 'primary.contrastText',
-                              px: 1,
-                              py: 0.5,
-                              borderRadius: 1,
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}
-                          >
-                            {skill}
-                            <Box
-                              component="span"
-                              sx={{ ml: 1, cursor: 'pointer' }}
-                              onClick={() => removeSkill(index)}
-                            >
-                              ×
-                            </Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    )
-                  }}
+                  placeholder="e.g. Software Developer"
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Biography"
-                  name="biography"
-                  value={profileData.biography}
+                  label="Bio"
+                  name="bio"
+                  value={profileData.bio}
                   onChange={handleProfileChange}
                   multiline
                   rows={4}
                 />
-              </Grid> */}
+              </Grid>
             </Grid>
           </Paper>
 
@@ -214,12 +261,12 @@ const AdminProfileSettings = () => {
               Profile Photo
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              The image size should be any square image
+              Recommended size: 500x500 pixels (square image)
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 3 }}>
               <Avatar
-                src={selectedImage || "/path-to-avatar.jpg"}
+                src={imagePreview}
                 sx={{ width: 100, height: 100, mr: 3 }}
               />
               <Box>
@@ -240,7 +287,7 @@ const AdminProfileSettings = () => {
                   </Button>
                 </label>
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  {selectedImage ? "Image selected" : "No file chosen"}
+                  {selectedImage ? selectedImage.name : "No file chosen"}
                 </Typography>
               </Box>
             </Box>
@@ -249,9 +296,10 @@ const AdminProfileSettings = () => {
               <Button 
                 variant="contained" 
                 onClick={handleProfileSubmit}
+                disabled={loading}
                 sx={{ mt: 2 }}
               >
-                Update Profile
+                {loading ? <CircularProgress size={24} /> : 'Update Profile'}
               </Button>
             </Box>
           </Paper>
@@ -353,12 +401,13 @@ const AdminProfileSettings = () => {
                 variant="contained" 
                 onClick={handlePasswordSubmit}
                 disabled={
+                  loading || 
                   !passwordData.currentPassword || 
                   !passwordData.newPassword || 
                   passwordData.newPassword !== passwordData.confirmPassword
                 }
               >
-                Update Password
+                {loading ? <CircularProgress size={24} /> : 'Update Password'}
               </Button>
             </Box>
           </Paper>

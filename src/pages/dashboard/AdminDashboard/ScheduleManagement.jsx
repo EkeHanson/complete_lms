@@ -1,485 +1,773 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
   DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
   Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
   FormGroup, Divider, useMediaQuery, IconButton, Stack, 
-  Collapse, Card, CardContent, CardActions, TablePagination,
-  Grid, Avatar
+  Collapse, Card, CardContent, CardActions, List, ListItem, 
+  ListItemText, ListItemAvatar, Avatar, TablePagination, Grid,
+  LinearProgress, CircularProgress, Badge,
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
   CalendarToday as CalendarIcon, Person as PersonIcon,
-  Group as GroupIcon, Email as EmailIcon, Videocam as VideocamIcon, 
-  Groups as TeamsIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon, Search as SearchIcon,
-  FilterList as FilterIcon, Refresh as RefreshIcon
+  Group as GroupIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon, Check as CheckIcon,
+  Close as CloseIcon, Schedule as ScheduleIcon, Search as SearchIcon,
+  ArrowForward as ArrowForwardIcon, ArrowBack as ArrowBackIcon,
+  EventAvailable as EventAvailableIcon, EventBusy as EventBusyIcon,
+  LocationOn as LocationIcon, Refresh as RefreshIcon, Email as EmailIcon, 
+  Videocam as VideocamIcon, Groups as TeamsIcon,
 } from '@mui/icons-material';
-import { initGoogleAPI, createCalendarEvent } from '../../../components/common/googleCalendar';
-import { LocalizationProvider } from '@mui/x-date-pickers';
+import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { format, parseISO, isBefore } from 'date-fns';
+import { useSnackbar } from 'notistack';
+import { useWebSocket } from '../../../hooks/useWebSocket';
+import { scheduleAPI, groupsAPI, userAPI } from '../../../config';
+import { debounce } from 'lodash';
 
-// Mock data for users and groups
-const mockUsers = [
-  { id: 1, name: 'John Doe', email: 'john@example.com', type: 'instructor' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
-  { id: 3, name: 'Admin User', email: 'admin@example.com', type: 'admin' },
-  { id: 4, name: 'Mike Johnson', email: 'mike@example.com', type: 'learner' },
-  { id: 5, name: 'Sarah Williams', email: 'sarah@example.com', type: 'instructor' },
+const Alert = React.forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
+
+const responseOptions = [
+  { value: 'pending', label: 'Pending', color: 'default' },
+  { value: 'accepted', label: 'Accepted', color: 'success' },
+  { value: 'declined', label: 'Declined', color: 'error' },
+  { value: 'tentative', label: 'Tentative', color: 'warning' },
 ];
 
-const userGroups = [
-  { id: 'all_learners', name: 'All Learners', type: 'group' },
-  { id: 'all_instructors', name: 'All Instructors', type: 'group' },
-  { id: 'all_admins', name: 'All Admins', type: 'group' },
-];
-
-const ScheduleManagement = () => {
+const Schedule = () => {
+  const { enqueueSnackbar } = useSnackbar();
   const isMobile = useMediaQuery('(max-width:600px)');
+  
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
-
-  const [events, setEvents] = useState([
-    { 
-      id: 1, 
-      title: 'Math Class', 
-      type: 'class', 
-      date: new Date('2023-06-15T09:00:00'), 
-      endDate: new Date('2023-06-15T10:30:00'), 
-      location: 'https://meet.google.com/abc-defg-hij',
-      invitees: [
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
-        { id: 'all_instructors', name: 'All Instructors', type: 'group' }
-      ],
-      additionalEmails: ['parent1@example.com']
-    },
-    { 
-      id: 2, 
-      title: 'Science Revision', 
-      type: 'class', 
-      date: new Date('2023-06-16T11:00:00'), 
-      endDate: new Date('2023-06-16T12:30:00'), 
-      location: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y2RmNz%40thread.v2/0?context=%7b%7d',
-      invitees: [
-        { id: 3, name: 'Tom Johnson', email: 'tom@example.com', type: 'learner' },
-        { id: 4, name: 'Alice Green', email: 'alice@example.com', type: 'learner' }
-      ],
-      additionalEmails: ['parent2@example.com']
-    },
-    { 
-      id: 3, 
-      title: 'English Literature', 
-      type: 'class', 
-      date: new Date('2023-06-17T13:00:00'), 
-      endDate: new Date('2023-06-17T14:30:00'), 
-      location: 'https://meet.google.com/xyz-uvwq-lmn',
-      invitees: [
-        { id: 5, name: 'Emma Brown', email: 'emma@example.com', type: 'learner' },
-        { id: 'all_learners', name: 'All Learners', type: 'group' }
-      ],
-      additionalEmails: []
-    },
-    { 
-      id: 4, 
-      title: 'History Group Discussion', 
-      type: 'class', 
-      date: new Date('2023-06-18T15:00:00'), 
-      endDate: new Date('2023-06-18T16:00:00'), 
-      location: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZXNkNz%40thread.v2/0?context=%7b%7d',
-      invitees: [
-        { id: 6, name: 'David Lee', email: 'david@example.com', type: 'learner' },
-        { id: 7, name: 'Sarah White', email: 'sarah@example.com', type: 'learner' }
-      ],
-      additionalEmails: ['parent3@example.com', 'parent4@example.com']
-    },
-    { 
-      id: 5, 
-      title: 'Chemistry Practical Prep', 
-      type: 'class', 
-      date: new Date('2023-06-19T08:30:00'), 
-      endDate: new Date('2023-06-19T10:00:00'), 
-      location: 'https://meet.google.com/pqr-stuv-wxy',
-      invitees: [
-        { id: 8, name: 'Olivia King', email: 'olivia@example.com', type: 'learner' },
-        { id: 9, name: 'Liam Scott', email: 'liam@example.com', type: 'learner' }
-      ],
-      additionalEmails: []
-    }
-  ]);
-
-  // Filters state
-  const [filters, setFilters] = useState({
-    type: 'all',
-    search: '',
-    dateFrom: null,
-    dateTo: null
-  });
-
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-
-  const [openDialog, setOpenDialog] = useState(false);
-  const [currentEvent, setCurrentEvent] = useState(null);
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [selectedGroups, setSelectedGroups] = useState([]);
-  const [additionalEmails, setAdditionalEmails] = useState([]);
-  const [emailInput, setEmailInput] = useState('');
-  const [expandedEvent, setExpandedEvent] = useState(null);
-
-  useEffect(() => {
-    initGoogleAPI();
-  }, []);
-
-  // Handle filter changes
-  const handleFilterChange = (name, value) => {
-    setFilters({
-      ...filters,
-      [name]: value
-    });
-    setPage(0); // Reset to first page when filters change
-  };
-
-  // Filter events based on current filters
-  const filteredEvents = events.filter(event => {
-    return (
-      (filters.type === 'all' || event.type === filters.type) &&
-      (filters.search === '' || 
-        event.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        event.invitees.some(invitee => 
-          invitee.name.toLowerCase().includes(filters.search.toLowerCase())
-        )) &&
-      (!filters.dateFrom || new Date(event.date) >= new Date(filters.dateFrom)) &&
-      (!filters.dateTo || new Date(event.date) <= new Date(filters.dateTo))
-    );
-  });
-
-  // Handle pagination
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Helper function to truncate URLs
-  const truncateUrl = (url, maxLength = 10) => {
-    if (!url) return '';
-    if (url.length <= maxLength) return url;
-    
-    const protocolEnd = url.indexOf('//') + 2;
-    const domainStart = url.indexOf('/', protocolEnd);
-    const domain = url.substring(0, domainStart);
-    const path = url.substring(domainStart);
-    
-    if (domain.length + 5 >= maxLength) {
-      return `${domain.substring(0, maxLength - 3)}...`;
-    }
-    
-    const remainingLength = maxLength - domain.length - 3;
-    const pathParts = path.split('/');
-    let truncatedPath = '';
-    
-    for (let part of pathParts) {
-      if (truncatedPath.length + part.length > remainingLength) {
-        break;
-      }
-      truncatedPath += `/${part}`;
-    }
-    
-    return `${domain}${truncatedPath}${truncatedPath.length < path.length ? '...' : ''}`;
-  };
-  
-  // Function to get platform icon
-  const getPlatformIcon = (url) => {
-    if (!url) return <VideocamIcon fontSize="small" />;
-    if (url.includes('google.com')) return <VideocamIcon fontSize="small" color="primary" />;
-    if (url.includes('teams.microsoft.com')) return <TeamsIcon fontSize="small" color="primary" />;
-    return <VideocamIcon fontSize="small" />;
-  };
-
-  const handleAddToCalendar = (event) => {
-    const calendarEvent = {
-      ...event,
-      attendees: [
-        ...event.invitees.map(invitee => ({ email: invitee.email })),
-        ...event.additionalEmails.map(email => ({ email }))
-      ]
-    };
-    createCalendarEvent(calendarEvent);
-    setSnackbar({
-      open: true,
-      message: 'Event added to calendar with invitations!',
-      severity: 'success'
-    });
-  };
-
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleOpenDialog = (event = null) => {
-    const defaultEvent = { 
+  // State management
+  const [schedules, setSchedules] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [filteredGroups, setFilteredGroups] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [currentSchedule, setCurrentSchedule] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [expandedSchedule, setExpandedSchedule] = useState(null);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+    page: 1
+  });
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Filters state
+  const [filters, setFilters] = useState({
+    search: '',
+    dateFrom: null,
+    dateTo: null,
+    showPast: false
+  });
+
+  // WebSocket integration
+  const { lastMessage, sendMessage } = useWebSocket(
+    `ws://${window.location.host}/ws/schedules/`
+  );
+
+  // Helper function to generate Google Calendar link
+  const generateGoogleCalendarLink = (schedule) => {
+    const startTime = new Date(schedule.start_time).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    const endTime = new Date(schedule.end_time).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    
+    const baseUrl = 'https://www.google.com/calendar/render?action=TEMPLATE';
+    const title = `&text=${encodeURIComponent(schedule.title || '')}`;
+    const dates = `&dates=${startTime}/${endTime}`;
+    const details = `&details=${encodeURIComponent(schedule.description || '')}`;
+    const location = `&location=${encodeURIComponent(schedule.location || '')}`;
+    
+    return `${baseUrl}${title}${dates}${details}${location}`;
+  };
+
+  // Helper function to truncate URLs
+  const truncateUrl = (url, maxLength = 30) => {
+    if (!url) return '';
+    
+    try {
+      const urlObj = new URL(url);
+      let displayUrl = urlObj.hostname.replace('www.', '');
+      
+      if (urlObj.hostname.includes('meet.google.com')) {
+        return 'Google Meet';
+      }
+      if (urlObj.hostname.includes('teams.microsoft.com')) {
+        return 'Microsoft Teams';
+      }
+      if (urlObj.hostname.includes('zoom.us')) {
+        return 'Zoom Meeting';
+      }
+      
+      if (displayUrl.length + urlObj.pathname.length <= maxLength) {
+        return `${displayUrl}${urlObj.pathname}`;
+      }
+      
+      return displayUrl;
+    } catch {
+      return url.length <= maxLength ? url : `${url.substring(0, maxLength - 3)}...`;
+    }
+  };
+
+  // Function to get platform icon and color
+  const getPlatformIcon = (url) => {
+    if (!url) return <VideocamIcon fontSize="small" />;
+    
+    try {
+      const urlObj = new URL(url);
+      
+      if (urlObj.hostname.includes('meet.google.com')) {
+        return <VideocamIcon fontSize="small" style={{ color: '#00897B' }} />;
+      }
+      if (urlObj.hostname.includes('teams.microsoft.com')) {
+        return <TeamsIcon fontSize="small" style={{ color: '#464EB8' }} />;
+      }
+      if (urlObj.hostname.includes('zoom.us')) {
+        return <VideocamIcon fontSize="small" style={{ color: '#2D8CFF' }} />;
+      }
+    } catch {
+      // If URL parsing fails, fall back to default
+    }
+    
+    return <VideocamIcon fontSize="small" />;
+  };
+
+  // Fetch users with search query
+  const fetchUsers = useCallback(async (searchQuery = '') => {
+    try {
+      const params = {
+        search: searchQuery,
+        page_size: 50,
+      };
+      const usersRes = await userAPI.getUsers(params);
+      setUsers(usersRes.data.results || []);
+    } catch (error) {
+      enqueueSnackbar('Failed to load users', { variant: 'error' });
+      console.error('Error fetching users:', error);
+    }
+  }, [enqueueSnackbar]);
+
+  // Debounced user search
+  const debouncedFetchUsers = useCallback(
+    debounce((query) => {
+      fetchUsers(query);
+    }, 300),
+    [fetchUsers]
+  );
+
+  // Handle user search input
+  const handleUserSearch = (event, value) => {
+    setUserSearchQuery(value);
+    debouncedFetchUsers(value);
+  };
+
+  // Fetch groups with search query
+  const fetchGroups = useCallback(async (searchQuery = '') => {
+    try {
+      const params = {
+        search: searchQuery,
+        page_size: 50,
+      };
+      const groupsRes = await groupsAPI.getGroups(params);
+      setFilteredGroups(groupsRes.data.results || []);
+    } catch (error) {
+      enqueueSnackbar('Failed to load groups', { variant: 'error' });
+      console.error('Error fetching groups:', error);
+    }
+  }, [enqueueSnackbar]);
+
+  // Debounced group search
+  const debouncedFetchGroups = useCallback(
+    debounce((query) => {
+      fetchGroups(query);
+    }, 300),
+    [fetchGroups]
+  );
+
+  // Handle group search input
+  const handleGroupSearch = (event, value) => {
+    setGroupSearchQuery(value);
+    debouncedFetchGroups(value);
+  };
+
+  // Fetch initial data
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        page: pagination.page,
+        page_size: rowsPerPage,
+        ...(filters.search && { search: filters.search }),
+        ...(filters.dateFrom && { date_from: format(filters.dateFrom, 'yyyy-MM-dd') }),
+        ...(filters.dateTo && { date_to: format(filters.dateTo, 'yyyy-MM-dd') }),
+        show_past: filters.showPast
+      };
+
+      const [schedulesRes, groupsRes] = await Promise.all([
+        scheduleAPI.getSchedules(params),
+        groupsAPI.getGroups({ page_size: 50 })
+      ]);
+
+      setSchedules(schedulesRes.data.results || []);
+      setGroups(groupsRes.data.results || []);
+      setFilteredGroups(groupsRes.data.results || []);
+      setPagination({
+        count: schedulesRes.data.count || 0,
+        next: schedulesRes.data.next,
+        previous: schedulesRes.data.previous,
+        page: pagination.page
+      });
+
+      await fetchUsers('');
+    } catch (error) {
+      setError(error.message);
+      enqueueSnackbar('Failed to load data', { variant: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [pagination.page, rowsPerPage, filters]);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (lastMessage) {
+      const data = JSON.parse(lastMessage.data);
+      if (data.type === 'new_schedule') {
+        if (pagination.page === 1) {
+          setSchedules(prev => [data.schedule, ...prev.slice(0, -1)]);
+          setPagination(prev => ({
+            ...prev,
+            count: prev.count + 1
+          }));
+        } else {
+          setPagination(prev => ({
+            ...prev,
+            count: prev.count + 1
+          }));
+        }
+      } else if (data.type === 'schedule_updated') {
+        setSchedules(prev => prev.map(s => 
+          s.id === data.schedule.id ? data.schedule : s
+        ));
+      } else if (data.type === 'schedule_deleted') {
+        setSchedules(prev => prev.filter(s => s.id !== data.schedule_id));
+        setPagination(prev => ({
+          ...prev,
+          count: prev.count - 1
+        }));
+      } else if (data.type === 'schedule_response') {
+        setSchedules(prev => prev.map(s => {
+          if (s.id === data.schedule_id) {
+            const updatedParticipants = s.participants.map(p => 
+              p.user?.id === data.user_id ? { ...p, response_status: data.response_status } : p
+            );
+            return { ...s, participants: updatedParticipants };
+          }
+          return s;
+        }));
+      }
+    }
+  }, [lastMessage, pagination.page]);
+
+  // Helper functions
+  const formatDate = (dateString) => {
+    return format(parseISO(dateString), 'MMM d, yyyy - h:mm a');
+  };
+
+  const isPastEvent = (schedule) => {
+    return isBefore(parseISO(schedule.end_time), new Date());
+  };
+
+  const handleOpenDialog = (schedule = null) => {
+    const defaultSchedule = { 
       title: '', 
-      type: 'class', 
-      date: new Date(),
-      endDate: new Date(new Date().getTime() + 60 * 60 * 1000),
+      description: '',
+      start_time: new Date(),
+      end_time: new Date(Date.now() + 3600000), // 1 hour later
       location: '',
-      invitees: [],
-      additionalEmails: []
+      is_all_day: false
     };
 
-    if (event) {
-      setCurrentEvent(event);
-      setSelectedUsers(event.invitees.filter(i => i.type !== 'group'));
-      setSelectedGroups(event.invitees.filter(i => i.type === 'group'));
-      setAdditionalEmails(event.additionalEmails || []);
+    if (schedule) {
+      setCurrentSchedule({
+        ...schedule,
+        start_time: parseISO(schedule.start_time),
+        end_time: parseISO(schedule.end_time)
+      });
+      setSelectedUsers(schedule.participants.filter(p => p.user).map(p => ({
+        id: p.user.id,
+        email: p.user.email,
+        first_name: p.user.first_name,
+        last_name: p.user.last_name
+      })));
+      setSelectedGroups(schedule.participants.filter(p => p.group).map(p => ({
+        id: p.group.id,
+        name: p.group.name
+      })));
     } else {
-      setCurrentEvent(defaultEvent);
+      setCurrentSchedule(defaultSchedule);
       setSelectedUsers([]);
       setSelectedGroups([]);
-      setAdditionalEmails([]);
     }
+    
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setCurrentSchedule(null);
+    setSelectedUsers([]);
+    setSelectedGroups([]);
   };
 
-  const handleSaveEvent = () => {
-    const updatedEvent = {
-      ...currentEvent,
-      invitees: [...selectedUsers, ...selectedGroups],
-      additionalEmails: additionalEmails
-    };
+  const handleSaveSchedule = async () => {
+    try {
+      const formData = {
+        title: currentSchedule.title,
+        description: currentSchedule.description,
+        start_time: currentSchedule.start_time.toISOString(),
+        end_time: currentSchedule.end_time.toISOString(),
+        location: currentSchedule.location,
+        is_all_day: currentSchedule.is_all_day,
+        participant_users: selectedUsers.map(user => user.id),
+        participant_groups: selectedGroups.map(group => group.id)
+      };
 
-    if (updatedEvent.id) {
-      setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+      const response = currentSchedule.id 
+        ? await scheduleAPI.updateSchedule(currentSchedule.id, formData)
+        : await scheduleAPI.createSchedule(formData);
+      
+      enqueueSnackbar(
+        currentSchedule.id ? 'Schedule updated successfully!' : 'Schedule created successfully!',
+        { variant: 'success' }
+      );
+
+      setSnackbar({
+        open: true,
+        message: currentSchedule.id ? 'Schedule updated successfully!' : 'Schedule created successfully!',
+        severity: 'success'
+      });
+
+      fetchData();
+      handleCloseDialog();
+    } catch (error) {
+      enqueueSnackbar('Error saving schedule', { variant: 'error' });
+      console.error('Error saving schedule:', error);
+    }
+  };
+
+  const handleDeleteSchedule = async (id) => {
+    try {
+      await scheduleAPI.deleteSchedule(id);
+      enqueueSnackbar('Schedule deleted successfully!', { variant: 'success' });
+      fetchData();
+    } catch (error) {
+      enqueueSnackbar('Error deleting schedule', { variant: 'error' });
+      console.error('Error deleting schedule:', error);
+    }
+  };
+
+  const handleRespondToSchedule = async (scheduleId, response) => {
+    try {
+      await scheduleAPI.respondToSchedule(scheduleId, response);
+      enqueueSnackbar(`Response "${response}" recorded!`, { variant: 'success' });
+      fetchData();
+    } catch (error) {
+      enqueueSnackbar('Error recording response', { variant: 'error' });
+      console.error('Error recording response:', error);
+    }
+  };
+
+  const handleRemoveParticipant = (participantToRemove) => {
+    if (participantToRemove.email) {
+      setSelectedUsers(selectedUsers.filter(user => user.id !== participantToRemove.id));
     } else {
-      setEvents([...events, { ...updatedEvent, id: events.length + 1 }]);
-    }
-    handleCloseDialog();
-  };
-
-  const handleDeleteEvent = (id) => {
-    setEvents(events.filter(e => e.id !== id));
-  };
-
-  const handleAddEmail = () => {
-    if (emailInput && !additionalEmails.includes(emailInput)) {
-      setAdditionalEmails([...additionalEmails, emailInput]);
-      setEmailInput('');
+      setSelectedGroups(selectedGroups.filter(group => group.id !== participantToRemove.id));
     }
   };
 
-  const handleRemoveEmail = (emailToRemove) => {
-    setAdditionalEmails(additionalEmails.filter(email => email !== emailToRemove));
+  const toggleExpandSchedule = (scheduleId) => {
+    setExpandedSchedule(expandedSchedule === scheduleId ? null : scheduleId);
   };
 
-  const handleRemoveInvitee = (inviteeToRemove) => {
-    if (inviteeToRemove.type === 'group') {
-      setSelectedGroups(selectedGroups.filter(group => group.id !== inviteeToRemove.id));
-    } else {
-      setSelectedUsers(selectedUsers.filter(user => user.id !== inviteeToRemove.id));
-    }
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      dateFrom: null,
+      dateTo: null,
+      showPast: false
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString();
+  const getResponseColor = (responseStatus) => {
+    const option = responseOptions.find(opt => opt.value === responseStatus);
+    return option ? option.color : 'default';
   };
 
-  const toggleExpandEvent = (eventId) => {
-    setExpandedEvent(expandedEvent === eventId ? null : eventId);
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage + 1 }));
   };
 
-  // Mobile view for events
-  const renderMobileEventCards = () => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {filteredEvents
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        .map((event) => (
-          <Card key={event.id} elevation={3}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6" component="div">
-                  {event.title}
-                </Typography>
-                <IconButton onClick={() => toggleExpandEvent(event.id)}>
-                  {expandedEvent === event.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
-              </Box>
-              <Typography color="text.secondary" gutterBottom>
-                {event.type} • {formatDate(event.date)}
-              </Typography>
-              <Typography variant="body2">
-                {formatTime(event.date)} - {formatTime(event.endDate)}
-              </Typography>
-              
-              <Collapse in={expandedEvent === event.id}>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2">Location:</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    {getPlatformIcon(event.location)}
-                    <Link 
-                      href={event.location} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      sx={{
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': { textDecoration: 'underline' }
-                      }}
-                    >
-                      {truncateUrl(event.location, 30)}
-                    </Link>
-                  </Box>
-                  
-                  <Typography variant="subtitle2">Invitees:</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                    {event.invitees.map((invitee, i) => (
-                      <Chip 
-                        key={i} 
-                        label={invitee.name} 
-                        size="small" 
-                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-                      />
-                    ))}
-                    {event.additionalEmails.length > 0 && (
-                      <Chip 
-                        label={`${event.additionalEmails.length} email(s)`} 
-                        size="small" 
-                        icon={<EmailIcon />}
-                      />
-                    )}
-                  </Box>
-                </Box>
-              </Collapse>
-            </CardContent>
-            <CardActions sx={{ justifyContent: 'space-between' }}>
-              <Button 
-                size="small" 
-                startIcon={<CalendarIcon />}
-                onClick={() => handleAddToCalendar(event)}
-                color="secondary"
-              >
-                Add to Calendar
-              </Button>
-              <Box>
-                <Button 
-                  size="small" 
-                  startIcon={<EditIcon />}
-                  onClick={() => handleOpenDialog(event)}
-                  sx={{ mr: 1 }}
-                >
-                  Edit
-                </Button>
-                <Button 
-                  size="small" 
-                  startIcon={<DeleteIcon />}
-                  onClick={() => handleDeleteEvent(event.id)}
-                  color="error"
-                >
-                  Delete
-                </Button>
-              </Box>
-            </CardActions>
-          </Card>
-        ))}
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // User Autocomplete rendering with search
+  const renderUserAutocomplete = () => (
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Select Users
+      </Typography>
+      <Autocomplete
+        multiple
+        options={users}
+        getOptionLabel={(option) =>
+          `${option.first_name} ${option.last_name} (${option.email})`
+        }
+        value={selectedUsers}
+        onChange={(event, newValue) => setSelectedUsers(newValue)}
+        onInputChange={handleUserSearch}
+        filterOptions={(options, state) => options}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Search users"
+            placeholder="Select individual users"
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <>
+                  <SearchIcon color="action" sx={{ mr: 1 }} />
+                  {params.InputProps.startAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+        renderTags={(value, getTagProps) =>
+          value.map((option, index) => (
+            <Chip
+              {...getTagProps({ index })}
+              key={option.id}
+              label={`${option.first_name} ${option.last_name}`}
+              icon={<PersonIcon />}
+              onDelete={() => handleRemoveParticipant(option)}
+            />
+          ))
+        }
+      />
     </Box>
   );
 
-  // Desktop view for events
-  const renderDesktopEventTable = () => (
+  // Group Autocomplete rendering with search
+  const renderGroupAutocomplete = () => (
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Select Groups
+      </Typography>
+      <Autocomplete
+        multiple
+        options={filteredGroups}
+        getOptionLabel={(option) => option.name}
+        value={selectedGroups}
+        onChange={(event, newValue) => setSelectedGroups(newValue)}
+        onInputChange={handleGroupSearch}
+        filterOptions={(options, state) => options}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Search groups"
+            placeholder="Select groups"
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <>
+                  <SearchIcon color="action" sx={{ mr: 1 }} />
+                  {params.InputProps.startAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+        renderTags={(value, getTagProps) =>
+          value.map((option, index) => (
+            <Chip
+              {...getTagProps({ index })}
+              key={option.id}
+              label={option.name}
+              icon={<GroupIcon />}
+              onDelete={() => handleRemoveParticipant(option)}
+            />
+          ))
+        }
+      />
+    </Box>
+  );
+
+  // Mobile view for schedules
+  const renderMobileScheduleCards = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {schedules.map((schedule) => (
+        <Card key={schedule.id} elevation={3}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {isPastEvent(schedule) ? (
+                  <EventBusyIcon color="error" />
+                ) : (
+                  <EventAvailableIcon color="primary" />
+                )}
+                <Typography variant="subtitle1" component="div">
+                  {schedule.title}
+                </Typography>
+              </Box>
+              <IconButton onClick={() => toggleExpandSchedule(schedule.id)}>
+                {expandedSchedule === schedule.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+            <Typography color="text.secondary" gutterBottom>
+              {formatDate(schedule.start_time)} - {formatDate(schedule.end_time)}
+            </Typography>
+            
+            <Collapse in={expandedSchedule === schedule.id}>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                  {schedule.description}
+                </Typography>
+                
+                {schedule.location && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    {getPlatformIcon(schedule.location)}
+                    <Typography variant="body2" sx={{ ml: 1 }}>
+                      {truncateUrl(schedule.location)}
+                    </Typography>
+                    {schedule.location && (
+                      <IconButton 
+                        size="small" 
+                        sx={{ ml: 1 }}
+                        onClick={() => window.open(schedule.location, '_blank')}
+                      >
+                        <ArrowForwardIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                )}
+                              
+                <Typography variant="subtitle2" sx={{ mt: 2 }}>Participants:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                  {schedule.participants.map((participant, i) => (
+                    <Chip 
+                      key={i} 
+                      label={participant.user ? 
+                        `${participant.user.first_name} ${participant.user.last_name}` : 
+                        participant.group.name}
+                      size="small" 
+                      icon={participant.group ? <GroupIcon /> : <PersonIcon />}
+                      color={getResponseColor(participant.response_status)}
+                    />
+                  ))}
+                </Box>
+                
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2">Your Response:</Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    {responseOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        variant="outlined"
+                        size="small"
+                        color={option.color}
+                        startIcon={option.value === 'accepted' ? <CheckIcon /> : 
+                                  option.value === 'declined' ? <CloseIcon /> : null}
+                        onClick={() => handleRespondToSchedule(schedule.id, option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Box>
+
+                {/* Add to Google Calendar button in expanded view */}
+                <Button
+                  variant="contained"
+                  startIcon={<CalendarIcon />}
+                  onClick={() => window.open(generateGoogleCalendarLink(schedule), '_blank')}
+                  sx={{ mt: 2 }}
+                  fullWidth
+                >
+                  Add to Google Calendar
+                </Button>
+              </Box>
+            </Collapse>
+          </CardContent>
+          <CardActions sx={{ justifyContent: 'space-between' }}>
+            <Box>
+              <Button 
+                size="small" 
+                startIcon={<CalendarIcon />}
+                onClick={() => window.open(generateGoogleCalendarLink(schedule), '_blank')}
+              >
+                Add to Google
+              </Button>
+              <Button 
+                size="small" 
+                startIcon={<EditIcon />}
+                onClick={() => handleOpenDialog(schedule)}
+              >
+                Edit
+              </Button>
+            </Box>
+            <Box>
+              <Button 
+                size="small" 
+                startIcon={<DeleteIcon />}
+                onClick={() => handleDeleteSchedule(schedule.id)}
+                color="error"
+              >
+                Delete
+              </Button>
+            </Box>
+          </CardActions>
+        </Card>
+      ))}
+    </Box>
+  );
+
+  // Desktop view for schedules
+  const renderDesktopScheduleTable = () => (
     <TableContainer component={Paper}>
       <Table>
         <TableHead>
           <TableRow>
             <TableCell>Title</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>Date</TableCell>
             <TableCell>Time</TableCell>
             <TableCell>Location</TableCell>
-            <TableCell>Invitees</TableCell>
+            <TableCell>Participants</TableCell>
+            <TableCell>Your Response</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredEvents
-            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-            .map((event) => (
-              <TableRow key={event.id}>
-                <TableCell>{event.title}</TableCell>
-                <TableCell>{event.type}</TableCell>
-                <TableCell>{formatDate(event.date)}</TableCell>
+          {schedules.map((schedule) => (
+            <React.Fragment key={schedule.id}>
+              <TableRow 
+                hover 
+                sx={{ 
+                  '&:hover': { cursor: 'pointer' },
+                  backgroundColor: expandedSchedule === schedule.id ? 'action.hover' : 'inherit'
+                }}
+                onClick={() => toggleExpandSchedule(schedule.id)}
+              >
                 <TableCell>
-                  {formatTime(event.date)} - {formatTime(event.endDate)}
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {isPastEvent(schedule) ? (
+                      <EventBusyIcon color="error" sx={{ mr: 1 }} />
+                    ) : (
+                      <EventAvailableIcon color="primary" sx={{ mr: 1 }} />
+                    )}
+                    <Typography sx={{ fontWeight: isPastEvent(schedule) ? 'normal' : 'bold' }}>
+                      {schedule.title}
+                    </Typography>
+                  </Box>
                 </TableCell>
                 <TableCell>
-                  <Tooltip title={event.location} placement="top">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {getPlatformIcon(event.location)}
-                      <Link 
-                        href={event.location} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        sx={{
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          '&:hover': { textDecoration: 'underline' },
-                          maxWidth: '200px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: 'inline-block'
-                        }}
-                      >
-                        {truncateUrl(event.location)}
-                      </Link>
-                    </Box>
-                  </Tooltip>
+                  {formatDate(schedule.start_time)} - {formatDate(schedule.end_time)}
+                </TableCell>
+                <TableCell>
+                  {schedule.location && (
+                    <Tooltip title={schedule.location || ''}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {getPlatformIcon(schedule.location)}
+                        <Link 
+                          href={schedule.location} 
+                          target="_blank" 
+                          rel="noopener" 
+                          sx={{ ml: 1 }}
+                        >
+                          {truncateUrl(schedule.location)}
+                        </Link>
+                      </Box>
+                    </Tooltip>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {event.invitees.slice(0, 3).map((invitee, i) => (
+                    {schedule.participants.slice(0, 2).map((participant, i) => (
                       <Chip 
                         key={i} 
-                        label={invitee.name} 
+                        label={participant.user ? 
+                          `${participant.user.first_name} ${participant.user.last_name}` : 
+                          participant.group.name}
                         size="small" 
-                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                        icon={participant.group ? <GroupIcon /> : <PersonIcon />}
+                        color={getResponseColor(participant.response_status)}
                       />
                     ))}
-                    {event.invitees.length > 3 && (
-                      <Chip label={`+${event.invitees.length - 3}`} size="small" />
-                    )}
-                    {event.additionalEmails.length > 0 && (
-                      <Chip 
-                        label={`${event.additionalEmails.length} email(s)`} 
-                        size="small" 
-                        icon={<EmailIcon />}
-                      />
+                    {schedule.participants.length > 2 && (
+                      <Chip label={`+${schedule.participants.length - 2}`} size="small" />
                     )}
                   </Box>
                 </TableCell>
                 <TableCell>
+                  {schedule.participants.find(p => p.user)?.response_status || 'Not invited'}
+                </TableCell>
+                <TableCell>
                   <Stack direction="row" spacing={1}>
+                    <Tooltip title="Add to Google Calendar">
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(generateGoogleCalendarLink(schedule), '_blank');
+                        }}
+                      >
+                        <CalendarIcon />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Edit">
                       <IconButton 
                         size="small" 
-                        onClick={() => handleOpenDialog(event)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(schedule);
+                        }}
                       >
                         <EditIcon />
                       </IconButton>
@@ -487,36 +775,80 @@ const ScheduleManagement = () => {
                     <Tooltip title="Delete">
                       <IconButton 
                         size="small" 
-                        onClick={() => handleDeleteEvent(event.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSchedule(schedule.id);
+                        }}
                         color="error"
                       >
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Add to Calendar">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleAddToCalendar(event)}
-                        color="secondary"
-                      >
-                        <CalendarIcon />
-                      </IconButton>
-                    </Tooltip>
                   </Stack>
                 </TableCell>
               </TableRow>
-            ))}
+              <TableRow>
+                <TableCell style={{ padding: 0 }} colSpan={6}>
+                  <Collapse in={expandedSchedule === schedule.id} timeout="auto" unmountOnExit>
+                    <Box sx={{ p: 3, backgroundColor: 'background.paper' }}>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                        {schedule.description}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <LocationIcon color="action" sx={{ mr: 1 }} />
+                        <Typography>{schedule.location || 'No location specified'}</Typography>
+                      </Box>
+                      
+                      <Typography variant="subtitle2" sx={{ mt: 2 }}>Participants:</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                        {schedule.participants.map((participant, i) => (
+                          <Chip 
+                            key={i} 
+                            label={participant.user ? 
+                              `${participant.user.first_name} ${participant.user.last_name}` : 
+                              participant.group.name}
+                            size="small" 
+                            icon={participant.group ? <GroupIcon /> : <PersonIcon />}
+                            color={getResponseColor(participant.response_status)}
+                          />
+                        ))}
+                      </Box>
+                      
+                      <Typography variant="subtitle2" sx={{ mt: 2 }}>Your Response:</Typography>
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        {responseOptions.map((option) => (
+                          <Button
+                            key={option.value}
+                            variant="outlined"
+                            size="small"
+                            color={option.color}
+                            startIcon={option.value === 'accepted' ? <CheckIcon /> : 
+                                      option.value === 'declined' ? <CloseIcon /> : null}
+                            onClick={() => handleRespondToSchedule(schedule.id, option.value)}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </Stack>
+
+                      {/* Add to Google Calendar button in expanded view */}
+                      <Button
+                        variant="contained"
+                        startIcon={<CalendarIcon />}
+                        onClick={() => window.open(generateGoogleCalendarLink(schedule), '_blank')}
+                        sx={{ mt: 2 }}
+                      >
+                        Add to Google Calendar
+                      </Button>
+                    </Box>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+            </React.Fragment>
+          ))}
         </TableBody>
       </Table>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={filteredEvents.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
     </TableContainer>
   );
 
@@ -524,9 +856,36 @@ const ScheduleManagement = () => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box>
         <Typography variant="h4" gutterBottom>
-          Schedule Management
+          Schedule Manager
+          <Badge badgeContent={schedules.filter(s => !isPastEvent(s)).length} color="primary" sx={{ ml: 2 }}>
+            <CalendarIcon />
+          </Badge>
         </Typography>
         
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            New Schedule
+          </Button>
+
+          {/* Bulk export to Google Calendar button */}
+          <Button 
+            variant="outlined" 
+            startIcon={<CalendarIcon />}
+            onClick={() => {
+              schedules.forEach(schedule => {
+                window.open(generateGoogleCalendarLink(schedule), '_blank');
+              });
+            }}
+            disabled={schedules.length === 0}
+          >
+            Export All to Google Calendar
+          </Button>
+        </Box>
+      
         {/* Filters Section */}
         <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
           <Grid container spacing={2} alignItems="center">
@@ -535,7 +894,7 @@ const ScheduleManagement = () => {
                 fullWidth
                 variant="outlined"
                 size="small"
-                placeholder="Search events..."
+                placeholder="Search schedules..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 InputProps={{
@@ -544,21 +903,6 @@ const ScheduleManagement = () => {
               />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Type"
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-              >
-                <MenuItem value="all">All Types</MenuItem>
-                <MenuItem value="class">Class</MenuItem>
-                <MenuItem value="event">Event</MenuItem>
-                <MenuItem value="meeting">Meeting</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={6} md={3}>
               <DatePicker
                 label="From"
                 value={filters.dateFrom}
@@ -572,7 +916,7 @@ const ScheduleManagement = () => {
                 )}
               />
             </Grid>
-            <Grid item xs={6} sm={6} md={3}>
+            <Grid item xs={6} sm={3} md={2}>
               <DatePicker
                 label="To"
                 value={filters.dateTo}
@@ -586,21 +930,51 @@ const ScheduleManagement = () => {
                 )}
               />
             </Grid>
+            <Grid item xs={6} sm={3} md={2}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={filters.showPast}
+                    onChange={(e) => handleFilterChange('showPast', e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Show Past Events"
+              />
+            </Grid>
+            <Grid item xs={6} sm={3} md={2} sx={{ textAlign: 'right' }}>
+              <Tooltip title="Reset Filters">
+                <IconButton onClick={resetFilters}>
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            </Grid>
           </Grid>
         </Paper>
-        
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ mb: 3 }}
-          fullWidth={isMobile}
-        >
-          Add New Schedule
-        </Button>
-        
-        {isMobile ? renderMobileEventCards() : renderDesktopEventTable()}
 
+        {isLoading ? (
+          <LinearProgress />
+        ) : error ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography color="error">{error}</Typography>
+          </Box>
+        ) : schedules.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography>No schedules found</Typography>
+          </Box>
+        ) : isMobile ? renderMobileScheduleCards() : renderDesktopScheduleTable()}
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={pagination.count}
+          rowsPerPage={rowsPerPage}
+          page={pagination.page - 1}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+
+        {/* Schedule Dialog */}
         <Dialog 
           open={openDialog} 
           onClose={handleCloseDialog} 
@@ -608,148 +982,121 @@ const ScheduleManagement = () => {
           fullWidth
           fullScreen={isMobile}
         >
-          <DialogTitle>{currentEvent?.id ? 'Edit Schedule' : 'Create New Schedule'}</DialogTitle>
+          <DialogTitle>
+            {currentSchedule?.id ? 'Edit Schedule' : 'Create New Schedule'}
+            <IconButton
+              aria-label="close"
+              onClick={handleCloseDialog}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
           <DialogContent dividers>
             <TextField
               autoFocus
               margin="dense"
               label="Title"
               fullWidth
-              value={currentEvent?.title || ''}
-              onChange={(e) => setCurrentEvent({...currentEvent, title: e.target.value})}
+              value={currentSchedule?.title || ''}
+              onChange={(e) => setCurrentSchedule({...currentSchedule, title: e.target.value})}
               sx={{ mb: 2 }}
             />
+            
             <TextField
-              select
               margin="dense"
-              label="Type"
+              label="Description"
               fullWidth
-              value={currentEvent?.type || 'class'}
-              onChange={(e) => setCurrentEvent({...currentEvent, type: e.target.value})}
+              multiline
+              rows={4}
+              value={currentSchedule?.description || ''}
+              onChange={(e) => setCurrentSchedule({...currentSchedule, description: e.target.value})}
               sx={{ mb: 2 }}
-            >
-              <MenuItem value="class">Class</MenuItem>
-              <MenuItem value="event">Event</MenuItem>
-              <MenuItem value="meeting">Meeting</MenuItem>
-            </TextField>
-            <DateTimePicker
-              label="Start Date & Time"
-              value={currentEvent?.date || new Date()}
-              onChange={(newValue) => setCurrentEvent({...currentEvent, date: newValue})}
-              renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
             />
-            <DateTimePicker
-              label="End Date & Time"
-              value={currentEvent?.endDate || new Date(new Date().getTime() + 60 * 60 * 1000)}
-              onChange={(newValue) => setCurrentEvent({...currentEvent, endDate: newValue})}
-              renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
-            />
+            
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={6}>
+                <DatePicker
+                  label="Start Time"
+                  value={currentSchedule?.start_time}
+                  onChange={(newValue) => setCurrentSchedule({...currentSchedule, start_time: newValue})}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      fullWidth 
+                      margin="dense"
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <DatePicker
+                  label="End Time"
+                  value={currentSchedule?.end_time}
+                  onChange={(newValue) => setCurrentSchedule({...currentSchedule, end_time: newValue})}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      fullWidth 
+                      margin="dense"
+                    />
+                  )}
+                  minDateTime={currentSchedule?.start_time}
+                />
+              </Grid>
+            </Grid>
+            
             <TextField
               margin="dense"
               label="Location"
               fullWidth
-              value={currentEvent?.location || ''}
-              onChange={(e) => setCurrentEvent({...currentEvent, location: e.target.value})}
-              sx={{ mb: 3 }}
+              value={currentSchedule?.location || ''}
+              onChange={(e) => setCurrentSchedule({...currentSchedule, location: e.target.value})}
+              sx={{ mb: 2 }}
             />
-
-            <Typography variant="h6" gutterBottom>Invite Participants</Typography>
+            
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={currentSchedule?.is_all_day || false}
+                  onChange={(e) => setCurrentSchedule({...currentSchedule, is_all_day: e.target.checked})}
+                  color="primary"
+                />
+              }
+              label="All Day Event"
+              sx={{ mb: 2 }}
+            />
+            
+            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+              Participants
+            </Typography>
             <Divider sx={{ mb: 2 }} />
 
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>Select Users</Typography>
-              <Autocomplete
-                multiple
-                options={mockUsers}
-                getOptionLabel={(option) => option.name}
-                value={selectedUsers}
-                onChange={(event, newValue) => setSelectedUsers(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Search users"
-                    placeholder="Select individual users"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      icon={<PersonIcon />}
-                      onDelete={() => handleRemoveInvitee(option)}
-                    />
-                  ))
-                }
-              />
-            </Box>
-
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>Select Groups</Typography>
-              <FormGroup>
-                {userGroups.map((group) => (
-                  <FormControlLabel
-                    key={group.id}
-                    control={
-                      <Checkbox
-                        checked={selectedGroups.some(g => g.id === group.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedGroups([...selectedGroups, group]);
-                          } else {
-                            setSelectedGroups(selectedGroups.filter(g => g.id !== group.id));
-                          }
-                        }}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <GroupIcon sx={{ mr: 1 }} />
-                        {group.name}
-                      </Box>
-                    }
-                  />
-                ))}
-              </FormGroup>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>Additional Email Addresses</Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                <TextField
-                  fullWidth
-                  label="Add email address"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
-                />
-                <Button 
-                  variant="contained" 
-                  onClick={handleAddEmail}
-                  disabled={!emailInput}
-                >
-                  Add
-                </Button>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {additionalEmails.map((email, index) => (
-                  <Chip
-                    key={index}
-                    label={email}
-                    onDelete={() => handleRemoveEmail(email)}
-                    icon={<EmailIcon />}
-                  />
-                ))}
-              </Box>
-            </Box>
+            {renderUserAutocomplete()}
+            {renderGroupAutocomplete()}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={handleSaveEvent} variant="contained">Save Schedule</Button>
+            <Button onClick={handleCloseDialog}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveSchedule} 
+              variant="contained" 
+              disabled={
+                !currentSchedule?.title || 
+                !currentSchedule?.start_time || 
+                !currentSchedule?.end_time
+              }
+            >
+              {currentSchedule?.id ? 'Update Schedule' : 'Create Schedule'}
+            </Button>
           </DialogActions>
         </Dialog>
-
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}
@@ -765,4 +1112,4 @@ const ScheduleManagement = () => {
   );
 };
 
-export default ScheduleManagement;
+export default Schedule;

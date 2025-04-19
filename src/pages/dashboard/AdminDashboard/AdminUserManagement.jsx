@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API_BASE_URL, { userAPI } from '../../../config';
-import {Box, Container, Typography, Grid, Paper, Table,
-  TableBody, TableCell, TableContainer, TableHead,Snackbar,
+import {
+  Box, Container, Typography, Grid, Paper, Table,
+  TableBody, TableCell, TableContainer, TableHead, Snackbar,
   TableRow, TablePagination, Avatar, Chip, TextField, MenuItem,
   Divider, IconButton, useTheme, useMediaQuery, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, Menu, Tooltip,
@@ -22,6 +23,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useNavigate } from 'react-router-dom';
 import UserRegistration from './UserRegistration';
 import BulkUserUpload from './BulkUserUpload';
+import UserGroupsManagement from './UserGroupsManagement';
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
@@ -31,10 +33,9 @@ const AdminUserManagement = () => {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success' // can be 'success', 'error', 'warning', 'info'
+    severity: 'success'
   });
 
-  // State for users, pagination, and loading
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
     count: 0,
@@ -46,18 +47,15 @@ const AdminUserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // State for registration and bulk upload dialogs
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
 
-  // State for action menu and confirmation modal
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [actionError, setActionError] = useState(null);
 
-  // Filters state
   const [filters, setFilters] = useState({
     role: 'all',
     status: 'all',
@@ -66,56 +64,60 @@ const AdminUserManagement = () => {
     dateTo: null
   });
 
-  // Fetch users with pagination
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
   
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError(null);
+    try {
+      const token = localStorage.getItem('access_token');
+      const params = {
+        page: pagination.currentPage,
+        page_size: rowsPerPage,
+        ...(filters.role !== 'all' && { role: filters.role }),
+        ...(filters.status !== 'all' && { status: filters.status }),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.dateFrom && { date_from: filters.dateFrom?.toISOString().split('T')[0] }),
+        ...(filters.dateTo && { date_to: filters.dateTo?.toISOString().split('T')[0] })
+      };
 
-      try {
-        const token = localStorage.getItem('access_token');
-        const params = {
-          page: pagination.currentPage,
-          page_size: rowsPerPage,
-          ...(filters.role !== 'all' && { role: filters.role }),
-          ...(filters.status !== 'all' && { status: filters.status }),
-          ...(filters.search && { search: filters.search }),
-          ...(filters.dateFrom && { date_from: filters.dateFrom.toISOString().split('T')[0] }),
-          ...(filters.dateTo && { date_to: filters.dateTo.toISOString().split('T')[0] })
-        };
+      const response = await fetch(`${API_BASE_URL.API_BASE_URL}/users/api/users/?${new URLSearchParams(params)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-        const response = await fetch(`${API_BASE_URL.API_BASE_URL}/users/api/users/?${new URLSearchParams(params)}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch users');
-        }
-
-        const data = await response.json();
-        setUsers(data.results);
-        setPagination({
-          count: data.count,
-          next: data.next,
-          previous: data.previous,
-          currentPage: pagination.currentPage
-        });
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to fetch users');
       }
-    };
 
+      const data = await response.json();
+      setUsers(data.results || []);
+      setPagination({
+        count: data.count || 0,
+        next: data.next || null,
+        previous: data.previous || null,
+        currentPage: pagination.currentPage
+      });
+    } catch (err) {
+      setError(err.message);
+      setUsers([]);
+      setPagination({
+        count: 0,
+        next: null,
+        previous: null,
+        currentPage: 1
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, [pagination.currentPage, rowsPerPage, filters]);
 
-
-  // Handle filter changes
   const handleFilterChange = (name, value) => {
     setFilters({
       ...filters,
@@ -124,7 +126,6 @@ const AdminUserManagement = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  // Handle pagination
   const handleChangePage = (event, newPage) => {
     setPagination(prev => ({ ...prev, currentPage: newPage + 1 }));
   };
@@ -134,62 +135,73 @@ const AdminUserManagement = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  // Reset login attempts
   const resetLoginAttempts = async (userId) => {
     try {
       await userAPI.updateUser(userId, { login_attempts: 0 });
       setUsers(prev => prev.map(user => 
         user.id === userId ? { ...user, login_attempts: 0 } : user
       ));
+      setSnackbar({
+        open: true,
+        message: 'Login attempts reset successfully',
+        severity: 'success'
+      });
     } catch (err) {
-      setError(err.message || 'Failed to reset login attempts');
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to reset login attempts',
+        severity: 'error'
+      });
     }
   };
 
-  // Handle action menu
   const handleMenuOpen = (event, user) => {
     setAnchorEl(event.currentTarget);
-    setSelectedUser(user); // Make sure this is being called
-  };
-  
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    // Don't clear selectedUser here - we still need it for the confirmation
+    setSelectedUser(user);
   };
 
-  // Handle action selection
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleActionSelect = (action) => {
     setActionType(action);
     setOpenConfirmModal(true);
     handleMenuClose();
   };
 
-  // Handle confirmation modal
   const handleConfirmAction = async () => {
     setActionError(null);
     
-    // Add null check for selectedUser
     if (!selectedUser) {
       setActionError('No user selected');
       return;
     }
   
     try {
-      const token = localStorage.getItem('access_token');
       if (actionType === 'delete') {
-
         await userAPI.deleteUser(selectedUser.id);
         setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
         setPagination(prev => ({ ...prev, count: prev.count - 1 }));
+        setSnackbar({
+          open: true,
+          message: 'User deleted successfully',
+          severity: 'success'
+        });
       } else {
         const newStatus = actionType === 'suspend' ? 'suspended' : 'active';
         await userAPI.updateUser(selectedUser.id, { status: newStatus });
         setUsers(prev => prev.map(user =>
           user.id === selectedUser.id ? { ...user, status: newStatus } : user
         ));
+        setSnackbar({
+          open: true,
+          message: `User ${newStatus === 'suspended' ? 'suspended' : 'activated'} successfully`,
+          severity: 'success'
+        });
       }
       setOpenConfirmModal(false);
-      setSelectedUser(null); // Clear after successful action
+      setSelectedUser(null);
     } catch (err) {
       setActionError(err.message || 'Failed to perform action');
     }
@@ -201,7 +213,6 @@ const AdminUserManagement = () => {
     setActionError(null);
   };
 
-  // Status chip component
   const StatusChip = ({ status }) => {
     const statusMap = {
       active: { color: 'success', icon: <ActiveIcon fontSize="small" /> },
@@ -220,7 +231,6 @@ const AdminUserManagement = () => {
     );
   };
 
-  // Role chip component
   const RoleChip = ({ role }) => {
     const roleMap = {
       admin: { color: 'primary', label: 'Admin' },
@@ -238,7 +248,6 @@ const AdminUserManagement = () => {
     );
   };
 
-  // Handle adding a new user
   const handleAddUser = async (newUser) => {
     try {
       const response = await userAPI.createUser(newUser);
@@ -253,63 +262,66 @@ const AdminUserManagement = () => {
       }]);
       setPagination(prev => ({ ...prev, count: prev.count + 1 }));
       setShowRegistrationForm(false);
-    } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to add user');
-    }
-  };
-
-  const getInitial = (user) => {
-    if (user.first_name) return user.first_name.charAt(0).toUpperCase();
-    return user.email?.charAt(0).toUpperCase() || '?';
-  };
-
-  // Handle bulk user upload
-  const handleBulkUpload = async (newUsers) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', newUsers);
-      
-      const response = await userAPI.bulkUpload(formData);
-      
-      if (response.error_count > 0) {
-        setSnackbar({
-          open: true,
-          message: `Uploaded ${response.created_count} users with ${response.error_count} errors`,
-          severity: 'warning'
-        });
-      } else {
-        setSnackbar({
-          open: true,
-          message: `Successfully uploaded ${response.created_count} users`,
-          severity: 'success'
-        });
-      }
-  
-      // Refresh user list
-      const usersResponse = await userAPI.getUsers();
-      setUsers(usersResponse.results);
-      setPagination({
-        count: usersResponse.count,
-        next: usersResponse.next,
-        previous: usersResponse.previous,
-        currentPage: 1
+      setSnackbar({
+        open: true,
+        message: 'User created successfully',
+        severity: 'success'
       });
-      
-      setShowBulkUpload(false);
     } catch (err) {
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to process bulk upload',
+        message: err.response?.data?.detail || err.message || 'Failed to add user',
         severity: 'error'
       });
     }
   };
+
+  const getInitial = (user) => {
+    if (!user) return '?';
+    if (user.first_name) return user.first_name.charAt(0).toUpperCase();
+    return user.email?.charAt(0).toUpperCase() || '?';
+  };
+
+  const handleBulkUpload = async () => {
+    try {
+      await fetchUsers();
+      setShowBulkUpload(false);
+      setSnackbar({
+        open: true,
+        message: 'Users uploaded successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to refresh user list after upload',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
     setSnackbar(prev => ({ ...prev, open: false }));
   };
+
+  // Safe statistics calculations
+  const getActiveUsersCount = () => users.filter(u => u.status === 'active').length;
+  const getNewSignupsCount = () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return users.filter(u => u.signup_date && new Date(u.signup_date) > thirtyDaysAgo).length;
+  };
+  const getSuspiciousActivityCount = () => users.filter(u => u.login_attempts > 0).length;
+
+  const stats = [
+    { title: 'Total Users', value: pagination.count, icon: <PeopleIcon fontSize="large" />, change: '+12% from last month' },
+    { title: 'Active Users', value: getActiveUsersCount(), icon: <ActiveIcon fontSize="large" />, change: 'Active in last 30 days' },
+    { title: 'New Signups', value: getNewSignupsCount(), icon: <PersonAddIcon fontSize="large" />, change: 'This month' },
+    { title: 'Suspicious Activity', value: getSuspiciousActivityCount(), icon: <WarningIcon fontSize="large" />, change: 'Failed login attempts' }
+  ];
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -319,12 +331,7 @@ const AdminUserManagement = () => {
 
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          {[
-            { title: 'Total Users', value: pagination.count, icon: <PeopleIcon fontSize="large" />, change: '+12% from last month' },
-            { title: 'Active Users', value: users.filter(u => u.status === 'active').length, icon: <ActiveIcon fontSize="large" />, change: 'Active in last 30 days' },
-            { title: 'New Signups', value: users.filter(u => new Date(u.signup_date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length, icon: <PersonAddIcon fontSize="large" />, change: 'This month' },
-            { title: 'Suspicious Activity', value: users.filter(u => u.login_attempts > 0).length, icon: <WarningIcon fontSize="large" />, change: 'Failed login attempts' }
-          ].map((stat, index) => (
+          {stats.map((stat, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
               <Paper
                 elevation={3}
@@ -532,7 +539,7 @@ const AdminUserManagement = () => {
                             {getInitial(user)}
                           </Avatar>
                           <Box>
-                            <Typography variant="subtitle2">{user.email}</Typography>
+                            <Typography variant="subtitle2">{user.first_name} {user.last_name}</Typography>
                             <Typography variant="caption" color="text.secondary">
                               {user.email}
                             </Typography>
@@ -588,49 +595,37 @@ const AdminUserManagement = () => {
                           <MoreIcon />
                         </IconButton>
                         <Menu
-                        anchorEl={anchorEl}
-                        open={Boolean(anchorEl)}
-                        onClose={handleMenuClose}
-                      >
-                        <MenuItem
-                          onClick={() => {
-                            setActionType('activate');
-                            setOpenConfirmModal(true);
-                            handleMenuClose();
-                          }}
-                          disabled={selectedUser?.status === 'active'}
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl)}
+                          onClose={handleMenuClose}
                         >
-                          Activate
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => {
-                            setActionType('suspend');
-                            setOpenConfirmModal(true);
-                            handleMenuClose();
-                          }}
-                          disabled={selectedUser?.status === 'suspended'}
-                        >
-                          Suspend
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => {
-                            setActionType('delete');
-                            setOpenConfirmModal(true);
-                            handleMenuClose();
-                          }}
-                        >
-                          Delete
-                        </MenuItem>
-                        <MenuItem
-                          onClick={() => {
-                            resetLoginAttempts(selectedUser?.id);
-                            handleMenuClose();
-                          }}
-                          disabled={selectedUser?.login_attempts === 0}
-                        >
-                          Reset Login Attempts
-                        </MenuItem>
-                      </Menu>
+                          <MenuItem
+                            onClick={() => handleActionSelect('activate')}
+                            disabled={selectedUser?.status === 'active'}
+                          >
+                            Activate
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect('suspend')}
+                            disabled={selectedUser?.status === 'suspended'}
+                          >
+                            Suspend
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect('delete')}
+                          >
+                            Delete
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              resetLoginAttempts(selectedUser?.id);
+                              handleMenuClose();
+                            }}
+                            disabled={selectedUser?.login_attempts === 0}
+                          >
+                            Reset Login Attempts
+                          </MenuItem>
+                        </Menu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -643,11 +638,16 @@ const AdminUserManagement = () => {
             component="div"
             count={pagination.count}
             rowsPerPage={rowsPerPage}
-            page={pagination.currentPage - 1} // MUI pagination is 0-based
+            page={pagination.currentPage - 1}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </Paper>
+
+        {/* User Groups Management Section */}
+        <Box sx={{ mt: 4 }}>
+          <UserGroupsManagement users={users} />
+        </Box>
 
         {/* Confirmation Modal */}
         <Dialog
@@ -658,7 +658,7 @@ const AdminUserManagement = () => {
         >
           <DialogTitle>
             {actionType === 'delete' ? 'Delete User' : 
-            actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
+             actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
           </DialogTitle>
           <DialogContent>
             {actionError && (
@@ -687,6 +687,7 @@ const AdminUserManagement = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
         {/* User Roles & Permissions Summary */}
         <Paper elevation={3} sx={{ p: 3, mt: 4, borderRadius: 2 }}>
           <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>

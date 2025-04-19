@@ -2,97 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
-  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
-  Tooltip, Link, Chip, Checkbox, FormControlLabel, 
-  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
+  DialogContent, DialogActions, TextField, MenuItem, 
+  Tooltip, Link, Chip, FormControlLabel, 
+  FormGroup, Divider, useMediaQuery, IconButton, Stack, Snackbar,
   Collapse, Card, CardContent, CardActions, Grid,
   TablePagination, Switch, FormControl, InputLabel, Select,
-  Avatar, List, ListItem, ListItemAvatar, ListItemText,
-  LinearProgress
+  Avatar, LinearProgress, CircularProgress, Alert
 } from '@mui/material';
-import MuiAlert from '@mui/material/Alert';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
   Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon,
-  MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon, Search as SearchIcon, 
-  FilterList as FilterIcon, Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, 
+  Search as SearchIcon, FilterList as FilterIcon, Refresh as RefreshIcon,
   Image as ImageIcon, Link as LinkIcon, Schedule as ScheduleIcon,
-  Close as CloseIcon, CloudUpload as CloudUploadIcon
+  CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import axios from 'axios'; // You'll need to install axios
-
-// Mock API service for file uploads
-const uploadFile = async (file) => {
-  // In a real implementation, this would upload to your backend
-  // For demo purposes, we'll simulate an upload with a delay
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const url = URL.createObjectURL(file);
-      resolve({
-        id: Math.random().toString(36).substring(2, 9),
-        name: file.name,
-        url: url,
-        type: file.type,
-        size: file.size
-      });
-    }, 1500);
-  });
-};
-
-// Mock data for adverts with images
-const mockAdverts = [
-  { 
-    id: 1, 
-    title: 'Summer Course Discount', 
-    content: 'Get 20% off on all summer courses. Limited time offer!',
-    images: [
-      {
-        id: 'img1',
-        name: 'summer-sale.jpg',
-        url: '/images/summer-sale.jpg',
-        type: 'image/jpeg',
-        size: 102400
-      }
-    ],
-    link: '/summer-offer',
-    startDate: new Date('2023-06-01'),
-    endDate: new Date('2023-06-30'),
-    status: 'active',
-    priority: 1,
-    target: 'all'
-  },
-  { 
-    id: 2, 
-    title: 'New Course Announcement', 
-    content: 'Check out our new Advanced Data Science course starting next month.',
-    images: [
-      {
-        id: 'img2',
-        name: 'data-science.jpg',
-        url: '/images/data-science.jpg',
-        type: 'image/jpeg',
-        size: 153600
-      },
-      {
-        id: 'img3',
-        name: 'course-banner.png',
-        url: '/images/course-banner.png',
-        type: 'image/png',
-        size: 204800
-      }
-    ],
-    link: '/courses/data-science',
-    startDate: new Date('2023-06-15'),
-    endDate: new Date('2023-07-15'),
-    status: 'active',
-    priority: 2,
-    target: 'learners'
-  }
-];
+import { useSnackbar } from 'notistack';
+import { advertAPI } from '../../../../config';
 
 const targetOptions = [
   { value: 'all', label: 'All Users' },
@@ -102,6 +31,7 @@ const targetOptions = [
 ];
 
 const Advertorial = () => {
+  const { enqueueSnackbar } = useSnackbar();
   const isMobile = useMediaQuery('(max-width:600px)');
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -109,16 +39,23 @@ const Advertorial = () => {
     severity: 'success'
   });
 
-  const [adverts, setAdverts] = useState(mockAdverts);
+  const [adverts, setAdverts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activities, setActivities] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentAdvert, setCurrentAdvert] = useState(null);
   const [expandedAdvert, setExpandedAdvert] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const [uploadingFiles, setUploadingFiles] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [saveError, setSaveError] = useState(null);
 
   // Pagination state
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    rowsPerPage: 5,
+    count: 0
+  });
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -129,117 +66,136 @@ const Advertorial = () => {
     dateTo: null
   });
 
-  // Handle file uploads
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
-
-    const newUploadingFiles = files.map(file => ({
-      id: Math.random().toString(36).substring(2, 9),
-      name: file.name,
-      progress: 0,
-      file: file
-    }));
-
-    setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
-
-    for (const uploadFileObj of newUploadingFiles) {
-      try {
-        // Simulate upload progress
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => ({
-            ...prev,
-            [uploadFileObj.id]: Math.min(prev[uploadFileObj.id] + 10, 90)
-          }));
-        }, 300);
-
-        // Upload the file
-        const uploadedFile = await uploadFile(uploadFileObj.file);
-
-        // Clear interval and set progress to 100%
-        clearInterval(progressInterval);
-        setUploadProgress(prev => ({
-          ...prev,
-          [uploadFileObj.id]: 100
-        }));
-
-        // Add the uploaded file to the current advert
-        setCurrentAdvert(prev => ({
-          ...prev,
-          images: [...(prev.images || []), uploadedFile]
-        }));
-
-        // Remove from uploading files after a delay
-        setTimeout(() => {
-          setUploadingFiles(prev => prev.filter(f => f.id !== uploadFileObj.id));
-          setUploadProgress(prev => {
-            const newProgress = { ...prev };
-            delete newProgress[uploadFileObj.id];
-            return newProgress;
-          });
-        }, 500);
-      } catch (error) {
-        console.error('Upload failed:', error);
-        setSnackbar({
-          open: true,
-          message: `Failed to upload ${uploadFileObj.name}`,
-          severity: 'error'
-        });
-        setUploadingFiles(prev => prev.filter(f => f.id !== uploadFileObj.id));
-      }
+  // Validate the current advert data
+  const validateAdvert = () => {
+    const errors = {};
+    
+    if (!currentAdvert?.title?.trim()) {
+      errors.title = 'Title is required';
     }
-
-    // Clear the file input
-    event.target.value = '';
+    
+    if (!currentAdvert?.content?.trim()) {
+      errors.content = 'Content is required';
+    }
+    
+    if (!currentAdvert?.start_date || !(currentAdvert.start_date instanceof Date) || isNaN(currentAdvert.start_date.getTime())) {
+      errors.start_date = 'Valid start date is required';
+    }
+    
+    if (!currentAdvert?.end_date || !(currentAdvert.end_date instanceof Date) || isNaN(currentAdvert.end_date.getTime())) {
+      errors.end_date = 'Valid end date is required';
+    }
+    
+    if (currentAdvert?.start_date && currentAdvert?.end_date && 
+        currentAdvert.start_date instanceof Date && 
+        currentAdvert.end_date instanceof Date &&
+        currentAdvert.start_date > currentAdvert.end_date) {
+      errors.dateRange = 'End date must be after start date';
+    }
+    
+    if (currentAdvert?.link && !/^https?:\/\//i.test(currentAdvert.link)) {
+      errors.link = 'Link must start with http:// or https://';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  // Handle file deletion
-  const handleDeleteImage = (imageId) => {
-    setCurrentAdvert(prev => ({
-      ...prev,
-      images: prev.images.filter(img => img.id !== imageId)
-    }));
+  // Fetch adverts from API
+  const fetchAdverts = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        search: filters.search,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        target: filters.target !== 'all' ? filters.target : undefined,
+        date_from: filters.dateFrom ? filters.dateFrom.toISOString() : undefined,
+        date_to: filters.dateTo ? filters.dateTo.toISOString() : undefined,
+        page: pagination.page + 1,
+        page_size: pagination.rowsPerPage
+      };
+
+      const response = await advertAPI.getAdverts();
+      setAdverts(response.data.results || []);
+      setPagination(prev => ({
+        ...prev,
+        count: response.data.count || 0
+      }));
+    } catch (error) {
+      enqueueSnackbar('Failed to fetch adverts', { variant: 'error' });
+      setSnackbar({ open: true, message: 'Failed to fetch adverts', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchAdverts();
+  }, [filters, pagination.page, pagination.rowsPerPage]);
+
+  // Handle file upload
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      enqueueSnackbar('Only JPG, PNG, or GIF files are allowed', { variant: 'warning' });
+      setSnackbar({
+        open: true,
+        message: 'Only JPG, PNG, or GIF files are allowed',
+        severity: 'warning'
+      });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      enqueueSnackbar('File size must be under 5MB', { variant: 'warning' });
+      setSnackbar({
+        open: true,
+        message: 'File size must be under 5MB',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    setSelectedImage({
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name,
+      size: file.size
+    });
+  };
+
+  // Handle file removal
+  const handleRemoveImage = () => {
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage.url);
+    }
+    setSelectedImage(null);
   };
 
   // Handle pagination
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    setPagination(prev => ({ ...prev, page: newPage }));
   };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    setPagination({
+      page: 0,
+      rowsPerPage: parseInt(event.target.value, 10),
+      count: pagination.count
+    });
   };
 
   // Handle filter changes
   const handleFilterChange = (name, value) => {
-    setFilters({
-      ...filters,
-      [name]: value
-    });
-    setPage(0); // Reset to first page when filters change
+    setFilters(prev => ({ ...prev, [name]: value }));
+    setPagination(prev => ({ ...prev, page: 0 }));
   };
 
-  // Filter adverts based on current filters
-  const filteredAdverts = adverts.filter(advert => {
-    const matchesSearch = filters.search === '' || 
-      advert.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-      advert.content.toLowerCase().includes(filters.search.toLowerCase());
-    
-    const matchesStatus = filters.status === 'all' || advert.status === filters.status;
-    const matchesTarget = filters.target === 'all' || advert.target === filters.target;
-    
-    const matchesDateFrom = !filters.dateFrom || new Date(advert.startDate) >= new Date(filters.dateFrom);
-    const matchesDateTo = !filters.dateTo || new Date(advert.endDate) <= new Date(filters.dateTo);
-    
-    return matchesSearch && matchesStatus && matchesTarget && matchesDateFrom && matchesDateTo;
-  });
-
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-
-  const formatDate = (date) => {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
     return date.toLocaleDateString([], { 
       year: 'numeric', 
       month: 'short', 
@@ -259,65 +215,194 @@ const Advertorial = () => {
     const defaultAdvert = { 
       title: '', 
       content: '',
-      images: [],
+      image: null,
       link: '',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 7 days from now
+      start_date: new Date(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       status: 'active',
       priority: 1,
       target: 'all'
     };
-
-    if (advert) {
-      setCurrentAdvert(advert);
-    } else {
-      setCurrentAdvert(defaultAdvert);
-    }
-    
+  
+    // Convert API date strings to Date objects if advert exists
+    const processedAdvert = advert ? {
+      ...advert,
+      start_date: new Date(advert.start_date),
+      end_date: new Date(advert.end_date)
+    } : null;
+  
+    setCurrentAdvert(processedAdvert || defaultAdvert);
+    setSelectedImage(advert?.image ? { url: advert.image, name: 'Current Image' } : null);
     setOpenDialog(true);
-    setUploadingFiles([]);
-    setUploadProgress({});
+    setValidationErrors({});
+    setSaveError(null);
+  
+    if (advert?.id) {
+      fetchActivities(advert.id);
+    }
   };
 
   const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
-
-  const handleSaveAdvert = () => {
-    const updatedAdvert = {
-      ...currentAdvert,
-      startDate: new Date(currentAdvert.startDate),
-      endDate: new Date(currentAdvert.endDate)
-    };
-
-    if (updatedAdvert.id) {
-      setAdverts(adverts.map(a => a.id === updatedAdvert.id ? updatedAdvert : a));
-    } else {
-      setAdverts([...adverts, { ...updatedAdvert, id: adverts.length + 1 }]);
+    if (selectedImage) {
+      URL.revokeObjectURL(selectedImage.url);
     }
-    
-    setSnackbar({
-      open: true,
-      message: 'Advert saved successfully!',
-      severity: 'success'
-    });
-    
-    handleCloseDialog();
+    setOpenDialog(false);
+    setSelectedImage(null);
+    setValidationErrors({});
+    setSaveError(null);
   };
 
-  const handleDeleteAdvert = (id) => {
-    setAdverts(adverts.filter(a => a.id !== id));
-    setSnackbar({
-      open: true,
-      message: 'Advert deleted successfully!',
-      severity: 'success'
-    });
+  // Save advert with image
+  const handleSaveAdvert = async () => {
+    setSaveError(null);
+  
+    if (!validateAdvert()) {
+      const errorMsg = 'Please fill all required fields';
+      enqueueSnackbar(errorMsg, { variant: 'error' });
+      setSnackbar({ open: true, message: errorMsg, severity: 'error' });
+      return;
+    }
+  
+    try {
+      const isUpdate = Boolean(currentAdvert.id);
+      const isWithImage = Boolean(selectedImage?.file);
+  
+      const advertData = {
+        title: currentAdvert.title?.trim() || '',
+        content: currentAdvert.content?.trim() || '',
+        start_date: new Date(currentAdvert.start_date).toISOString(),
+        end_date: new Date(currentAdvert.end_date).toISOString(),
+        status: currentAdvert.status || 'active',
+        priority: currentAdvert.priority ?? 1,
+        target: currentAdvert.target || 'all',
+        link: currentAdvert.link?.trim() || '',
+      };
+  
+      let response;
+  
+      if (isWithImage) {
+        const formData = new FormData();
+  
+        Object.entries(advertData).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            formData.append(key, value);
+          }
+        });
+  
+        // Add image only if it's a valid File object
+        if (selectedImage.file instanceof File) {
+          formData.append('image', selectedImage.file);
+        }
+  
+        response = await advertAPI[isUpdate ? 'updateAdvert' : 'createAdvertWithImage'](
+          isUpdate ? currentAdvert.id : formData,
+          formData,
+          true
+        );
+      } else {
+        response = await advertAPI[isUpdate ? 'updateAdvert' : 'createAdvert'](
+          isUpdate ? currentAdvert.id : null,
+          advertData,
+          false
+        );
+      }
+  
+      setAdverts((prev) =>
+        isUpdate
+          ? prev.map((a) => (a.id === currentAdvert.id ? response.data : a))
+          : [...prev, response.data]
+      );
+  
+      const successMsg = 'Advert saved successfully';
+      enqueueSnackbar(successMsg, { variant: 'success' });
+      setSnackbar({ open: true, message: successMsg, severity: 'success' });
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Save Advert Error:', error);
+      const errorDetails = error.response?.data?.details;
+      const fallback = error.response?.data?.error || 'Failed to save advert. Please try again.';
+      const errorMessage = errorDetails
+        ? Object.values(errorDetails).flat().join('; ')
+        : fallback;
+  
+      setSaveError(errorMessage);
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    }
+  };
+  
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const toggleAdvertStatus = (id) => {
-    setAdverts(adverts.map(a => 
-      a.id === id ? { ...a, status: a.status === 'active' ? 'retired' : 'active' } : a
-    ));
+  // Check if save button should be disabled
+  const isSaveDisabled = () => {
+    return (
+      !currentAdvert?.title?.trim() ||
+      !currentAdvert?.content?.trim() ||
+      !currentAdvert?.start_date ||
+      !(currentAdvert.start_date instanceof Date) ||
+      isNaN(currentAdvert.start_date.getTime()) ||
+      !currentAdvert?.end_date ||
+      !(currentAdvert.end_date instanceof Date) ||
+      isNaN(currentAdvert.end_date.getTime()) ||
+      Object.keys(validationErrors).length > 0
+    );
+  };;
+
+  // Render error messages
+  const renderErrorMessages = () => {
+    if (Object.keys(validationErrors).length === 0 && !saveError) return null;
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        {Object.entries(validationErrors).map(([field, message]) => (
+          <Alert key={field} severity="error" sx={{ mb: 1 }}>
+            {message}
+          </Alert>
+        ))}
+        {saveError && (
+          <Alert severity="error" sx={{ mb: 1 }}>
+            {saveError}
+          </Alert>
+        )}
+      </Box>
+    );
+  };
+
+  // Handle status toggle
+  const toggleAdvertStatus = async (id) => {
+    try {
+      const advert = adverts.find(a => a.id === id);
+      const newStatus = advert.status === 'active' ? 'retired' : 'active';
+      
+      await advertAPI.toggleAdvertStatus(id, { status: newStatus });
+      
+      setAdverts(prev => prev.map(a => 
+        a.id === id ? { ...a, status: newStatus } : a
+      ));
+      
+      enqueueSnackbar(`Advert marked as ${newStatus}`, { variant: 'success' });
+      setSnackbar({ open: true, message: `Advert marked as ${newStatus}`, severity: 'success' });
+    } catch (error) {
+      enqueueSnackbar('Failed to update advert status', { variant: 'error' });
+      setSnackbar({ open: true, message: 'Failed to update advert status', severity: 'error' });
+    }
+  };
+
+  // Handle advert deletion
+  const handleDeleteAdvert = async (id) => {
+    try {
+      await advertAPI.deleteAdvert(id);
+      setAdverts(prev => prev.filter(a => a.id !== id));
+      enqueueSnackbar('Advert deleted successfully', { variant: 'success' });
+      setSnackbar({ open: true, message: 'Advert deleted successfully', severity: 'success' });
+    } catch (error) {
+      enqueueSnackbar('Failed to delete advert', { variant: 'error' });
+      setSnackbar({ open: true, message: 'Failed to delete advert', severity: 'error' });
+    }
   };
 
   const toggleExpandAdvert = (advertId) => {
@@ -337,9 +422,16 @@ const Advertorial = () => {
   // Mobile view for adverts
   const renderMobileAdvertCards = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {filteredAdverts
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        .map((advert) => (
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : adverts.length === 0 ? (
+        <Typography variant="body1" align="center" p={3}>
+          No adverts found
+        </Typography>
+      ) : (
+        adverts.map((advert) => (
           <Card key={advert.id} elevation={3}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -358,29 +450,25 @@ const Advertorial = () => {
                 </IconButton>
               </Box>
               <Typography color="text.secondary" gutterBottom>
-                {formatDate(advert.startDate)} - {formatDate(advert.endDate)}
+                {formatDate(advert.start_date)} - {formatDate(advert.end_date)}
               </Typography>
               
               <Collapse in={expandedAdvert === advert.id}>
                 <Box sx={{ mt: 2 }}>
-                  {advert.images.length > 0 && (
+                  {advert.image && (
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>Images:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                        {advert.images.map((image) => (
-                          <Box key={image.id} sx={{ position: 'relative', width: '100%', maxWidth: '200px' }}>
-                            <img 
-                              src={image.url} 
-                              alt={image.name} 
-                              style={{ 
-                                width: '100%', 
-                                height: 'auto', 
-                                borderRadius: '4px',
-                                border: '1px solid #e0e0e0'
-                              }}
-                            />
-                          </Box>
-                        ))}
+                      <Typography variant="subtitle2" gutterBottom>Image:</Typography>
+                      <Box sx={{ position: 'relative', width: '100%', maxWidth: '200px' }}>
+                        <img 
+                          src={advert.image} 
+                          alt="Advert image" 
+                          style={{ 
+                            width: '100%', 
+                            height: 'auto', 
+                            borderRadius: '4px',
+                            border: '1px solid #e0e0e0'
+                          }}
+                        />
                       </Box>
                     </Box>
                   )}
@@ -441,7 +529,8 @@ const Advertorial = () => {
               </Box>
             </CardActions>
           </Card>
-        ))}
+        ))
+      )}
     </Box>
   );
 
@@ -453,7 +542,7 @@ const Advertorial = () => {
           <TableRow>
             <TableCell>Title</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell>Images</TableCell>
+            <TableCell>Image</TableCell>
             <TableCell>Target</TableCell>
             <TableCell>Date Range</TableCell>
             <TableCell>Priority</TableCell>
@@ -461,9 +550,20 @@ const Advertorial = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredAdverts
-            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-            .map((advert) => (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                <CircularProgress />
+              </TableCell>
+            </TableRow>
+          ) : adverts.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} align="center">
+                <Typography>No adverts found</Typography>
+              </TableCell>
+            </TableRow>
+          ) : (
+            adverts.map((advert) => (
               <TableRow 
                 key={advert.id} 
                 hover 
@@ -485,29 +585,23 @@ const Advertorial = () => {
                   />
                 </TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex' }}>
-                    {advert.images.slice(0, 2).map((image) => (
-                      <Avatar 
-                        key={image.id}
-                        src={image.url}
-                        variant="rounded"
-                        sx={{ width: 40, height: 40, mr: 1 }}
-                      >
-                        <ImageIcon />
-                      </Avatar>
-                    ))}
-                    {advert.images.length > 2 && (
-                      <Avatar variant="rounded" sx={{ width: 40, height: 40, bgcolor: 'grey.300' }}>
-                        +{advert.images.length - 2}
-                      </Avatar>
-                    )}
-                  </Box>
+                  {advert.image ? (
+                    <Avatar 
+                      src={advert.image}
+                      variant="rounded"
+                      sx={{ width: 40, height: 40 }}
+                    >
+                      <ImageIcon />
+                    </Avatar>
+                  ) : (
+                    <Typography variant="body2">No image</Typography>
+                  )}
                 </TableCell>
                 <TableCell>
                   {targetOptions.find(t => t.value === advert.target)?.label || advert.target}
                 </TableCell>
                 <TableCell>
-                  {formatDate(advert.startDate)} - {formatDate(advert.endDate)}
+                  {formatDate(advert.start_date)} - {formatDate(advert.end_date)}
                 </TableCell>
                 <TableCell>
                   {advert.priority}
@@ -552,7 +646,8 @@ const Advertorial = () => {
                   </Stack>
                 </TableCell>
               </TableRow>
-            ))}
+            ))
+          )}
         </TableBody>
       </Table>
     </TableContainer>
@@ -670,9 +765,9 @@ const Advertorial = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredAdverts.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
+          count={pagination.count}
+          rowsPerPage={pagination.rowsPerPage}
+          page={pagination.page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
@@ -688,6 +783,8 @@ const Advertorial = () => {
             {currentAdvert?.id ? 'Edit Advert' : 'Create New Advert'}
           </DialogTitle>
           <DialogContent dividers>
+            {renderErrorMessages()}
+            
             <TextField
               autoFocus
               margin="dense"
@@ -695,6 +792,8 @@ const Advertorial = () => {
               fullWidth
               value={currentAdvert?.title || ''}
               onChange={(e) => setCurrentAdvert({...currentAdvert, title: e.target.value})}
+              error={!!validationErrors.title}
+              helperText={validationErrors.title}
               sx={{ mb: 2 }}
             />
             
@@ -706,6 +805,8 @@ const Advertorial = () => {
               rows={4}
               value={currentAdvert?.content || ''}
               onChange={(e) => setCurrentAdvert({...currentAdvert, content: e.target.value})}
+              error={!!validationErrors.content}
+              helperText={validationErrors.content}
               sx={{ mb: 2 }}
             />
             
@@ -713,13 +814,15 @@ const Advertorial = () => {
               <Grid item xs={12} sm={6}>
                 <DatePicker
                   label="Start Date"
-                  value={currentAdvert?.startDate || new Date()}
-                  onChange={(newValue) => setCurrentAdvert({...currentAdvert, startDate: newValue})}
+                  value={currentAdvert?.start_date || new Date()}
+                  onChange={(newValue) => setCurrentAdvert({...currentAdvert, start_date: newValue})}
                   renderInput={(params) => (
                     <TextField 
                       {...params} 
                       fullWidth 
                       margin="dense"
+                      error={!!validationErrors.start_date || !!validationErrors.dateRange}
+                      helperText={validationErrors.start_date || validationErrors.dateRange}
                     />
                   )}
                 />
@@ -727,13 +830,15 @@ const Advertorial = () => {
               <Grid item xs={12} sm={6}>
                 <DatePicker
                   label="End Date"
-                  value={currentAdvert?.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
-                  onChange={(newValue) => setCurrentAdvert({...currentAdvert, endDate: newValue})}
+                  value={currentAdvert?.end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                  onChange={(newValue) => setCurrentAdvert({...currentAdvert, end_date: newValue})}
                   renderInput={(params) => (
                     <TextField 
                       {...params} 
                       fullWidth 
                       margin="dense"
+                      error={!!validationErrors.end_date || !!validationErrors.dateRange}
+                      helperText={validationErrors.end_date || validationErrors.dateRange}
                     />
                   )}
                 />
@@ -777,99 +882,65 @@ const Advertorial = () => {
             
             {/* Image Upload Section */}
             <Typography variant="subtitle1" gutterBottom>
-              Images
+              Image (Optional)
             </Typography>
             <Divider sx={{ mb: 2 }} />
             
-            {/* Current Images */}
-            {currentAdvert?.images?.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <List dense>
-                  {currentAdvert.images.map((image) => (
-                    <ListItem 
-                      key={image.id}
-                      secondaryAction={
-                        <IconButton 
-                          edge="end" 
-                          aria-label="delete"
-                          onClick={() => handleDeleteImage(image.id)}
-                        >
-                          <CloseIcon />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemAvatar>
-                        <Avatar 
-                          src={image.url} 
-                          variant="rounded"
-                          sx={{ width: 56, height: 56 }}
-                        >
-                          <ImageIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={image.name}
-                        secondary={formatFileSize(image.size)}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+            {selectedImage && (
+              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar
+                  src={selectedImage.url}
+                  variant="rounded"
+                  sx={{ width: 100, height: 100 }}
+                >
+                  <ImageIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="body2">{selectedImage.name}</Typography>
+                  {selectedImage.size && (
+                    <Typography variant="caption" color="text.secondary">
+                      {formatFileSize(selectedImage.size)}
+                    </Typography>
+                  )}
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={handleRemoveImage}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove Image
+                  </Button>
+                </Box>
               </Box>
             )}
             
-            {/* Uploading Files */}
-            {uploadingFiles.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Uploading Files
-                </Typography>
-                <List dense>
-                  {uploadingFiles.map((file) => (
-                    <ListItem key={file.id}>
-                      <ListItemAvatar>
-                        <Avatar>
-                          <ImageIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={file.name}
-                        secondary={
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={uploadProgress[file.id] || 0}
-                            sx={{ mt: 1 }}
-                          />
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-            
-            {/* File Upload Button */}
             <input
               accept="image/*"
               style={{ display: 'none' }}
-              id="upload-images"
+              id="upload-image"
               type="file"
-              multiple
               onChange={handleFileUpload}
             />
-            <label htmlFor="upload-images">
-              <Button
-                variant="outlined"
-                component="span"
-                startIcon={<CloudUploadIcon />}
-                fullWidth
-                sx={{ mb: 2 }}
-              >
-                Upload Images
-              </Button>
-            </label>
+            <Tooltip 
+              title="Upload an image for this advert (JPG, PNG, GIF under 5MB)" 
+              placement="top"
+            >
+              <label htmlFor="upload-image">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<CloudUploadIcon />}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                >
+                  {selectedImage ? 'Replace Image' : 'Upload Image'}
+                </Button>
+              </label>
+            </Tooltip>
             
             <Typography variant="caption" display="block" gutterBottom>
-              Upload one or multiple images (JPG, PNG, GIF)
+              Upload an image (JPG, PNG, GIF under 5MB)
             </Typography>
             
             <TextField
@@ -878,6 +949,8 @@ const Advertorial = () => {
               fullWidth
               value={currentAdvert?.link || ''}
               onChange={(e) => setCurrentAdvert({...currentAdvert, link: e.target.value})}
+              error={!!validationErrors.link}
+              helperText={validationErrors.link}
               InputProps={{
                 startAdornment: <LinkIcon color="action" sx={{ mr: 1 }} />
               }}
@@ -897,28 +970,32 @@ const Advertorial = () => {
               }
               label={currentAdvert?.status === 'active' ? 'Active' : 'Retired'}
             />
+
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button 
               onClick={handleSaveAdvert} 
               variant="contained" 
-              disabled={uploadingFiles.length > 0}
+              disabled={isSaveDisabled()}
             >
               Save Advert
             </Button>
           </DialogActions>
         </Dialog>
-
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          <MuiAlert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }} elevation={6} variant="filled">
+          <Alert 
+            onClose={handleCloseSnackbar} 
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
             {snackbar.message}
-          </MuiAlert>
+          </Alert>
         </Snackbar>
       </Box>
     </LocalizationProvider>

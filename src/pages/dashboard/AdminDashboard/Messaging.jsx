@@ -1,901 +1,4 @@
-// import React, { useState, useEffect } from 'react';
-// import { 
-//   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
-//   TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
-//   DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
-//   Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
-//   FormGroup, Divider, useMediaQuery, IconButton, Stack, 
-//   Collapse, Card, CardContent, CardActions, List, ListItem, 
-//   ListItemText, ListItemAvatar, Avatar, TablePagination, Grid
-// } from '@mui/material';
-// import MuiAlert from '@mui/material/Alert';
-// import {
-//   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
-//   Send as SendIcon, Email as EmailIcon, Person as PersonIcon,
-//   Group as GroupIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
-//   ExpandLess as ExpandLessIcon, MarkEmailRead as ReadIcon,
-//   MarkEmailUnread as UnreadIcon, Reply as ReplyIcon,
-//   Forward as ForwardIcon, Attachment as AttachmentIcon,
-//   Search as SearchIcon, FilterList as FilterIcon, Refresh as RefreshIcon
-// } from '@mui/icons-material';
-// import { DatePicker } from '@mui/x-date-pickers';
-// import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-
-// // Mock data for users and groups
-// const mockUsers = [
-//   { id: 1, name: 'John Doe', email: 'john@example.com', type: 'instructor' },
-//   { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
-//   { id: 3, name: 'Admin User', email: 'admin@example.com', type: 'admin' },
-//   { id: 4, name: 'Mike Johnson', email: 'mike@example.com', type: 'learner' },
-//   { id: 5, name: 'Sarah Williams', email: 'sarah@example.com', type: 'instructor' },
-// ];
-
-// const userGroups = [
-//   { id: 'all_learners', name: 'All Learners', type: 'group' },
-//   { id: 'all_instructors', name: 'All Instructors', type: 'group' },
-//   { id: 'all_admins', name: 'All Admins', type: 'group' },
-// ];
-
-// const messageTypes = [
-//   { value: 'announcement', label: 'Announcement' },
-//   { value: 'notification', label: 'Notification' },
-//   { value: 'reminder', label: 'Reminder' },
-//   { value: 'personal', label: 'Personal Message' },
-// ];
-
-// const Messaging = () => {
-//   const isMobile = useMediaQuery('(max-width:600px)');
-//   const [snackbar, setSnackbar] = useState({
-//     open: false,
-//     message: '',
-//     severity: 'success'
-//   });
-
-//   // Original messages data
-//   const originalMessages = [
-//     { 
-//       id: 1, 
-//       subject: 'System Maintenance Tonight', 
-//       type: 'announcement', 
-//       content: 'We will be performing system maintenance tonight from 10 PM to 2 AM. The platform will be unavailable during this time.',
-//       date: new Date('2023-06-14T09:00:00'),
-//       sender: { id: 3, name: 'Admin User', email: 'admin@example.com' },
-//       recipients: [
-//         { id: 'all_learners', name: 'All Learners', type: 'group' },
-//         { id: 'all_instructors', name: 'All Instructors', type: 'group' }
-//       ],
-//       status: 'sent',
-//       read: true,
-//       attachments: []
-//     },
-//     { 
-//       id: 2, 
-//       subject: 'Your Assignment is Due Soon', 
-//       type: 'reminder', 
-//       content: 'Just a friendly reminder that your math assignment is due in 2 days. Please submit it on time.',
-//       date: new Date('2023-06-15T11:00:00'),
-//       sender: { id: 1, name: 'John Doe', email: 'john@example.com' },
-//       recipients: [
-//         { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
-//         { id: 4, name: 'Mike Johnson', email: 'mike@example.com', type: 'learner' }
-//       ],
-//       status: 'sent',
-//       read: false,
-//       attachments: [
-//         { name: 'Assignment_Details.pdf', url: '/files/assignment123.pdf' }
-//       ]
-//     },
-//     { 
-//       id: 3, 
-//       subject: 'Welcome to the New Semester', 
-//       type: 'notification', 
-//       content: 'Welcome everyone to the new semester! We have exciting courses lined up for you. Check your dashboard for updates.',
-//       date: new Date('2023-06-16T08:30:00'),
-//       sender: { id: 5, name: 'Sarah Williams', email: 'sarah@example.com' },
-//       recipients: [
-//         { id: 'all_learners', name: 'All Learners', type: 'group' }
-//       ],
-//       status: 'sent',
-//       read: true,
-//       attachments: []
-//     },
-//     { 
-//       id: 4, 
-//       subject: 'Personal Feedback', 
-//       type: 'personal', 
-//       content: 'Hi Jane, I wanted to personally commend you on your excellent performance in the last test. Keep up the good work!',
-//       date: new Date('2023-06-17T14:15:00'),
-//       sender: { id: 1, name: 'John Doe', email: 'john@example.com' },
-//       recipients: [
-//         { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' }
-//       ],
-//       status: 'sent',
-//       read: false,
-//       attachments: []
-//     },
-//     { 
-//       id: 5, 
-//       subject: 'Course Materials Updated', 
-//       type: 'notification', 
-//       content: 'The course materials for Advanced Mathematics have been updated. Please download the new version from the course page.',
-//       date: new Date('2023-06-18T10:45:00'),
-//       sender: { id: 3, name: 'Admin User', email: 'admin@example.com' },
-//       recipients: [
-//         { id: 'all_learners', name: 'All Learners', type: 'group' },
-//         { id: 'all_instructors', name: 'All Instructors', type: 'group' }
-//       ],
-//       status: 'sent',
-//       read: true,
-//       attachments: [
-//         { name: 'Updated_Syllabus.docx', url: '/files/syllabus_v2.docx' }
-//       ]
-//     },
-//     { 
-//       id: 6, 
-//       subject: 'Important Security Update', 
-//       type: 'announcement', 
-//       content: 'We have implemented new security measures. Please change your password if you haven\'t done so in the last 90 days.',
-//       date: new Date('2023-06-19T13:20:00'),
-//       sender: { id: 3, name: 'Admin User', email: 'admin@example.com' },
-//       recipients: [
-//         { id: 'all_learners', name: 'All Learners', type: 'group' },
-//         { id: 'all_instructors', name: 'All Instructors', type: 'group' },
-//         { id: 'all_admins', name: 'All Admins', type: 'group' }
-//       ],
-//       status: 'sent',
-//       read: false,
-//       attachments: []
-//     },
-//     { 
-//       id: 7, 
-//       subject: 'Weekly Meeting Reminder', 
-//       type: 'reminder', 
-//       content: 'This is a reminder about our weekly team meeting tomorrow at 10 AM in the main conference room.',
-//       date: new Date('2023-06-20T09:15:00'),
-//       sender: { id: 5, name: 'Sarah Williams', email: 'sarah@example.com' },
-//       recipients: [
-//         { id: 1, name: 'John Doe', email: 'john@example.com', type: 'instructor' },
-//         { id: 3, name: 'Admin User', email: 'admin@example.com', type: 'admin' }
-//       ],
-//       status: 'sent',
-//       read: true,
-//       attachments: [
-//         { name: 'Meeting_Agenda.pdf', url: '/files/agenda_0621.pdf' }
-//       ]
-//     }
-//   ];
-
-//   const [messages, setMessages] = useState(originalMessages);
-//   const [openDialog, setOpenDialog] = useState(false);
-//   const [currentMessage, setCurrentMessage] = useState(null);
-//   const [selectedUsers, setSelectedUsers] = useState([]);
-//   const [selectedGroups, setSelectedGroups] = useState([]);
-//   const [expandedMessage, setExpandedMessage] = useState(null);
-//   const [replyMode, setReplyMode] = useState(false);
-//   const [forwardMode, setForwardMode] = useState(false);
-
-//   // Pagination state
-//   const [page, setPage] = useState(0);
-//   const [rowsPerPage, setRowsPerPage] = useState(5);
-
-//   // Filters state
-//   const [filters, setFilters] = useState({
-//     search: '',
-//     type: 'all',
-//     status: 'all',
-//     dateFrom: null,
-//     dateTo: null,
-//     readStatus: 'all'
-//   });
-
-//   // Handle pagination
-//   const handleChangePage = (event, newPage) => {
-//     setPage(newPage);
-//   };
-
-//   const handleChangeRowsPerPage = (event) => {
-//     setRowsPerPage(parseInt(event.target.value, 10));
-//     setPage(0);
-//   };
-
-//   // Handle filter changes
-//   const handleFilterChange = (name, value) => {
-//     setFilters({
-//       ...filters,
-//       [name]: value
-//     });
-//     setPage(0); // Reset to first page when filters change
-//   };
-
-//   // Filter messages based on current filters
-//   const filteredMessages = messages.filter(message => {
-//     const matchesSearch = filters.search === '' || 
-//       message.subject.toLowerCase().includes(filters.search.toLowerCase()) ||
-//       message.content.toLowerCase().includes(filters.search.toLowerCase()) ||
-//       message.sender.name.toLowerCase().includes(filters.search.toLowerCase());
-    
-//     const matchesType = filters.type === 'all' || message.type === filters.type;
-//     const matchesStatus = filters.status === 'all' || message.status === filters.status;
-//     const matchesReadStatus = filters.readStatus === 'all' || 
-//       (filters.readStatus === 'read' && message.read) || 
-//       (filters.readStatus === 'unread' && !message.read);
-    
-//     const matchesDateFrom = !filters.dateFrom || new Date(message.date) >= new Date(filters.dateFrom);
-//     const matchesDateTo = !filters.dateTo || new Date(message.date) <= new Date(filters.dateTo);
-    
-//     return matchesSearch && matchesType && matchesStatus && matchesReadStatus && matchesDateFrom && matchesDateTo;
-//   });
-
-//   const handleCloseSnackbar = () => {
-//     setSnackbar(prev => ({ ...prev, open: false }));
-//   };
-
-//   const formatDate = (date) => {
-//     return date.toLocaleDateString([], { 
-//       year: 'numeric', 
-//       month: 'short', 
-//       day: 'numeric',
-//       hour: '2-digit',
-//       minute: '2-digit'
-//     });
-//   };
-
-//   const handleOpenDialog = (message = null, reply = false, forward = false) => {
-//     const defaultMessage = { 
-//       subject: '', 
-//       type: 'announcement', 
-//       content: '',
-//       date: new Date(),
-//       sender: { id: 3, name: 'Admin User', email: 'admin@example.com' }, // Default to admin
-//       recipients: [],
-//       status: 'draft',
-//       read: false,
-//       attachments: []
-//     };
-
-//     if (message) {
-//       if (reply) {
-//         setCurrentMessage({
-//           ...defaultMessage,
-//           subject: `Re: ${message.subject}`,
-//           recipients: [message.sender],
-//           content: `\n\n---------- Original Message ----------\nFrom: ${message.sender.name}\nDate: ${formatDate(message.date)}\nSubject: ${message.subject}\n\n${message.content}`
-//         });
-//         setReplyMode(true);
-//       } else if (forward) {
-//         setCurrentMessage({
-//           ...defaultMessage,
-//           subject: `Fwd: ${message.subject}`,
-//           content: `\n\n---------- Forwarded Message ----------\nFrom: ${message.sender.name}\nDate: ${formatDate(message.date)}\nSubject: ${message.subject}\n\n${message.content}`
-//         });
-//         setForwardMode(true);
-//       } else {
-//         setCurrentMessage(message);
-//         setSelectedUsers(message.recipients.filter(r => r.type !== 'group'));
-//         setSelectedGroups(message.recipients.filter(r => r.type === 'group'));
-//       }
-//     } else {
-//       setCurrentMessage(defaultMessage);
-//       setSelectedUsers([]);
-//       setSelectedGroups([]);
-//     }
-    
-//     setOpenDialog(true);
-//   };
-
-//   const handleCloseDialog = () => {
-//     setOpenDialog(false);
-//     setReplyMode(false);
-//     setForwardMode(false);
-//   };
-
-//   const handleSendMessage = () => {
-//     const updatedMessage = {
-//       ...currentMessage,
-//       recipients: [...selectedUsers, ...selectedGroups],
-//       date: new Date(),
-//       status: 'sent'
-//     };
-
-//     if (updatedMessage.id) {
-//       setMessages(messages.map(m => m.id === updatedMessage.id ? updatedMessage : m));
-//     } else {
-//       setMessages([...messages, { ...updatedMessage, id: messages.length + 1 }]);
-//     }
-    
-//     setSnackbar({
-//       open: true,
-//       message: replyMode ? 'Reply sent successfully!' : forwardMode ? 'Message forwarded successfully!' : 'Message sent successfully!',
-//       severity: 'success'
-//     });
-    
-//     handleCloseDialog();
-//   };
-
-//   const handleSaveDraft = () => {
-//     const updatedMessage = {
-//       ...currentMessage,
-//       recipients: [...selectedUsers, ...selectedGroups],
-//       status: 'draft'
-//     };
-
-//     if (updatedMessage.id) {
-//       setMessages(messages.map(m => m.id === updatedMessage.id ? updatedMessage : m));
-//     } else {
-//       setMessages([...messages, { ...updatedMessage, id: messages.length + 1 }]);
-//     }
-    
-//     setSnackbar({
-//       open: true,
-//       message: 'Draft saved successfully!',
-//       severity: 'success'
-//     });
-    
-//     handleCloseDialog();
-//   };
-
-//   const handleDeleteMessage = (id) => {
-//     setMessages(messages.filter(m => m.id !== id));
-//     setSnackbar({
-//       open: true,
-//       message: 'Message deleted successfully!',
-//       severity: 'success'
-//     });
-//   };
-
-//   const handleMarkAsRead = (id) => {
-//     setMessages(messages.map(m => 
-//       m.id === id ? { ...m, read: true } : m
-//     ));
-//   };
-
-//   const handleRemoveRecipient = (recipientToRemove) => {
-//     if (recipientToRemove.type === 'group') {
-//       setSelectedGroups(selectedGroups.filter(group => group.id !== recipientToRemove.id));
-//     } else {
-//       setSelectedUsers(selectedUsers.filter(user => user.id !== recipientToRemove.id));
-//     }
-//   };
-
-//   const toggleExpandMessage = (messageId) => {
-//     setExpandedMessage(expandedMessage === messageId ? null : messageId);
-//     if (expandedMessage !== messageId) {
-//       handleMarkAsRead(messageId);
-//     }
-//   };
-
-//   const resetFilters = () => {
-//     setFilters({
-//       search: '',
-//       type: 'all',
-//       status: 'all',
-//       dateFrom: null,
-//       dateTo: null,
-//       readStatus: 'all'
-//     });
-//   };
-
-//   // Mobile view for messages
-//   const renderMobileMessageCards = () => (
-//     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-//       {filteredMessages
-//         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-//         .map((message) => (
-//           <Card key={message.id} elevation={3}>
-//             <CardContent>
-//               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-//                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-//                   {message.read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-//                   <Typography variant="subtitle1" component="div" sx={{ fontWeight: message.read ? 'normal' : 'bold' }}>
-//                     {message.subject}
-//                   </Typography>
-//                 </Box>
-//                 <IconButton onClick={() => toggleExpandMessage(message.id)}>
-//                   {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-//                 </IconButton>
-//               </Box>
-//               <Typography color="text.secondary" gutterBottom>
-//                 From: {message.sender.name} • {formatDate(message.date)}
-//               </Typography>
-              
-//               <Collapse in={expandedMessage === message.id}>
-//                 <Box sx={{ mt: 2 }}>
-//                   <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
-//                     {message.content}
-//                   </Typography>
-                  
-//                   {message.attachments.length > 0 && (
-//                     <>
-//                       <Typography variant="subtitle2">Attachments:</Typography>
-//                       <List dense>
-//                         {message.attachments.map((attachment, index) => (
-//                           <ListItem key={index}>
-//                             <ListItemAvatar>
-//                               <Avatar>
-//                                 <AttachmentIcon />
-//                               </Avatar>
-//                             </ListItemAvatar>
-//                             <ListItemText 
-//                               primary={attachment.name} 
-//                               secondary={
-//                                 <Link href={attachment.url} target="_blank" rel="noopener noreferrer">
-//                                   Download
-//                                 </Link>
-//                               }
-//                             />
-//                           </ListItem>
-//                         ))}
-//                       </List>
-//                     </>
-//                   )}
-                  
-//                   <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
-//                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-//                     {message.recipients.map((recipient, i) => (
-//                       <Chip 
-//                         key={i} 
-//                         label={recipient.name} 
-//                         size="small" 
-//                         icon={recipient.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-//                       />
-//                     ))}
-//                   </Box>
-//                 </Box>
-//               </Collapse>
-//             </CardContent>
-//             <CardActions sx={{ justifyContent: 'space-between' }}>
-//               <Box>
-//                 <Button 
-//                   size="small" 
-//                   startIcon={<ReplyIcon />}
-//                   onClick={() => handleOpenDialog(message, true)}
-//                   color="secondary"
-//                 >
-//                   Reply
-//                 </Button>
-//                 <Button 
-//                   size="small" 
-//                   startIcon={<ForwardIcon />}
-//                   onClick={() => handleOpenDialog(message, false, true)}
-//                   sx={{ ml: 1 }}
-//                   color="secondary"
-//                 >
-//                   Forward
-//                 </Button>
-//               </Box>
-//               <Box>
-//                 <Button 
-//                   size="small" 
-//                   startIcon={<EditIcon />}
-//                   onClick={() => handleOpenDialog(message)}
-//                   sx={{ mr: 1 }}
-//                 >
-//                   Edit
-//                 </Button>
-//                 <Button 
-//                   size="small" 
-//                   startIcon={<DeleteIcon />}
-//                   onClick={() => handleDeleteMessage(message.id)}
-//                   color="error"
-//                 >
-//                   Delete
-//                 </Button>
-//               </Box>
-//             </CardActions>
-//           </Card>
-//         ))}
-//     </Box>
-//   );
-
-//   // Desktop view for messages
-//   const renderDesktopMessageTable = () => (
-//     <TableContainer component={Paper}>
-//       <Table>
-//         <TableHead>
-//           <TableRow>
-//             <TableCell width="40px"></TableCell>
-//             <TableCell>Subject</TableCell>
-//             <TableCell>Type</TableCell>
-//             <TableCell>From</TableCell>
-//             <TableCell>Date</TableCell>
-//             <TableCell>Recipients</TableCell>
-//             <TableCell>Actions</TableCell>
-//           </TableRow>
-//         </TableHead>
-//         <TableBody>
-//           {filteredMessages
-//             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-//             .map((message) => (
-//               <TableRow 
-//                 key={message.id} 
-//                 hover 
-//                 sx={{ 
-//                   '&:hover': { cursor: 'pointer' },
-//                   backgroundColor: expandedMessage === message.id ? 'action.hover' : 'inherit'
-//                 }}
-//                 onClick={() => toggleExpandMessage(message.id)}
-//               >
-//                 <TableCell>
-//                   {message.read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-//                 </TableCell>
-//                 <TableCell>
-//                   <Typography sx={{ fontWeight: message.read ? 'normal' : 'bold' }}>
-//                     {message.subject}
-//                   </Typography>
-//                 </TableCell>
-//                 <TableCell>
-//                   <Chip 
-//                     label={messageTypes.find(t => t.value === message.type)?.label || message.type}
-//                     size="small"
-//                     color={
-//                       message.type === 'announcement' ? 'primary' : 
-//                       message.type === 'reminder' ? 'secondary' : 
-//                       message.type === 'personal' ? 'success' : 'default'
-//                     }
-//                   />
-//                 </TableCell>
-//                 <TableCell>{message.sender.name}</TableCell>
-//                 <TableCell>{formatDate(message.date)}</TableCell>
-//                 <TableCell>
-//                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-//                     {message.recipients.slice(0, 2).map((recipient, i) => (
-//                       <Chip 
-//                         key={i} 
-//                         label={recipient.name} 
-//                         size="small" 
-//                         icon={recipient.type === 'group' ? <GroupIcon /> : <PersonIcon />}
-//                       />
-//                     ))}
-//                     {message.recipients.length > 2 && (
-//                       <Chip label={`+${message.recipients.length - 2}`} size="small" />
-//                     )}
-//                   </Box>
-//                 </TableCell>
-//                 <TableCell>
-//                   <Stack direction="row" spacing={1}>
-//                     <Tooltip title="Reply">
-//                       <IconButton 
-//                         size="small" 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           handleOpenDialog(message, true);
-//                         }}
-//                         color="secondary"
-//                       >
-//                         <ReplyIcon />
-//                       </IconButton>
-//                     </Tooltip>
-//                     <Tooltip title="Forward">
-//                       <IconButton 
-//                         size="small" 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           handleOpenDialog(message, false, true);
-//                         }}
-//                         color="secondary"
-//                       >
-//                         <ForwardIcon />
-//                       </IconButton>
-//                     </Tooltip>
-//                     <Tooltip title="Edit">
-//                       <IconButton 
-//                         size="small" 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           handleOpenDialog(message);
-//                         }}
-//                       >
-//                         <EditIcon />
-//                       </IconButton>
-//                     </Tooltip>
-//                     <Tooltip title="Delete">
-//                       <IconButton 
-//                         size="small" 
-//                         onClick={(e) => {
-//                           e.stopPropagation();
-//                           handleDeleteMessage(message.id);
-//                         }}
-//                         color="error"
-//                       >
-//                         <DeleteIcon />
-//                       </IconButton>
-//                     </Tooltip>
-//                   </Stack>
-//                 </TableCell>
-//               </TableRow>
-//             ))}
-//         </TableBody>
-//       </Table>
-//     </TableContainer>
-//   );
-
-//   return (
-//     <LocalizationProvider dateAdapter={AdapterDateFns}>
-//       <Box>
-//         <Typography variant="h4" gutterBottom>
-//           Messaging Center
-//         </Typography>
-        
-//         <Button 
-//           variant="contained" 
-//           startIcon={<SendIcon />}
-//           onClick={() => handleOpenDialog()}
-//           sx={{ mb: 3 }}
-//           fullWidth={isMobile}
-//         >
-//           New Message
-//         </Button>
-        
-//         {/* Filters Section */}
-//         <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-//           <Grid container spacing={2} alignItems="center">
-//             <Grid item xs={12} sm={6} md={4}>
-//               <TextField
-//                 fullWidth
-//                 variant="outlined"
-//                 size="small"
-//                 placeholder="Search messages..."
-//                 value={filters.search}
-//                 onChange={(e) => handleFilterChange('search', e.target.value)}
-//                 InputProps={{
-//                   startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-//                 }}
-//               />
-//             </Grid>
-//             <Grid item xs={6} sm={3} md={2}>
-//               <TextField
-//                 select
-//                 fullWidth
-//                 size="small"
-//                 label="Message Type"
-//                 value={filters.type}
-//                 onChange={(e) => handleFilterChange('type', e.target.value)}
-//               >
-//                 <MenuItem value="all">All Types</MenuItem>
-//                 {messageTypes.map((type) => (
-//                   <MenuItem key={type.value} value={type.value}>
-//                     {type.label}
-//                   </MenuItem>
-//                 ))}
-//               </TextField>
-//             </Grid>
-//             <Grid item xs={6} sm={3} md={2}>
-//               <TextField
-//                 select
-//                 fullWidth
-//                 size="small"
-//                 label="Status"
-//                 value={filters.status}
-//                 onChange={(e) => handleFilterChange('status', e.target.value)}
-//               >
-//                 <MenuItem value="all">All Statuses</MenuItem>
-//                 <MenuItem value="sent">Sent</MenuItem>
-//                 <MenuItem value="draft">Draft</MenuItem>
-//               </TextField>
-//             </Grid>
-//             <Grid item xs={6} sm={3} md={2}>
-//               <TextField
-//                 select
-//                 fullWidth
-//                 size="small"
-//                 label="Read Status"
-//                 value={filters.readStatus}
-//                 onChange={(e) => handleFilterChange('readStatus', e.target.value)}
-//               >
-//                 <MenuItem value="all">All</MenuItem>
-//                 <MenuItem value="read">Read</MenuItem>
-//                 <MenuItem value="unread">Unread</MenuItem>
-//               </TextField>
-//             </Grid>
-//             <Grid item xs={6} sm={3} md={1}>
-//               <DatePicker
-//                 label="From"
-//                 value={filters.dateFrom}
-//                 onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
-//                 renderInput={(params) => (
-//                   <TextField 
-//                     {...params} 
-//                     fullWidth 
-//                     size="small"
-//                   />
-//                 )}
-//               />
-//             </Grid>
-//             <Grid item xs={6} sm={3} md={1}>
-//               <DatePicker
-//                 label="To"
-//                 value={filters.dateTo}
-//                 onChange={(newValue) => handleFilterChange('dateTo', newValue)}
-//                 renderInput={(params) => (
-//                   <TextField 
-//                     {...params} 
-//                     fullWidth 
-//                     size="small"
-//                   />
-//                 )}
-//               />
-//             </Grid>
-//             <Grid item xs={12} sm={6} md={1} sx={{ textAlign: 'right' }}>
-//               <IconButton onClick={resetFilters}>
-//                 <RefreshIcon />
-//               </IconButton>
-//               <IconButton>
-//                 <FilterIcon />
-//               </IconButton>
-//             </Grid>
-//           </Grid>
-//         </Paper>
-
-//         {isMobile ? renderMobileMessageCards() : renderDesktopMessageTable()}
-
-//         <TablePagination
-//           rowsPerPageOptions={[5, 10, 25]}
-//           component="div"
-//           count={filteredMessages.length}
-//           rowsPerPage={rowsPerPage}
-//           page={page}
-//           onPageChange={handleChangePage}
-//           onRowsPerPageChange={handleChangeRowsPerPage}
-//         />
-
-//         <Dialog 
-//           open={openDialog} 
-//           onClose={handleCloseDialog} 
-//           maxWidth="md" 
-//           fullWidth
-//           fullScreen={isMobile}
-//         >
-//           <DialogTitle>
-//             {replyMode ? 'Reply to Message' : forwardMode ? 'Forward Message' : currentMessage?.id ? 'Edit Message' : 'Compose New Message'}
-//           </DialogTitle>
-//           <DialogContent dividers>
-//             <TextField
-//               autoFocus
-//               margin="dense"
-//               label="Subject"
-//               fullWidth
-//               value={currentMessage?.subject || ''}
-//               onChange={(e) => setCurrentMessage({...currentMessage, subject: e.target.value})}
-//               sx={{ mb: 2 }}
-//             />
-//             <TextField
-//               select
-//               margin="dense"
-//               label="Message Type"
-//               fullWidth
-//               value={currentMessage?.type || 'announcement'}
-//               onChange={(e) => setCurrentMessage({...currentMessage, type: e.target.value})}
-//               sx={{ mb: 2 }}
-//             >
-//               {messageTypes.map((type) => (
-//                 <MenuItem key={type.value} value={type.value}>
-//                   {type.label}
-//                 </MenuItem>
-//               ))}
-//             </TextField>
-            
-//             <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-//               Recipients
-//             </Typography>
-//             <Divider sx={{ mb: 2 }} />
-
-//             <Box sx={{ mb: 3 }}>
-//               <Typography variant="subtitle2" gutterBottom>Select Users</Typography>
-//               <Autocomplete
-//                 multiple
-//                 options={mockUsers}
-//                 getOptionLabel={(option) => option.name}
-//                 value={selectedUsers}
-//                 onChange={(event, newValue) => setSelectedUsers(newValue)}
-//                 renderInput={(params) => (
-//                   <TextField
-//                     {...params}
-//                     label="Search users"
-//                     placeholder="Select individual users"
-//                   />
-//                 )}
-//                 renderTags={(value, getTagProps) =>
-//                   value.map((option, index) => (
-//                     <Chip
-//                       {...getTagProps({ index })}
-//                       key={option.id}
-//                       label={option.name}
-//                       icon={<PersonIcon />}
-//                       onDelete={() => handleRemoveRecipient(option)}
-//                     />
-//                   ))
-//                 }
-//               />
-//             </Box>
-
-//             <Box sx={{ mb: 3 }}>
-//               <Typography variant="subtitle2" gutterBottom>Select Groups</Typography>
-//               <FormGroup>
-//                 {userGroups.map((group) => (
-//                   <FormControlLabel
-//                     key={group.id}
-//                     control={
-//                       <Checkbox
-//                         checked={selectedGroups.some(g => g.id === group.id)}
-//                         onChange={(e) => {
-//                           if (e.target.checked) {
-//                             setSelectedGroups([...selectedGroups, group]);
-//                           } else {
-//                             setSelectedGroups(selectedGroups.filter(g => g.id !== group.id));
-//                           }
-//                         }}
-//                       />
-//                     }
-//                     label={
-//                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                         <GroupIcon sx={{ mr: 1 }} />
-//                         {group.name}
-//                       </Box>
-//                     }
-//                   />
-//                 ))}
-//               </FormGroup>
-//             </Box>
-
-//             <TextField
-//               margin="dense"
-//               label="Message Content"
-//               fullWidth
-//               multiline
-//               rows={8}
-//               value={currentMessage?.content || ''}
-//               onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
-//               sx={{ mb: 2 }}
-//             />
-
-//             <Box sx={{ mb: 2 }}>
-//               <Button 
-//                 variant="outlined" 
-//                 startIcon={<AttachmentIcon />}
-//               >
-//                 Add Attachment
-//               </Button>
-//             </Box>
-//           </DialogContent>
-//           <DialogActions>
-//             {!replyMode && !forwardMode && (
-//               <Button 
-//                 onClick={handleSaveDraft} 
-//                 color="inherit"
-//               >
-//                 Save Draft
-//               </Button>
-//             )}
-//             <Button onClick={handleCloseDialog}>Cancel</Button>
-//             <Button 
-//               onClick={handleSendMessage} 
-//               variant="contained" 
-//               startIcon={<SendIcon />}
-//             >
-//               {replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message'}
-//             </Button>
-//           </DialogActions>
-//         </Dialog>
-
-//         <Snackbar
-//           open={snackbar.open}
-//           autoHideDuration={6000}
-//           onClose={handleCloseSnackbar}
-//           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-//         >
-//           <MuiAlert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }} elevation={6} variant="filled">
-//             {snackbar.message}
-//           </MuiAlert>
-//         </Snackbar>
-//       </Box>
-//     </LocalizationProvider>
-//   );
-// };
-
-// export default Messaging;
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
@@ -904,7 +7,7 @@ import {
   FormGroup, Divider, useMediaQuery, IconButton, Stack, 
   Collapse, Card, CardContent, CardActions, List, ListItem, 
   ListItemText, ListItemAvatar, Avatar, TablePagination, Grid,
-  LinearProgress
+  LinearProgress, CircularProgress, Badge
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import {
@@ -921,30 +24,30 @@ import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format, parseISO } from 'date-fns';
-import { messagingAPI, userAPI, groupAPI } from '../../../services/messagingAPI';
+import { useSnackbar } from 'notistack';
+import { useWebSocket } from '../../../hooks/useWebSocket';
+import { messagingAPI, groupsAPI, userAPI } from '../../../config';
+import MessageTypeManager from './MessageTypeManager';
+import { debounce } from 'lodash';
 
 const Alert = React.forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
 });
 
-const messageTypes = [
-  { value: 'announcement', label: 'Announcement' },
-  { value: 'notification', label: 'Notification' },
-  { value: 'reminder', label: 'Reminder' },
-  { value: 'personal', label: 'Personal Message' },
+const statusOptions = [
+  { value: 'sent', label: 'Sent' },
+  { value: 'draft', label: 'Draft' },
 ];
 
 const Messaging = () => {
+  const { enqueueSnackbar } = useSnackbar();
   const isMobile = useMediaQuery('(max-width:600px)');
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const [messageTypeDialogOpen, setMessageTypeDialogOpen] = useState(false);
+  // State management
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
-  const [userGroups, setUserGroups] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [messageTypes, setMessageTypes] = useState([]); // New state for message types
   const [isUploading, setIsUploading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(null);
@@ -954,13 +57,22 @@ const Messaging = () => {
   const [replyMode, setReplyMode] = useState(false);
   const [forwardMode, setForwardMode] = useState(false);
   const [attachments, setAttachments] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
   const fileInputRef = useRef(null);
 
-  // Pagination state
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  // Pagination state for messages
+  const [pagination, setPagination] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+    page: 1
+  });
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filters state
+  // Filters state for messages
   const [filters, setFilters] = useState({
     search: '',
     type: 'all',
@@ -970,77 +82,168 @@ const Messaging = () => {
     readStatus: 'all'
   });
 
-  // Fetch initial data
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [messagesRes, usersRes, groupsRes] = await Promise.all([
-          messagingAPI.getMessages(),
-          userAPI.getUsers(),
-          groupAPI.getGroups()
-        ]);
-        
-        setMessages(messagesRes.data);
-        setUsers(usersRes.data);
-        setUserGroups(groupsRes.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setSnackbar({
-          open: true,
-          message: 'Failed to load messages',
-          severity: 'error'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
+  // WebSocket integration
+  const { lastMessage, sendMessage } = useWebSocket(
+    `ws://${window.location.host}/ws/messages/`
+  );
 
-    // Set up WebSocket connection for real-time updates
-    const socket = new WebSocket(`ws://${window.location.host}/ws/messages/`);
-    
-    socket.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      if (data.type === 'new_message') {
-        setMessages(prev => [data.message, ...prev]);
-      } else if (data.type === 'message_read') {
-        setMessages(prev => prev.map(m => 
-          m.id === data.message_id ? { ...m, read: true } : m
-        ));
-      }
-    };
-    
-    return () => {
-      socket.close();
-    };
-  }, []);
+  // Fetch users with search query
+  const fetchUsers = useCallback(async (searchQuery = '') => {
+    try {
+      const params = {
+        search: searchQuery,
+        page_size: 50,
+      };
+      const usersRes = await userAPI.getUsers(params);
+      setUsers(usersRes.data.results || []);
+    } catch (error) {
+      enqueueSnackbar('Failed to load users', { variant: 'error' });
+      console.error('Error fetching users:', error);
+    }
+  }, [enqueueSnackbar]);
 
-  // Apply filters to messages
-  const filteredMessages = messages.filter(message => {
-    const matchesSearch = filters.search === '' || 
-      message.subject.toLowerCase().includes(filters.search.toLowerCase()) ||
-      message.content.toLowerCase().includes(filters.search.toLowerCase()) ||
-      message.sender.email.toLowerCase().includes(filters.search.toLowerCase()) ||
-      `${message.sender.first_name} ${message.sender.last_name}`.toLowerCase().includes(filters.search.toLowerCase());
-    
-    const matchesType = filters.type === 'all' || message.message_type === filters.type;
-    const matchesStatus = filters.status === 'all' || message.status === filters.status;
-    const matchesReadStatus = filters.readStatus === 'all' || 
-      (filters.readStatus === 'read' && message.read) || 
-      (filters.readStatus === 'unread' && !message.read);
-    
-    const matchesDateFrom = !filters.dateFrom || new Date(message.sent_at) >= new Date(filters.dateFrom);
-    const matchesDateTo = !filters.dateTo || new Date(message.sent_at) <= new Date(filters.dateTo);
-    
-    return matchesSearch && matchesType && matchesStatus && matchesReadStatus && matchesDateFrom && matchesDateTo;
-  });
+  // Debounced user search
+  const debouncedFetchUsers = useCallback(
+    debounce((query) => {
+      fetchUsers(query);
+    }, 300),
+    [fetchUsers]
+  );
 
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
+  // Handle user search input
+  const handleUserSearch = (event, value) => {
+    setUserSearchQuery(value);
+    debouncedFetchUsers(value);
   };
 
+  // Fetch message types
+  const fetchMessageTypes = async () => {
+    try {
+      const response = await messagingAPI.getMessageTypes();
+      // Ensure response.data is an array; fallback to empty array if not
+      setMessageTypes(Array.isArray(response.data.results) ? response.data.results : []);
+    } catch (error) {
+      enqueueSnackbar('Failed to load message types', { variant: 'error' });
+      console.error('Error fetching message types:', error);
+      setMessageTypes([]); // Fallback to empty array on error
+    }
+  };
+
+  // Fetch initial data
+  // const fetchData = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const params = {
+  //       page: pagination.page,
+  //       page_size: rowsPerPage,
+  //       ...(filters.search && { search: filters.search }),
+  //       ...(filters.type !== 'all' && { type: filters.type }),
+  //       ...(filters.status !== 'all' && { status: filters.status }),
+  //       ...(filters.readStatus !== 'all' && { read_status: filters.readStatus }),
+  //       ...(filters.dateFrom && { date_from: format(filters.dateFrom, 'yyyy-MM-dd') }),
+  //       ...(filters.dateTo && { date_to: format(filters.dateTo, 'yyyy-MM-dd') })
+  //     };
+
+  //     const [messagesRes, groupsRes, unreadRes, messageTypesRes] = await Promise.all([
+  //       messagingAPI.getMessages(params),
+  //       groupsAPI.getGroups(),
+  //       messagingAPI.getUnreadCount(),
+  //       messagingAPI.getMessageTypes()
+  //     ]);
+
+  //     setMessages(messagesRes.data.results || []);
+  //     setGroups(groupsRes.data.results || []);
+  //     setUnreadCount(unreadRes.data.count || 0);
+  //     setMessageTypes(messageTypesRes.data || []);
+  //     setPagination({
+  //       count: messagesRes.data.count || 0,
+  //       next: messagesRes.data.next,
+  //       previous: messagesRes.data.previous,
+  //       page: pagination.page
+  //     });
+
+  //     await fetchUsers();
+  //   } catch (error) {
+  //     setError(error.message);
+  //     enqueueSnackbar('Failed to load data', { variant: 'error' });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page: pagination.page,
+        page_size: rowsPerPage,
+        ...(filters.search && { search: filters.search }),
+        ...(filters.type !== 'all' && { type: filters.type }),
+        ...(filters.status !== 'all' && { status: filters.status }),
+        ...(filters.readStatus !== 'all' && { read_status: filters.readStatus }),
+        ...(filters.dateFrom && { date_from: format(filters.dateFrom, 'yyyy-MM-dd') }),
+        ...(filters.dateTo && { date_to: format(filters.dateTo, 'yyyy-MM-dd') })
+      };
+  
+      const [messagesRes, groupsRes, unreadRes, messageTypesRes] = await Promise.all([
+        messagingAPI.getMessages(params),
+        groupsAPI.getGroups(),
+        messagingAPI.getUnreadCount(),
+        messagingAPI.getMessageTypes()
+      ]);
+      setMessages(messagesRes.data.results || []);
+      setGroups(groupsRes.data.results || []);
+      setUnreadCount(unreadRes.data.count || 0);
+      setMessageTypes(messageTypesRes.data.results || []);
+      setPagination({
+        count: messagesRes.data.count || 0,
+        next: messagesRes.data.next,
+        previous: messagesRes.data.previous,
+        page: pagination.page
+      });
+  
+      await fetchUsers();
+    } catch (error) {
+      setError(error.message);
+      enqueueSnackbar('Failed to load data', { variant: 'error' });
+      setMessageTypes([]); // Fallback to empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [pagination.page, rowsPerPage, filters]);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (lastMessage) {
+      const data = JSON.parse(lastMessage.data);
+      if (data.type === 'new_message') {
+        if (pagination.page === 1) {
+          setMessages(prev => [data.message, ...prev.slice(0, -1)]);
+          setPagination(prev => ({
+            ...prev,
+            count: prev.count + 1
+          }));
+        } else {
+          setPagination(prev => ({
+            ...prev,
+            count: prev.count + 1
+          }));
+        }
+        if (!data.message.is_read) {
+          setUnreadCount(prev => prev + 1);
+        }
+      } else if (data.type === 'message_read') {
+        setMessages(prev => prev.map(m => 
+          m.id === data.message_id ? { ...m, is_read: true } : m
+        ));
+      }
+    }
+  }, [lastMessage, pagination.page]);
+
+  // Helper functions
   const formatDate = (dateString) => {
     return format(parseISO(dateString), 'MMM d, yyyy - h:mm a');
   };
@@ -1048,7 +251,7 @@ const Messaging = () => {
   const handleOpenDialog = (message = null, reply = false, forward = false) => {
     const defaultMessage = { 
       subject: '', 
-      message_type: 'announcement', 
+      message_type: messageTypes.length > 0 ? messageTypes[0] : { id: null, value: 'personal', label: 'Personal Message' }, 
       content: '',
       status: 'draft',
       attachments: []
@@ -1062,7 +265,12 @@ const Messaging = () => {
           content: `\n\n---------- Original Message ----------\nFrom: ${message.sender.first_name} ${message.sender.last_name}\nDate: ${formatDate(message.sent_at)}\nSubject: ${message.subject}\n\n${message.content}`,
           parent_message: message.id
         });
-        setSelectedUsers([{ id: message.sender.id, email: message.sender.email }]);
+        setSelectedUsers([{ 
+          id: message.sender.id, 
+          email: message.sender.email,
+          first_name: message.sender.first_name,
+          last_name: message.sender.last_name
+        }]);
         setReplyMode(true);
       } else if (forward) {
         setCurrentMessage({
@@ -1077,7 +285,9 @@ const Messaging = () => {
         setCurrentMessage(message);
         setSelectedUsers(message.recipients.filter(r => r.recipient).map(r => ({
           id: r.recipient.id,
-          email: r.recipient.email
+          email: r.recipient.email,
+          first_name: r.recipient.first_name,
+          last_name: r.recipient.last_name
         })));
         setSelectedGroups(message.recipients.filter(r => r.recipient_group).map(r => ({
           id: r.recipient_group.id,
@@ -1107,129 +317,106 @@ const Messaging = () => {
 
   const handleSendMessage = async () => {
     try {
-      const messageData = {
-        subject: currentMessage.subject,
-        content: currentMessage.content,
-        message_type: currentMessage.message_type,
-        status: 'sent',
-        recipient_users: selectedUsers.map(u => u.id),
-        recipient_groups: selectedGroups.map(g => g.id),
-        parent_message: currentMessage.parent_message,
-        is_forward: currentMessage.is_forward || false
-      };
-      
-      const response = currentMessage.id 
-        ? await messagingAPI.updateMessage(currentMessage.id, messageData)
-        : await messagingAPI.createMessage(messageData);
-      
-      // Handle attachments if any
-      if (attachments.length > 0 && !currentMessage.id) {
-        for (const attachment of attachments) {
-          if (attachment.file) {
-            await messagingAPI.uploadAttachment(attachment.file);
-          }
+        const formData = new FormData();
+        formData.append('subject', currentMessage.subject);
+        formData.append('content', currentMessage.content);
+        
+        // Ensure message_type is the ID
+        formData.append('message_type', currentMessage.message_type.id || currentMessage.message_type);
+        
+        formData.append('status', 'sent');
+        
+        if (currentMessage.parent_message) {
+            formData.append('parent_message', currentMessage.parent_message);
         }
-      }
-      
-      setSnackbar({
-        open: true,
-        message: replyMode ? 'Reply sent successfully!' : 
-                forwardMode ? 'Message forwarded successfully!' : 
-                'Message sent successfully!',
-        severity: 'success'
-      });
-      
-      // Refresh messages
-      const messagesRes = await messagingAPI.getMessages();
-      setMessages(messagesRes.data);
-      
-      handleCloseDialog();
+        
+        if (currentMessage.is_forward) {
+            formData.append('is_forward', 'true');
+        }
+        
+        selectedUsers.forEach(user => 
+            formData.append('recipient_users', user.id)
+        );
+        
+        selectedGroups.forEach(group => 
+            formData.append('recipient_groups', group.id)
+        );
+        
+        attachments.forEach(attachment => {
+            if (attachment.file) {
+                formData.append('attachments', attachment.file);
+            }
+        });
+        
+        const response = currentMessage.id 
+            ? await messagingAPI.updateMessage(currentMessage.id, formData)
+            : await messagingAPI.createMessage(formData);
+        
+        enqueueSnackbar(
+            replyMode ? 'Reply sent successfully!' : 
+            forwardMode ? 'Message forwarded successfully!' : 
+            'Message sent successfully!',
+            { variant: 'success' }
+        );
+        
+        fetchData();
+        handleCloseDialog();
     } catch (error) {
-      console.error('Error sending message:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error sending message',
-        severity: 'error'
-      });
+        enqueueSnackbar('Error sending message', { variant: 'error' });
+        console.error('Error sending message:', error);
     }
-  };
-
+};
   const handleSaveDraft = async () => {
     try {
-      const messageData = {
-        subject: currentMessage.subject,
-        content: currentMessage.content,
-        message_type: currentMessage.message_type,
-        status: 'draft',
-        recipient_users: selectedUsers.map(u => u.id),
-        recipient_groups: selectedGroups.map(g => g.id),
-        parent_message: currentMessage.parent_message,
-        is_forward: currentMessage.is_forward || false
-      };
+      const formData = new FormData();
+      formData.append('subject', currentMessage.subject);
+      formData.append('content', currentMessage.content);
+      formData.append('message_type', currentMessage.message_type);
+      formData.append('status', 'draft');
+      
+      selectedUsers.forEach(user => 
+        formData.append('recipient_users', user.id)
+      );
+      
+      selectedGroups.forEach(group => 
+        formData.append('recipient_groups', group.id)
+      );
       
       const response = currentMessage.id 
-        ? await messagingAPI.updateMessage(currentMessage.id, messageData)
-        : await messagingAPI.createMessage(messageData);
+        ? await messagingAPI.updateMessage(currentMessage.id, formData)
+        : await messagingAPI.createMessage(formData);
       
-      // Handle attachments if any
-      if (attachments.length > 0 && !currentMessage.id) {
-        for (const attachment of attachments) {
-          if (attachment.file) {
-            await messagingAPI.uploadAttachment(attachment.file);
-          }
-        }
-      }
-      
-      setSnackbar({
-        open: true,
-        message: 'Draft saved successfully!',
-        severity: 'success'
-      });
-      
-      // Refresh messages
-      const messagesRes = await messagingAPI.getMessages();
-      setMessages(messagesRes.data);
-      
+      enqueueSnackbar('Draft saved successfully!', { variant: 'success' });
+      fetchData();
       handleCloseDialog();
     } catch (error) {
+      enqueueSnackbar('Error saving draft', { variant: 'error' });
       console.error('Error saving draft:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error saving draft',
-        severity: 'error'
-      });
     }
   };
 
   const handleDeleteMessage = async (id) => {
     try {
       await messagingAPI.deleteMessage(id);
-      setSnackbar({
-        open: true,
-        message: 'Message deleted successfully!',
-        severity: 'success'
-      });
-      
-      // Refresh messages
-      const messagesRes = await messagingAPI.getMessages();
-      setMessages(messagesRes.data);
+      enqueueSnackbar('Message deleted successfully!', { variant: 'success' });
+      fetchData();
     } catch (error) {
+      enqueueSnackbar('Error deleting message', { variant: 'error' });
       console.error('Error deleting message:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error deleting message',
-        severity: 'error'
-      });
     }
   };
 
   const handleMarkAsRead = async (id) => {
     try {
       await messagingAPI.markAsRead(id);
-      // Update local state
       setMessages(prev => prev.map(m => 
-        m.id === id ? { ...m, read: true } : m
+        m.id === id ? { ...m, is_read: true } : m
       ));
+      setUnreadCount(prev => prev - 1);
+      sendMessage(JSON.stringify({
+        type: 'mark_as_read',
+        message_id: id
+      }));
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -1246,8 +433,19 @@ const Messaging = () => {
   const toggleExpandMessage = (messageId) => {
     setExpandedMessage(expandedMessage === messageId ? null : messageId);
     if (expandedMessage !== messageId) {
-      handleMarkAsRead(messageId);
+      const message = messages.find(m => m.id === messageId);
+      if (message && !message.is_read) {
+        handleMarkAsRead(messageId);
+      }
     }
+  };
+
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const resetFilters = () => {
@@ -1259,6 +457,7 @@ const Messaging = () => {
       dateTo: null,
       readStatus: 'all'
     });
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const handleAddAttachment = async (e) => {
@@ -1282,15 +481,11 @@ const Messaging = () => {
       
       setAttachments(prev => [...prev, ...newAttachments]);
     } catch (error) {
+      enqueueSnackbar('Error adding attachments', { variant: 'error' });
       console.error('Error adding attachments:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error adding attachments',
-        severity: 'error'
-      });
     } finally {
       setIsUploading(false);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
     }
   };
 
@@ -1308,108 +503,110 @@ const Messaging = () => {
         return 'default';
     }
   };
-  // Handle pagination
-const handleChangePage = (event, newPage) => {
-  setPage(newPage);
-};
 
-const handleChangeRowsPerPage = (event) => {
-  setRowsPerPage(parseInt(event.target.value, 10));
-  setPage(0);
-};
+  const handleChangePage = (event, newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage + 1 }));
+  };
 
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // console.log("messages")
+  // console.log(messages)
+  // console.log("messages")
 
   // Mobile view for messages
   const renderMobileMessageCards = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {filteredMessages
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        .map((message) => (
-          <Card key={message.id} elevation={3}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {message.read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-                  <Typography variant="subtitle1" component="div" sx={{ fontWeight: message.read ? 'normal' : 'bold' }}>
-                    {message.subject}
-                  </Typography>
-                </Box>
-                <IconButton onClick={() => toggleExpandMessage(message.id)}>
-                  {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
+      {messages.map((message) => (
+        <Card key={message.id} elevation={3}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
+                <Typography variant="subtitle1" component="div" sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
+                  {message.subject}
+                </Typography>
               </Box>
-              <Typography color="text.secondary" gutterBottom>
-                From: {message.sender.first_name} {message.sender.last_name} • {formatDate(message.sent_at)}
-              </Typography>
-              
-              <Collapse in={expandedMessage === message.id}>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
-                    {message.content}
-                  </Typography>
-                  
-                  {message.attachments.length > 0 && (
-                    <>
-                      <Typography variant="subtitle2">Attachments:</Typography>
-                      <List dense>
-                        {message.attachments.map((attachment, index) => (
-                          <ListItem key={index}>
-                            <ListItemAvatar>
-                              <Avatar>
-                                <AttachmentIcon />
-                              </Avatar>
-                            </ListItemAvatar>
-                            <ListItemText 
-                              primary={attachment.original_filename} 
-                              secondary={
-                                <Link href={attachment.file} target="_blank" rel="noopener noreferrer">
-                                  Download
-                                </Link>
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </>
-                  )}
-                  
-                  <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                    {message.recipients.map((recipient, i) => (
-                      <Chip 
-                        key={i} 
-                        label={recipient.recipient ? 
-                          `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                          recipient.recipient_group.name}
-                        size="small" 
-                        icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-                      />
-                    ))}
-                  </Box>
+              <IconButton onClick={() => toggleExpandMessage(message.id)}>
+                {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+            <Typography color="text.secondary" gutterBottom>
+              From: {message.sender.email}  • {formatDate(message.sent_at)}
+            </Typography>
+            
+            <Collapse in={expandedMessage === message.id}>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                  {message.content}
+                </Typography>
+                
+                {message.attachments.length > 0 && (
+                  <>
+                    <Typography variant="subtitle2">Attachments:</Typography>
+                    <List dense>
+                      {message.attachments.map((attachment, index) => (
+                        <ListItem key={index}>
+                          <ListItemAvatar>
+                            <Avatar>
+                              <AttachmentIcon />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText 
+                            primary={attachment.original_filename} 
+                            secondary={
+                              <Link href={attachment.file} target="_blank" rel="noopener noreferrer">
+                                Download
+                              </Link>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                )}
+                
+                <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                  {message.recipients.map((recipient, i) => (
+                    <Chip 
+                      key={i} 
+                      label={recipient.recipient ? 
+                        `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
+                        recipient.recipient_group.name}
+                      size="small" 
+                      icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                    />
+                  ))}
                 </Box>
-              </Collapse>
-            </CardContent>
-            <CardActions sx={{ justifyContent: 'space-between' }}>
-              <Box>
-                <Button 
-                  size="small" 
-                  startIcon={<ReplyIcon />}
-                  onClick={() => handleOpenDialog(message, true)}
-                  color="secondary"
-                >
-                  Reply
-                </Button>
-                <Button 
-                  size="small" 
-                  startIcon={<ForwardIcon />}
-                  onClick={() => handleOpenDialog(message, false, true)}
-                  sx={{ ml: 1 }}
-                  color="secondary"
-                >
-                  Forward
-                </Button>
               </Box>
-              <Box>
+            </Collapse>
+          </CardContent>
+          <CardActions sx={{ justifyContent: 'space-between' }}>
+            <Box>
+              <Button 
+                size="small" 
+                startIcon={<ReplyIcon />}
+                onClick={() => handleOpenDialog(message, true)}
+                color="secondary"
+              >
+                Reply
+              </Button>
+              <Button 
+                size="small" 
+                startIcon={<ForwardIcon />}
+                onClick={() => handleOpenDialog(message, false, true)}
+                sx={{ ml: 1 }}
+                color="secondary"
+              >
+                Forward
+              </Button>
+            </Box>
+            <Box>
+              {message.status === 'draft' && (
                 <Button 
                   size="small" 
                   startIcon={<EditIcon />}
@@ -1418,22 +615,143 @@ const handleChangeRowsPerPage = (event) => {
                 >
                   Edit
                 </Button>
-                <Button 
-                  size="small" 
-                  startIcon={<DeleteIcon />}
-                  onClick={() => handleDeleteMessage(message.id)}
-                  color="error"
-                >
-                  Delete
-                </Button>
-              </Box>
-            </CardActions>
-          </Card>
-        ))}
+              )}
+              <Button 
+                size="small" 
+                startIcon={<DeleteIcon />}
+                onClick={() => handleDeleteMessage(message.id)}
+                color="error"
+              >
+                Delete
+              </Button>
+            </Box>
+          </CardActions>
+        </Card>
+      ))}
     </Box>
   );
 
   // Desktop view for messages
+  // const renderDesktopMessageTable = () => (
+  //   <TableContainer component={Paper}>
+  //     <Table>
+  //       <TableHead>
+  //         <TableRow>
+  //           <TableCell width="40px"></TableCell>
+  //           <TableCell>Subject</TableCell>
+  //           <TableCell>Type</TableCell>
+  //           <TableCell>From</TableCell>
+  //           <TableCell>Date</TableCell>
+  //           <TableCell>Recipients</TableCell>
+  //           <TableCell>Actions</TableCell>
+  //         </TableRow>
+  //       </TableHead>
+  //       <TableBody>
+  //         {messages.map((message) => (
+  //           <TableRow 
+  //             key={message.id} 
+  //             hover 
+  //             sx={{ 
+  //               '&:hover': { cursor: 'pointer' },
+  //               backgroundColor: expandedMessage === message.id ? 'action.hover' : 'inherit'
+  //             }}
+  //             onClick={() => toggleExpandMessage(message.id)}
+  //           >
+  //             <TableCell>
+  //               {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
+  //             </TableCell>
+  //             <TableCell>
+  //               <Typography sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
+  //                 {message.subject}
+  //               </Typography>
+  //             </TableCell>
+  //             <TableCell>
+  //               <Chip 
+  //                 label={messageTypes.find(t => t.value === message.message_type)?.label || message.message_type_display}
+  //                 size="small"
+  //                 color={getStatusColor(message.status)}
+  //               />
+  //             </TableCell>
+  //             <TableCell>
+  //               {message.sender.email}
+  //             </TableCell>
+  //             <TableCell>{formatDate(message.sent_at)}</TableCell>
+  //             <TableCell>
+  //               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+  //                 {message.recipients.slice(0, 2).map((recipient, i) => (
+  //                   <Chip 
+  //                     key={i} 
+  //                     label={recipient.recipient ? 
+  //                       `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
+  //                       recipient.recipient_group.name}
+  //                     size="small" 
+  //                     icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+  //                   />
+  //                 ))}
+  //                 {message.recipients.length > 2 && (
+  //                   <Chip label={`+${message.recipients.length - 2}`} size="small" />
+  //                 )}
+  //               </Box>
+  //             </TableCell>
+  //             <TableCell>
+  //               <Stack direction="row" spacing={1}>
+  //                 <Tooltip title="Reply">
+  //                   <IconButton 
+  //                     size="small" 
+  //                     onClick={(e) => {
+  //                       e.stopPropagation();
+  //                       handleOpenDialog(message, true);
+  //                     }}
+  //                     color="secondary"
+  //                   >
+  //                     <ReplyIcon />
+  //                   </IconButton>
+  //                 </Tooltip>
+  //                 <Tooltip title="Forward">
+  //                   <IconButton 
+  //                     size="small" 
+  //                     onClick={(e) => {
+  //                       e.stopPropagation();
+  //                       handleOpenDialog(message, false, true);
+  //                     }}
+  //                     color="secondary"
+  //                   >
+  //                     <ForwardIcon />
+  //                   </IconButton>
+  //                 </Tooltip>
+  //                 {message.status === 'draft' && (
+  //                   <Tooltip title="Edit">
+  //                     <IconButton 
+  //                       size="small" 
+  //                       onClick={(e) => {
+  //                         e.stopPropagation();
+  //                         handleOpenDialog(message);
+  //                       }}
+  //                     >
+  //                       <EditIcon />
+  //                     </IconButton>
+  //                   </Tooltip>
+  //                 )}
+  //                 <Tooltip title="Delete">
+  //                   <IconButton 
+  //                     size="small" 
+  //                     onClick={(e) => {
+  //                       e.stopPropagation();
+  //                       handleDeleteMessage(message.id);
+  //                     }}
+  //                     color="error"
+  //                   >
+  //                     <DeleteIcon />
+  //                   </IconButton>
+  //                 </Tooltip>
+  //               </Stack>
+  //             </TableCell>
+  //           </TableRow>
+  //         ))}
+  //       </TableBody>
+  //     </Table>
+  //   </TableContainer>
+  // );
   const renderDesktopMessageTable = () => (
     <TableContainer component={Paper}>
       <Table>
@@ -1449,11 +767,9 @@ const handleChangeRowsPerPage = (event) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredMessages
-            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-            .map((message) => (
+          {messages.map((message) => (
+            <React.Fragment key={message.id}>
               <TableRow 
-                key={message.id} 
                 hover 
                 sx={{ 
                   '&:hover': { cursor: 'pointer' },
@@ -1462,22 +778,22 @@ const handleChangeRowsPerPage = (event) => {
                 onClick={() => toggleExpandMessage(message.id)}
               >
                 <TableCell>
-                  {message.read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
+                  {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
                 </TableCell>
                 <TableCell>
-                  <Typography sx={{ fontWeight: message.read ? 'normal' : 'bold' }}>
+                  <Typography sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
                     {message.subject}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Chip 
-                    label={messageTypes.find(t => t.value === message.message_type)?.label || message.message_type}
+                    label={messageTypes.find(t => t.value === message.message_type)?.label || message.message_type_display}
                     size="small"
                     color={getStatusColor(message.status)}
                   />
                 </TableCell>
                 <TableCell>
-                  {message.sender.first_name} {message.sender.last_name}
+                  {message.sender.email}
                 </TableCell>
                 <TableCell>{formatDate(message.sent_at)}</TableCell>
                 <TableCell>
@@ -1523,17 +839,19 @@ const handleChangeRowsPerPage = (event) => {
                         <ForwardIcon />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDialog(message);
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
+                    {message.status === 'draft' && (
+                      <Tooltip title="Edit">
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDialog(message);
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Tooltip title="Delete">
                       <IconButton 
                         size="small" 
@@ -1549,10 +867,97 @@ const handleChangeRowsPerPage = (event) => {
                   </Stack>
                 </TableCell>
               </TableRow>
-            ))}
+              <TableRow>
+                <TableCell style={{ padding: 0 }} colSpan={7}>
+                  <Collapse in={expandedMessage === message.id} timeout="auto" unmountOnExit>
+                    <Box sx={{ p: 3, backgroundColor: 'background.paper' }}>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                        {message.content}
+                      </Typography>
+                      
+                      {message.attachments.length > 0 && (
+                        <>
+                          <Typography variant="subtitle2" sx={{ mt: 2 }}>Attachments:</Typography>
+                          <List dense>
+                            {message.attachments.map((attachment, index) => (
+                              <ListItem key={index}>
+                                <ListItemAvatar>
+                                  <Avatar>
+                                    <AttachmentIcon />
+                                  </Avatar>
+                                </ListItemAvatar>
+                                <ListItemText 
+                                  primary={attachment.original_filename} 
+                                  secondary={
+                                    <Link href={attachment.file} target="_blank" rel="noopener noreferrer">
+                                      Download
+                                    </Link>
+                                  }
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </>
+                      )}
+                      
+                      <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                        {message.recipients.map((recipient, i) => (
+                          <Chip 
+                            key={i} 
+                            label={recipient.recipient ? 
+                              `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
+                              recipient.recipient_group.name}
+                            size="small" 
+                            icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+            </React.Fragment>
+          ))}
         </TableBody>
       </Table>
     </TableContainer>
+  );
+  // User Autocomplete rendering
+  const renderUserAutocomplete = () => (
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Select Users
+      </Typography>
+      <Autocomplete
+        multiple
+        options={users}
+        getOptionLabel={(option) =>
+          `${option.first_name} ${option.last_name} (${option.email})`
+        }
+        value={selectedUsers}
+        onChange={(event, newValue) => setSelectedUsers(newValue)}
+        onInputChange={handleUserSearch}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Search users"
+            placeholder="Select individual users"
+          />
+        )}
+        renderTags={(value, getTagProps) =>
+          value.map((option, index) => (
+            <Chip
+              {...getTagProps({ index })}
+              key={option.id}
+              label={`${option.first_name} ${option.last_name}`}
+              icon={<PersonIcon />}
+              onDelete={() => handleRemoveRecipient(option)}
+            />
+          ))
+        }
+      />
+    </Box>
   );
 
   return (
@@ -1560,6 +965,9 @@ const handleChangeRowsPerPage = (event) => {
       <Box>
         <Typography variant="h4" gutterBottom>
           Messaging Center
+          <Badge badgeContent={unreadCount} color="error" sx={{ ml: 2 }}>
+            <EmailIcon />
+          </Badge>
         </Typography>
         
         <Button 
@@ -1571,7 +979,16 @@ const handleChangeRowsPerPage = (event) => {
         >
           New Message
         </Button>
-        
+
+        <Button 
+          variant="outlined" 
+          startIcon={<EditIcon />}
+          onClick={() => setMessageTypeDialogOpen(true)}
+          sx={{ mb: 3, ml: 2 }}
+        >
+          Manage Message Types
+        </Button>
+      
         {/* Filters Section */}
         <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
           <Grid container spacing={2} alignItems="center">
@@ -1589,21 +1006,25 @@ const handleChangeRowsPerPage = (event) => {
               />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Message Type"
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-              >
-                <MenuItem value="all">All Types</MenuItem>
-                {messageTypes.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+            <TextField
+              select
+              margin="dense"
+              label="Message Type"
+              fullWidth
+              value={currentMessage?.message_type?.id || ''}
+              onChange={(e) => {
+                const selectedType = messageTypes.find(type => type.id === e.target.value);
+                setCurrentMessage({...currentMessage, message_type: selectedType});
+              }}
+              sx={{ mb: 2 }}
+              disabled={messageTypes.length === 0}
+            >
+              {messageTypes.map((type) => (
+                <MenuItem key={type.id} value={type.id}>
+                  {type.label}
+                </MenuItem>
+              ))}
+            </TextField>
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
               <TextField
@@ -1662,26 +1083,38 @@ const handleChangeRowsPerPage = (event) => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={1} sx={{ textAlign: 'right' }}>
-              <IconButton onClick={resetFilters}>
-                <RefreshIcon />
-              </IconButton>
-              <IconButton>
-                <FilterIcon />
-              </IconButton>
+              <Tooltip title="Reset Filters">
+                <IconButton onClick={resetFilters}>
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Filter Options">
+                <IconButton>
+                  <FilterIcon />
+                </IconButton>
+              </Tooltip>
             </Grid>
           </Grid>
         </Paper>
 
-        {isLoading ? (
+        {loading ? (
           <LinearProgress />
+        ) : error ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography color="error">{error}</Typography>
+          </Box>
+        ) : messages.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography>No messages found</Typography>
+          </Box>
         ) : isMobile ? renderMobileMessageCards() : renderDesktopMessageTable()}
 
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredMessages.length}
+          count={pagination.count}
           rowsPerPage={rowsPerPage}
-          page={page}
+          page={pagination.page - 1}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
@@ -1724,12 +1157,13 @@ const handleChangeRowsPerPage = (event) => {
               margin="dense"
               label="Message Type"
               fullWidth
-              value={currentMessage?.message_type || 'announcement'}
+              value={currentMessage?.message_type || (messageTypes.length > 0 ? messageTypes[0].value : '')}
               onChange={(e) => setCurrentMessage({...currentMessage, message_type: e.target.value})}
               sx={{ mb: 2 }}
+              disabled={messageTypes.length === 0}
             >
               {messageTypes.map((type) => (
-                <MenuItem key={type.value} value={type.value}>
+                <MenuItem key={type.value} value={type.id}>
                   {type.label}
                 </MenuItem>
               ))}
@@ -1740,19 +1174,21 @@ const handleChangeRowsPerPage = (event) => {
             </Typography>
             <Divider sx={{ mb: 2 }} />
 
+            {renderUserAutocomplete()}
+
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>Select Users</Typography>
+              <Typography variant="subtitle2" gutterBottom>Select Groups</Typography>
               <Autocomplete
                 multiple
-                options={users}
-                getOptionLabel={(option) => `${option.first_name} ${option.last_name} (${option.email})`}
-                value={selectedUsers}
-                onChange={(event, newValue) => setSelectedUsers(newValue)}
+                options={groups}
+                getOptionLabel={(option) => option.name}
+                value={selectedGroups}
+                onChange={(event, newValue) => setSelectedGroups(newValue)}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Search users"
-                    placeholder="Select individual users"
+                    label="Search groups"
+                    placeholder="Select groups"
                   />
                 )}
                 renderTags={(value, getTagProps) =>
@@ -1760,42 +1196,13 @@ const handleChangeRowsPerPage = (event) => {
                     <Chip
                       {...getTagProps({ index })}
                       key={option.id}
-                      label={`${option.first_name} ${option.last_name}`}
-                      icon={<PersonIcon />}
+                      label={option.name}
+                      icon={<GroupIcon />}
                       onDelete={() => handleRemoveRecipient(option)}
                     />
                   ))
                 }
               />
-            </Box>
-
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>Select Groups</Typography>
-              <FormGroup>
-                {userGroups.map((group) => (
-                  <FormControlLabel
-                    key={group.id}
-                    control={
-                      <Checkbox
-                        checked={selectedGroups.some(g => g.id === group.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedGroups([...selectedGroups, group]);
-                          } else {
-                            setSelectedGroups(selectedGroups.filter(g => g.id !== group.id));
-                          }
-                        }}
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <GroupIcon sx={{ mr: 1 }} />
-                        {group.name}
-                      </Box>
-                    }
-                  />
-                ))}
-              </FormGroup>
             </Box>
 
             <TextField
@@ -1853,6 +1260,11 @@ const handleChangeRowsPerPage = (event) => {
                       </ListItemAvatar>
                       <ListItemText 
                         primary={attachment.original_filename}
+                        secondary={attachment.file_url ? (
+                          <Link href={attachment.file_url} target="_blank" rel="noopener noreferrer">
+                            Download
+                          </Link>
+                        ) : null}
                       />
                     </ListItem>
                   ))}
@@ -1861,7 +1273,7 @@ const handleChangeRowsPerPage = (event) => {
             )}
           </DialogContent>
           <DialogActions>
-            {!replyMode && !forwardMode && (
+            {!replyMode && !forwardMode && currentMessage?.status === 'draft' && (
               <Button 
                 onClick={handleSaveDraft} 
                 color="inherit"
@@ -1883,6 +1295,7 @@ const handleChangeRowsPerPage = (event) => {
               disabled={
                 !currentMessage?.subject || 
                 !currentMessage?.content || 
+                !currentMessage?.message_type ||
                 (selectedUsers.length === 0 && selectedGroups.length === 0) ||
                 isUploading
               }
@@ -1892,16 +1305,11 @@ const handleChangeRowsPerPage = (event) => {
           </DialogActions>
         </Dialog>
 
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+        <MessageTypeManager
+          open={messageTypeDialogOpen}
+          onClose={() => setMessageTypeDialogOpen(false)}
+          onUpdate={fetchMessageTypes}
+        />
       </Box>
     </LocalizationProvider>
   );

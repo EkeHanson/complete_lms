@@ -1,538 +1,768 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, List, ListItem, ListItemText,
-  Checkbox, FormControlLabel, Divider, Chip, Box,
-  useMediaQuery, useTheme, TextField, InputAdornment, Avatar, Badge
+import { 
+  Box, Typography, Button, Paper, Table, TableBody, TableCell, 
+  TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
+  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
+  Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
+  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
+  Collapse, Card, CardContent, CardActions, TablePagination,
+  Grid, Avatar
 } from '@mui/material';
-import { People, School, Search, Check, Group } from '@mui/icons-material';
+import MuiAlert from '@mui/material/Alert';
+import {
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
+  CalendarToday as CalendarIcon, Person as PersonIcon,
+  Group as GroupIcon, Email as EmailIcon, Videocam as VideocamIcon, 
+  Groups as TeamsIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon, Search as SearchIcon,
+  FilterList as FilterIcon, Refresh as RefreshIcon
+} from '@mui/icons-material';
+import { initGoogleAPI, createCalendarEvent } from '../../../components/common/googleCalendar';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
-const InstructorAssignmentDialog = ({
-  open,
-  onClose,
-  instructors,
-  modules,
-  currentAssignments = [],
-  onAssign
-}) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
-  const [selectedInstructors, setSelectedInstructors] = useState([]);
-  const [assignmentType, setAssignmentType] = useState('specific');
-  const [moduleAssignments, setModuleAssignments] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredInstructors, setFilteredInstructors] = useState(instructors);
-  const [activeStep, setActiveStep] = useState('select'); // 'select' or 'assign'
+// Mock data for users and groups
+const mockUsers = [
+  { id: 1, name: 'John Doe', email: 'john@example.com', type: 'instructor' },
+  { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
+  { id: 3, name: 'Admin User', email: 'admin@example.com', type: 'admin' },
+  { id: 4, name: 'Mike Johnson', email: 'mike@example.com', type: 'learner' },
+  { id: 5, name: 'Sarah Williams', email: 'sarah@example.com', type: 'instructor' },
+];
 
-  // Initialize state from currentAssignments
-  useEffect(() => {
-    const initialModuleAssignments = {};
-    const initialSelectedInstructors = new Set();
-    
-    currentAssignments.forEach(assignment => {
-      if (assignment.assignedModules === 'all') {
-        modules.forEach(module => {
-          initialModuleAssignments[module.id] = [
-            ...(initialModuleAssignments[module.id] || []),
-            assignment.instructorId
-          ];
-        });
-        initialSelectedInstructors.add(assignment.instructorId);
-      } else {
-        assignment.assignedModules.forEach(moduleId => {
-          initialModuleAssignments[moduleId] = [
-            ...(initialModuleAssignments[moduleId] || []),
-            assignment.instructorId
-          ];
-          initialSelectedInstructors.add(assignment.instructorId);
-        });
-      }
-    });
-    
-    setModuleAssignments(initialModuleAssignments);
-    setSelectedInstructors(Array.from(initialSelectedInstructors));
-  }, [currentAssignments, modules]);
+const userGroups = [
+  { id: 'all_learners', name: 'All Learners', type: 'group' },
+  { id: 'all_instructors', name: 'All Instructors', type: 'group' },
+  { id: 'all_admins', name: 'All Admins', type: 'group' },
+];
 
-  // Filter instructors based on search term
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredInstructors(instructors);
-    } else {
-      const filtered = instructors.filter(instructor => 
-        instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        instructor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        instructor.expertise.some(skill => 
-          skill.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-      setFilteredInstructors(filtered);
+const ScheduleManagement = () => {
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  const [events, setEvents] = useState([
+    { 
+      id: 1, 
+      title: 'Math Class', 
+      type: 'class', 
+      date: new Date('2023-06-15T09:00:00'), 
+      endDate: new Date('2023-06-15T10:30:00'), 
+      location: 'https://meet.google.com/abc-defg-hij',
+      invitees: [
+        { id: 2, name: 'Jane Smith', email: 'jane@example.com', type: 'learner' },
+        { id: 'all_instructors', name: 'All Instructors', type: 'group' }
+      ],
+      additionalEmails: ['parent1@example.com']
+    },
+    { 
+      id: 2, 
+      title: 'Science Revision', 
+      type: 'class', 
+      date: new Date('2023-06-16T11:00:00'), 
+      endDate: new Date('2023-06-16T12:30:00'), 
+      location: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y2RmNz%40thread.v2/0?context=%7b%7d',
+      invitees: [
+        { id: 3, name: 'Tom Johnson', email: 'tom@example.com', type: 'learner' },
+        { id: 4, name: 'Alice Green', email: 'alice@example.com', type: 'learner' }
+      ],
+      additionalEmails: ['parent2@example.com']
+    },
+    { 
+      id: 3, 
+      title: 'English Literature', 
+      type: 'class', 
+      date: new Date('2023-06-17T13:00:00'), 
+      endDate: new Date('2023-06-17T14:30:00'), 
+      location: 'https://meet.google.com/xyz-uvwq-lmn',
+      invitees: [
+        { id: 5, name: 'Emma Brown', email: 'emma@example.com', type: 'learner' },
+        { id: 'all_learners', name: 'All Learners', type: 'group' }
+      ],
+      additionalEmails: []
+    },
+    { 
+      id: 4, 
+      title: 'History Group Discussion', 
+      type: 'class', 
+      date: new Date('2023-06-18T15:00:00'), 
+      endDate: new Date('2023-06-18T16:00:00'), 
+      location: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZXNkNz%40thread.v2/0?context=%7b%7d',
+      invitees: [
+        { id: 6, name: 'David Lee', email: 'david@example.com', type: 'learner' },
+        { id: 7, name: 'Sarah White', email: 'sarah@example.com', type: 'learner' }
+      ],
+      additionalEmails: ['parent3@example.com', 'parent4@example.com']
+    },
+    { 
+      id: 5, 
+      title: 'Chemistry Practical Prep', 
+      type: 'class', 
+      date: new Date('2023-06-19T08:30:00'), 
+      endDate: new Date('2023-06-19T10:00:00'), 
+      location: 'https://meet.google.com/pqr-stuv-wxy',
+      invitees: [
+        { id: 8, name: 'Olivia King', email: 'olivia@example.com', type: 'learner' },
+        { id: 9, name: 'Liam Scott', email: 'liam@example.com', type: 'learner' }
+      ],
+      additionalEmails: []
     }
-  }, [searchTerm, instructors]);
+  ]);
 
-  const toggleInstructorSelection = (instructorId) => {
-    setSelectedInstructors(prev =>
-      prev.includes(instructorId)
-        ? prev.filter(id => id !== instructorId)
-        : [...prev, instructorId]
+  // Filters state
+  const [filters, setFilters] = useState({
+    type: 'all',
+    search: '',
+    dateFrom: null,
+    dateTo: null
+  });
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [additionalEmails, setAdditionalEmails] = useState([]);
+  const [emailInput, setEmailInput] = useState('');
+  const [expandedEvent, setExpandedEvent] = useState(null);
+
+  useEffect(() => {
+    initGoogleAPI();
+  }, []);
+
+  // Handle filter changes
+  const handleFilterChange = (name, value) => {
+    setFilters({
+      ...filters,
+      [name]: value
+    });
+    setPage(0); // Reset to first page when filters change
+  };
+
+  // Filter events based on current filters
+  const filteredEvents = events.filter(event => {
+    return (
+      (filters.type === 'all' || event.type === filters.type) &&
+      (filters.search === '' || 
+        event.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+        event.invitees.some(invitee => 
+          invitee.name.toLowerCase().includes(filters.search.toLowerCase())
+        )) &&
+      (!filters.dateFrom || new Date(event.date) >= new Date(filters.dateFrom)) &&
+      (!filters.dateTo || new Date(event.date) <= new Date(filters.dateTo))
     );
+  });
+
+  // Handle pagination
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
   };
 
-  const toggleModuleAssignment = (moduleId, instructorId) => {
-    setModuleAssignments(prev => {
-      const current = prev[moduleId] || [];
-      return {
-        ...prev,
-        [moduleId]: current.includes(instructorId)
-          ? current.filter(id => id !== instructorId)
-          : [...current, instructorId]
-      };
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Helper function to truncate URLs
+  const truncateUrl = (url, maxLength = 10) => {
+    if (!url) return '';
+    if (url.length <= maxLength) return url;
+    
+    const protocolEnd = url.indexOf('//') + 2;
+    const domainStart = url.indexOf('/', protocolEnd);
+    const domain = url.substring(0, domainStart);
+    const path = url.substring(domainStart);
+    
+    if (domain.length + 5 >= maxLength) {
+      return `${domain.substring(0, maxLength - 3)}...`;
+    }
+    
+    const remainingLength = maxLength - domain.length - 3;
+    const pathParts = path.split('/');
+    let truncatedPath = '';
+    
+    for (let part of pathParts) {
+      if (truncatedPath.length + part.length > remainingLength) {
+        break;
+      }
+      truncatedPath += `/${part}`;
+    }
+    
+    return `${domain}${truncatedPath}${truncatedPath.length < path.length ? '...' : ''}`;
+  };
+  
+  // Function to get platform icon
+  const getPlatformIcon = (url) => {
+    if (!url) return <VideocamIcon fontSize="small" />;
+    if (url.includes('google.com')) return <VideocamIcon fontSize="small" color="primary" />;
+    if (url.includes('teams.microsoft.com')) return <TeamsIcon fontSize="small" color="primary" />;
+    return <VideocamIcon fontSize="small" />;
+  };
+
+  const handleAddToCalendar = (event) => {
+    const calendarEvent = {
+      ...event,
+      attendees: [
+        ...event.invitees.map(invitee => ({ email: invitee.email })),
+        ...event.additionalEmails.map(email => ({ email }))
+      ]
+    };
+    createCalendarEvent(calendarEvent);
+    setSnackbar({
+      open: true,
+      message: 'Event added to calendar with invitations!',
+      severity: 'success'
     });
   };
 
-  const handleAssignmentTypeChange = (e) => {
-    setAssignmentType(e.target.checked ? 'specific' : 'all');
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  const handleOpenDialog = (event = null) => {
+    const defaultEvent = { 
+      title: '', 
+      type: 'class', 
+      date: new Date(),
+      endDate: new Date(new Date().getTime() + 60 * 60 * 1000),
+      location: '',
+      invitees: [],
+      additionalEmails: []
+    };
 
-  const handleSubmit = () => {
-    // Group assignments by instructor
-    const assignmentsByInstructor = {};
-    
-    if (assignmentType === 'all') {
-      // Assign all selected instructors to all modules
-      selectedInstructors.forEach(instructorId => {
-        assignmentsByInstructor[instructorId] = {
-          instructor: instructors.find(i => i.id === instructorId),
-          assignedModules: 'all'
-        };
-      });
+    if (event) {
+      setCurrentEvent(event);
+      setSelectedUsers(event.invitees.filter(i => i.type !== 'group'));
+      setSelectedGroups(event.invitees.filter(i => i.type === 'group'));
+      setAdditionalEmails(event.additionalEmails || []);
     } else {
-      // Process specific module assignments
-      Object.entries(moduleAssignments).forEach(([moduleId, instructorIds]) => {
-        instructorIds.forEach(instructorId => {
-          if (!assignmentsByInstructor[instructorId]) {
-            assignmentsByInstructor[instructorId] = {
-              instructor: instructors.find(i => i.id === instructorId),
-              assignedModules: []
-            };
-          }
-          assignmentsByInstructor[instructorId].assignedModules.push(moduleId);
-        });
-      });
+      setCurrentEvent(defaultEvent);
+      setSelectedUsers([]);
+      setSelectedGroups([]);
+      setAdditionalEmails([]);
     }
-    
-    // Convert to array and call onAssign
-    onAssign(Object.values(assignmentsByInstructor));
-    onClose();
+    setOpenDialog(true);
   };
 
-  const getInstructorInitials = (name) => {
-    return name.split(' ').map(part => part[0]).join('').toUpperCase();
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
   };
+
+  const handleSaveEvent = () => {
+    const updatedEvent = {
+      ...currentEvent,
+      invitees: [...selectedUsers, ...selectedGroups],
+      additionalEmails: additionalEmails
+    };
+
+    if (updatedEvent.id) {
+      setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    } else {
+      setEvents([...events, { ...updatedEvent, id: events.length + 1 }]);
+    }
+    handleCloseDialog();
+  };
+
+  const handleDeleteEvent = (id) => {
+    setEvents(events.filter(e => e.id !== id));
+  };
+
+  const handleAddEmail = () => {
+    if (emailInput && !additionalEmails.includes(emailInput)) {
+      setAdditionalEmails([...additionalEmails, emailInput]);
+      setEmailInput('');
+    }
+  };
+
+  const handleRemoveEmail = (emailToRemove) => {
+    setAdditionalEmails(additionalEmails.filter(email => email !== emailToRemove));
+  };
+
+  const handleRemoveInvitee = (inviteeToRemove) => {
+    if (inviteeToRemove.type === 'group') {
+      setSelectedGroups(selectedGroups.filter(group => group.id !== inviteeToRemove.id));
+    } else {
+      setSelectedUsers(selectedUsers.filter(user => user.id !== inviteeToRemove.id));
+    }
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString();
+  };
+
+  const toggleExpandEvent = (eventId) => {
+    setExpandedEvent(expandedEvent === eventId ? null : eventId);
+  };
+
+  // Mobile view for events
+  const renderMobileEventCards = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {filteredEvents
+        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+        .map((event) => (
+          <Card key={event.id} elevation={3}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" component="div">
+                  {event.title}
+                </Typography>
+                <IconButton onClick={() => toggleExpandEvent(event.id)}>
+                  {expandedEvent === event.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </IconButton>
+              </Box>
+              <Typography color="text.secondary" gutterBottom>
+                {event.type} • {formatDate(event.date)}
+              </Typography>
+              <Typography variant="body2">
+                {formatTime(event.date)} - {formatTime(event.endDate)}
+              </Typography>
+              
+              <Collapse in={expandedEvent === event.id}>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2">Location:</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    {getPlatformIcon(event.location)}
+                    <Link 
+                      href={event.location} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        '&:hover': { textDecoration: 'underline' }
+                      }}
+                    >
+                      {truncateUrl(event.location, 30)}
+                    </Link>
+                  </Box>
+                  
+                  <Typography variant="subtitle2">Invitees:</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                    {event.invitees.map((invitee, i) => (
+                      <Chip 
+                        key={i} 
+                        label={invitee.name} 
+                        size="small" 
+                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                      />
+                    ))}
+                    {event.additionalEmails.length > 0 && (
+                      <Chip 
+                        label={`${event.additionalEmails.length} email(s)`} 
+                        size="small" 
+                        icon={<EmailIcon />}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              </Collapse>
+            </CardContent>
+            <CardActions sx={{ justifyContent: 'space-between' }}>
+              <Button 
+                size="small" 
+                startIcon={<CalendarIcon />}
+                onClick={() => handleAddToCalendar(event)}
+                color="secondary"
+              >
+                Add to Calendar
+              </Button>
+              <Box>
+                <Button 
+                  size="small" 
+                  startIcon={<EditIcon />}
+                  onClick={() => handleOpenDialog(event)}
+                  sx={{ mr: 1 }}
+                >
+                  Edit
+                </Button>
+                <Button 
+                  size="small" 
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleDeleteEvent(event.id)}
+                  color="error"
+                >
+                  Delete
+                </Button>
+              </Box>
+            </CardActions>
+          </Card>
+        ))}
+    </Box>
+  );
+
+  // Desktop view for events
+  const renderDesktopEventTable = () => (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Title</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell>Time</TableCell>
+            <TableCell>Location</TableCell>
+            <TableCell>Invitees</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filteredEvents
+            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+            .map((event) => (
+              <TableRow key={event.id}>
+                <TableCell>{event.title}</TableCell>
+                <TableCell>{event.type}</TableCell>
+                <TableCell>{formatDate(event.date)}</TableCell>
+                <TableCell>
+                  {formatTime(event.date)} - {formatTime(event.endDate)}
+                </TableCell>
+                <TableCell>
+                  <Tooltip title={event.location} placement="top">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getPlatformIcon(event.location)}
+                      <Link 
+                        href={event.location} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        sx={{
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          '&:hover': { textDecoration: 'underline' },
+                          maxWidth: '200px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'inline-block'
+                        }}
+                      >
+                        {truncateUrl(event.location)}
+                      </Link>
+                    </Box>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {event.invitees.slice(0, 3).map((invitee, i) => (
+                      <Chip 
+                        key={i} 
+                        label={invitee.name} 
+                        size="small" 
+                        icon={invitee.type === 'group' ? <GroupIcon /> : <PersonIcon />}
+                      />
+                    ))}
+                    {event.invitees.length > 3 && (
+                      <Chip label={`+${event.invitees.length - 3}`} size="small" />
+                    )}
+                    {event.additionalEmails.length > 0 && (
+                      <Chip 
+                        label={`${event.additionalEmails.length} email(s)`} 
+                        size="small" 
+                        icon={<EmailIcon />}
+                      />
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Edit">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpenDialog(event)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Add to Calendar">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleAddToCalendar(event)}
+                        color="secondary"
+                      >
+                        <CalendarIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={filteredEvents.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+    </TableContainer>
+  );
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      fullWidth 
-      maxWidth="md"
-      fullScreen={isMobile}
-    >
-      <DialogTitle sx={{ 
-        fontSize: isMobile ? '1.25rem' : '1.5rem',
-        padding: isMobile ? 2 : 3,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2
-      }}>
-        <Group fontSize="large" />
-        {currentAssignments.length > 0 ? 'Edit Module Assignments' : 'Assign Instructors to Modules'}
-      </DialogTitle>
-      
-      <DialogContent dividers sx={{ 
-        padding: isMobile ? 2 : 3,
-        '& .MuiListItem-root': {
-          paddingLeft: isMobile ? 1 : 2,
-          paddingRight: isMobile ? 1 : 2
-        }
-      }}>
-        {activeStep === 'select' ? (
-          <>
-            <Typography variant="subtitle1" sx={{ 
-              mb: 2, 
-              fontWeight: 600,
-              fontSize: isMobile ? '1rem' : 'inherit'
-            }}>
-              Select Instructors ({selectedInstructors.length} selected)
-            </Typography>
-            
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search instructors by name, email or expertise..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              sx={{ mb: 2 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            
-            <List sx={{ 
-              maxHeight: isMobile ? '40vh' : 300, 
-              overflow: 'auto', 
-              mb: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1
-            }}>
-              {filteredInstructors.length === 0 ? (
-                <ListItem sx={{ 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: isMobile ? '16px 12px' : '24px 16px'
-                }}>
-                  <People sx={{ 
-                    fontSize: isMobile ? 32 : 40, 
-                    color: 'text.disabled', 
-                    mb: 1 
-                  }} />
-                  <Typography color="text.secondary" align="center">
-                    No instructors found matching your search
-                  </Typography>
-                </ListItem>
-              ) : (
-                filteredInstructors.map((instructor) => (
-                  <ListItem 
-                    key={instructor.id}
-                    button={true}
-                    selected={selectedInstructors.includes(instructor.id)}
-                    onClick={() => toggleInstructorSelection(instructor.id)}
-                    sx={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: isMobile ? '8px 12px' : '12px 16px',
-                      backgroundColor: selectedInstructors.includes(instructor.id) 
-                        ? theme.palette.action.selected 
-                        : 'inherit',
-                      borderLeft: selectedInstructors.includes(instructor.id)
-                        ? `4px solid ${theme.palette.primary.main}`
-                        : '4px solid transparent',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        backgroundColor: theme.palette.action.hover,
-                      }
-                    }}
-                  >
-                    <Badge
-                      overlap="circular"
-                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                      badgeContent={
-                        selectedInstructors.includes(instructor.id) ? (
-                          <Avatar sx={{
-                            width: 20,
-                            height: 20,
-                            bgcolor: theme.palette.primary.main,
-                            color: theme.palette.primary.contrastText
-                          }}>
-                            <Check fontSize="small" />
-                          </Avatar>
-                        ) : null
-                      }
-                    >
-                      <Avatar sx={{ 
-                        bgcolor: selectedInstructors.includes(instructor.id)
-                          ? theme.palette.primary.light
-                          : theme.palette.grey[300],
-                        color: selectedInstructors.includes(instructor.id)
-                          ? theme.palette.primary.contrastText
-                          : theme.palette.text.secondary,
-                        mr: 2
-                      }}>
-                        {getInstructorInitials(instructor.name)}
-                      </Avatar>
-                    </Badge>
-                    
-                    <ListItemText
-                      primary={
-                        <Typography 
-                          fontWeight={selectedInstructors.includes(instructor.id) ? 700 : 500}
-                          color={selectedInstructors.includes(instructor.id) ? 'primary.main' : 'text.primary'}
-                        >
-                          {instructor.name}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography 
-                          variant="body2"
-                          color={selectedInstructors.includes(instructor.id) ? 'primary.main' : 'text.secondary'}
-                        >
-                          {instructor.email}
-                        </Typography>
-                      }
-                      sx={{ mb: 1 }}
-                    />
-                    <Box sx={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap',
-                      gap: 0.5,
-                      justifyContent: 'flex-end',
-                      flex: 1
-                    }}>
-                      {instructor.expertise.slice(0, 3).map(skill => (
-                        <Chip 
-                          key={skill} 
-                          label={skill} 
-                          size="small" 
-                          sx={{ 
-                            fontSize: '0.7rem',
-                            maxWidth: 100,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            backgroundColor: selectedInstructors.includes(instructor.id)
-                              ? theme.palette.primary.lighter
-                              : theme.palette.grey[200],
-                            color: selectedInstructors.includes(instructor.id)
-                              ? theme.palette.primary.dark
-                              : 'inherit'
-                          }} 
-                        />
-                      ))}
-                      {instructor.expertise.length > 3 && (
-                        <Chip 
-                          label={`+${instructor.expertise.length - 3}`} 
-                          size="small" 
-                          sx={{ 
-                            fontSize: '0.7rem',
-                            backgroundColor: theme.palette.grey[200]
-                          }} 
-                        />
-                      )}
-                    </Box>
-                  </ListItem>
-                ))
-              )}
-            </List>
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                variant="contained"
-                onClick={() => setActiveStep('assign')}
-                disabled={selectedInstructors.length === 0}
-              >
-                Next: Assign to Modules
-              </Button>
-            </Box>
-          </>
-        ) : (
-          <>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ 
-                fontWeight: 600,
-                fontSize: isMobile ? '1rem' : 'inherit'
-              }}>
-                Assign Selected Instructors to Modules
-              </Typography>
-              <Button
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Box>
+        <Typography variant="h4" gutterBottom>
+          Schedule Management
+        </Typography>
+        
+        {/* Filters Section */}
+        <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
                 variant="outlined"
-                onClick={() => setActiveStep('select')}
-                startIcon={<People />}
+                size="small"
+                placeholder="Search events..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                InputProps={{
+                  startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
+                }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={3} md={2}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Type"
+                value={filters.type}
+                onChange={(e) => handleFilterChange('type', e.target.value)}
               >
-                Change Selection
-              </Button>
-            </Box>
+                <MenuItem value="all">All Types</MenuItem>
+                <MenuItem value="class">Class</MenuItem>
+                <MenuItem value="event">Event</MenuItem>
+                <MenuItem value="meeting">Meeting</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <DatePicker
+                label="From"
+                value={filters.dateFrom}
+                onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    size="small"
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <DatePicker
+                label="To"
+                value={filters.dateTo}
+                onChange={(newValue) => handleFilterChange('dateTo', newValue)}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    size="small"
+                  />
+                )}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+        
+        <Button 
+          variant="contained" 
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenDialog()}
+          sx={{ mb: 3 }}
+          fullWidth={isMobile}
+        >
+          Add New Schedule
+        </Button>
+        
+        {isMobile ? renderMobileEventCards() : renderDesktopEventTable()}
+
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog} 
+          maxWidth="md" 
+          fullWidth
+          fullScreen={isMobile}
+        >
+          <DialogTitle>{currentEvent?.id ? 'Edit Schedule' : 'Create New Schedule'}</DialogTitle>
+          <DialogContent dividers>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Title"
+              fullWidth
+              value={currentEvent?.title || ''}
+              onChange={(e) => setCurrentEvent({...currentEvent, title: e.target.value})}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              select
+              margin="dense"
+              label="Type"
+              fullWidth
+              value={currentEvent?.type || 'class'}
+              onChange={(e) => setCurrentEvent({...currentEvent, type: e.target.value})}
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="class">Class</MenuItem>
+              <MenuItem value="event">Event</MenuItem>
+              <MenuItem value="meeting">Meeting</MenuItem>
+            </TextField>
+            <DateTimePicker
+              label="Start Date & Time"
+              value={currentEvent?.date || new Date()}
+              onChange={(newValue) => setCurrentEvent({...currentEvent, date: newValue})}
+              renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
+            />
+            <DateTimePicker
+              label="End Date & Time"
+              value={currentEvent?.endDate || new Date(new Date().getTime() + 60 * 60 * 1000)}
+              onChange={(newValue) => setCurrentEvent({...currentEvent, endDate: newValue})}
+              renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
+            />
+            <TextField
+              margin="dense"
+              label="Location"
+              fullWidth
+              value={currentEvent?.location || ''}
+              onChange={(e) => setCurrentEvent({...currentEvent, location: e.target.value})}
+              sx={{ mb: 3 }}
+            />
+
+            <Typography variant="h6" gutterBottom>Invite Participants</Typography>
+            <Divider sx={{ mb: 2 }} />
 
             <Box sx={{ mb: 3 }}>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 1,
-                overflowX: 'auto',
-                py: 1,
-                mb: 2
-              }}>
-                {selectedInstructors.map(instructorId => {
-                  const instructor = instructors.find(i => i.id === instructorId);
-                  return (
-                    <Chip
-                      key={instructorId}
-                      avatar={
-                        <Avatar sx={{ 
-                          bgcolor: theme.palette.primary.light,
-                          color: theme.palette.primary.contrastText,
-                          width: 24,
-                          height: 24,
-                          fontSize: '0.75rem'
-                        }}>
-                          {getInstructorInitials(instructor.name)}
-                        </Avatar>
-                      }
-                      label={instructor.name}
-                      sx={{
-                        flexShrink: 0,
-                        backgroundColor: theme.palette.primary.lighter
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={assignmentType === 'all'}
-                    onChange={handleAssignmentTypeChange}
-                    color="primary"
+              <Typography variant="subtitle1" gutterBottom>Select Users</Typography>
+              <Autocomplete
+                multiple
+                options={mockUsers}
+                getOptionLabel={(option) => option.name}
+                value={selectedUsers}
+                onChange={(event, newValue) => setSelectedUsers(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Search users"
+                    placeholder="Select individual users"
                   />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      icon={<PersonIcon />}
+                      onDelete={() => handleRemoveInvitee(option)}
+                    />
+                  ))
                 }
-                label="Assign all selected instructors to every module"
-                sx={{ mb: 2 }}
               />
             </Box>
 
-            {assignmentType === 'specific' && (
-              <>
-                {modules.length === 0 ? (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    py: 3,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 1
-                  }}>
-                    <School sx={{ 
-                      fontSize: isMobile ? 32 : 40, 
-                      color: 'text.disabled', 
-                      mb: 1 
-                    }} />
-                    <Typography color="text.secondary" align="center">
-                      No modules available for assignment
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" align="center">
-                      Create modules first to assign specific ones
-                    </Typography>
-                  </Box>
-                ) : (
-                  <List sx={{ 
-                    maxHeight: isMobile ? '50vh' : 400, 
-                    overflow: 'auto',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1
-                  }}>
-                    {modules.map((module) => (
-                      <Box key={module.id} sx={{ mb: 2 }}>
-                        <ListItem sx={{
-                          backgroundColor: theme.palette.grey[100],
-                          borderBottom: `1px solid ${theme.palette.divider}`
-                        }}>
-                          <ListItemText
-                            primary={
-                              <Typography fontWeight={600}>
-                                {module.title || 'Untitled Module'}
-                              </Typography>
-                            }
-                            secondary={module.description || 'No description'}
-                          />
-                          <Typography variant="body2" color="text.secondary">
-                            {moduleAssignments[module.id]?.length || 0} instructors assigned
-                          </Typography>
-                        </ListItem>
-                        <Box sx={{ 
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 1,
-                          p: 2
-                        }}>
-                          {selectedInstructors.map(instructorId => {
-                            const instructor = instructors.find(i => i.id === instructorId);
-                            const isAssigned = moduleAssignments[module.id]?.includes(instructorId);
-                            return (
-                              <Chip
-                                key={`${module.id}-${instructorId}`}
-                                avatar={
-                                  <Avatar sx={{ 
-                                    bgcolor: isAssigned 
-                                      ? theme.palette.primary.main 
-                                      : theme.palette.grey[300],
-                                    color: isAssigned 
-                                      ? theme.palette.primary.contrastText 
-                                      : theme.palette.text.secondary,
-                                    width: 24,
-                                    height: 24,
-                                    fontSize: '0.75rem'
-                                  }}>
-                                    {getInstructorInitials(instructor.name)}
-                                  </Avatar>
-                                }
-                                label={instructor.name}
-                                onClick={() => toggleModuleAssignment(module.id, instructorId)}
-                                variant={isAssigned ? 'filled' : 'outlined'}
-                                color={isAssigned ? 'primary' : 'default'}
-                                sx={{
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    backgroundColor: isAssigned
-                                      ? theme.palette.primary.dark
-                                      : theme.palette.action.hover
-                                  }
-                                }}
-                              />
-                            );
-                          })}
-                        </Box>
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>Select Groups</Typography>
+              <FormGroup>
+                {userGroups.map((group) => (
+                  <FormControlLabel
+                    key={group.id}
+                    control={
+                      <Checkbox
+                        checked={selectedGroups.some(g => g.id === group.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGroups([...selectedGroups, group]);
+                          } else {
+                            setSelectedGroups(selectedGroups.filter(g => g.id !== group.id));
+                          }
+                        }}
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <GroupIcon sx={{ mr: 1 }} />
+                        {group.name}
                       </Box>
-                    ))}
-                  </List>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </DialogContent>
-      <DialogActions sx={{
-        padding: isMobile ? 2 : 3,
-        flexDirection: isMobile ? 'column-reverse' : 'row',
-        gap: isMobile ? 1 : 0
-      }}>
-        <Button 
-          onClick={onClose} 
-          fullWidth={isMobile}
-          size={isMobile ? 'medium' : 'large'}
+                    }
+                  />
+                ))}
+              </FormGroup>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>Additional Email Addresses</Typography>
+              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Add email address"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
+                />
+                <Button 
+                  variant="contained" 
+                  onClick={handleAddEmail}
+                  disabled={!emailInput}
+                >
+                  Add
+                </Button>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {additionalEmails.map((email, index) => (
+                  <Chip
+                    key={index}
+                    label={email}
+                    onDelete={() => handleRemoveEmail(email)}
+                    icon={<EmailIcon />}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handleSaveEvent} variant="contained">Save Schedule</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          Cancel
-        </Button>
-        {activeStep === 'assign' && (
-          <Button 
-            onClick={handleSubmit}
-            disabled={assignmentType === 'specific' && 
-              Object.values(moduleAssignments).flat().length === 0}
-            variant="contained"
-            fullWidth={isMobile}
-            size={isMobile ? 'medium' : 'large'}
-            color="primary"
-          >
-            {currentAssignments.length > 0 ? 'Update Assignments' : 'Save Assignments'}
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+          <MuiAlert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }} elevation={6} variant="filled">
+            {snackbar.message}
+          </MuiAlert>
+        </Snackbar>
+      </Box>
+    </LocalizationProvider>
   );
 };
 
-export default InstructorAssignmentDialog;
-
-
-
-
-
-    
+export default ScheduleManagement;
