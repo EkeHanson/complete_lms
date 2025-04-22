@@ -25,12 +25,12 @@ const CourseManagement = () => {
     totalCourses: 42,
     totalEnrollments: 1256,
     mostPopularCourse: {
-      title: "Advanced React Development",
+      title: "React Development",
       enrollments: 342,
       instructor: "Jane Smith"
     },
     leastPopularCourse: {
-      title: "Introduction to Cobol",
+      title: "Introduction to Python",
       enrollments: 3,
       instructor: "John Doe"
     },
@@ -208,7 +208,7 @@ const CourseManagement = () => {
         </Grid>
 
         {/* Recent Courses */}
-        <Grid item xs={12} md={6}>
+        {/* <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -235,28 +235,11 @@ const CourseManagement = () => {
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
       </Grid>
       
       {/* Courses List Section */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs 
-          value={activeTab} 
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          variant={isMobile ? "scrollable" : "standard"}
-          scrollButtons={isMobile ? "auto" : false}
-          sx={{
-            '& .MuiTabs-indicator': {
-              backgroundColor: theme.palette.primary.main,
-              height: 3
-            }
-          }}
-        >
-          <Tab label="All Courses" />
-          <Tab label="Published" />
-          <Tab label="Drafts" />
-          <Tab label="Archived" />
-        </Tabs>
         <Divider />
         <CourseList isMobile={isMobile} />
       </Paper>

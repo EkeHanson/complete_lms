@@ -14,7 +14,7 @@ import {
   CloudUpload, Visibility, VisibilityOff
 } from '@mui/icons-material';
 import { useDrag, useDrop } from 'react-dnd';
-import { coursesAPI } from '../../../../config';
+import { coursesAPI } from '../../config';
 
 const lessonTypes = [
   { value: 'video', label: 'Video', icon: <VideoLibrary /> },
@@ -720,4 +720,4 @@ const ModuleForm = ({
   );
 };
 
-export { ModuleForm, DraggableModule };
+export default { ModuleForm, DraggableModule };

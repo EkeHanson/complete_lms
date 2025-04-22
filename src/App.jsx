@@ -2,6 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
+import { AuthProvider } from './contexts/AuthContext';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -9,12 +10,20 @@ import Pricing from './pages/Pricing';
 import Features  from './pages/Features';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+
+
+import InstructorDashboard from './pages/dashboard/InstructorDashboard.jsx';
+import StudentDashboard from './pages/dashboard/StudentDashboard.jsx';
+
+
 import BrowseListings from './components/listings/BrowseListings';
 import ListingDetails from './components/listings/ListingDetails';
 import AdminDashboard from './pages/dashboard/AdminDashboard/Admin';
 import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement/FeedbackForm.jsx'
 
 import { CertificateProvider } from './contexts/CertificateContext';
+
+
 
 import './App.css'
 
@@ -26,6 +35,9 @@ function App() {
   const theme = useTheme();
 
   return (
+  
+  // <AuthProvider>
+
     <QueryClientProvider client={queryClient}>
     <Router>
       <CertificateProvider>
@@ -47,9 +59,14 @@ function App() {
         <Route path="/listings" element={<BrowseListings />} />
         <Route path="/listings/:id" element={<ListingDetails />} />
 
+        {/* Instructor Dashboard */}
+          <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
+
+        {/* Instructor Dashboard */}
+          <Route path="/learner-dashboard" element={<StudentDashboard />} />
+
         {/* Admin Dashboard */}
-      
-          <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
         
         
       </Routes>
@@ -57,6 +74,9 @@ function App() {
       </CertificateProvider>
     </Router>
     </QueryClientProvider>
+  
+    
+    
   );
 }
 

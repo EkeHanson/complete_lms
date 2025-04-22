@@ -19,7 +19,7 @@ import {
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
-
+import ChoiceModal from './ChoiceModal'; 
 import AdminDashboard from './AdminDashboard';
 import AdminFinancialDashboard from './AdminFinancialDashboard';
 import AdminUserManagement from './AdminUserManagement';
@@ -42,10 +42,9 @@ import Messaging from './Messaging';
 import LearnerProfile from './LearnerProfile';
 import Advertorial from './Advertorial/Advertorial';
 import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain';
-
-import UserRegistration from './UserRegistration';
-import BulkUserUpload from './BulkUserUpload';
 import UserGroupsManagement from './UserGroupsManagement';
+import axios from 'axios';
+import config from  '../../../config';
 
 const drawerWidth = 240;
 
@@ -57,6 +56,109 @@ function Admin() {
   const [open, setOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
   const settingsOpen = Boolean(anchorEl);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleCertificateIconClick = () => {
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setError(null);
+  };
+  const handleNavigateToBuilder = () => {
+    navigate('/admin/builder');
+    handleCloseModal();
+  };
+
+  const handleGenerateToken = async () => {
+    setLoading(true);
+    setError(null);
+  
+    try {
+      // Generate the token and expiry timestamp
+      const token = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+  
+      // Create the full payload
+      const payload = {
+        token: token,
+        user_email: "ekenehanson@gmail.com",
+        expires_at: expiresAt.toISOString(),
+      };
+  
+      //console.log("Sending payload to API:", payload);
+  
+      // Make the request
+      const response = await axios.post(
+        console.log(config.CMVP_API_URL)
+        `${config.CMVP_API_URL}/api/accounts/auth/api/register-token/`,
+        payload
+      );
+  
+      console.log("API Response:", response.data);
+      if (response.status === 201) {
+        // Generate the magic link (matches your Django view)
+        const magic_link = `${config.CMVP_SITE_URL}/MagicLoginPage?token=${token}`;
+        
+        // console.log("Token generated successfully");
+        // Open the magic link in new tab
+        window.open(magic_link, '_blank');
+      } else {
+        setError('Failed to generate token');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'An error occurred');
+      } finally {
+        setLoading(false);
+        handleCloseModal();
+      }
+  };
+  // const handleGenerateToken = async () => {
+  //   setLoading(true);
+  //   setError(null);
+    
+  //   try {
+  //     // Generate token and expiry date (matches Django view logic)
+  //     const token = crypto.randomUUID(); // Equivalent to Python's uuid.uuid4()
+  //     const user_email = 'ekenehanson@gmail.com'; // Get this from your auth state
+      
+  //     // Calculate expiry time (10 minutes from now)
+  //     const expiresAt = new Date();
+  //     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+      
+  //     // Call the CMVP endpoint (matches your Django view)
+  //     const response = await axios.post(
+  //       'http://127.0.0.1:9091/api/accounts/auth/api/register-token/', 
+  //       {
+  //         token: token,
+  //         user_email: user_email,
+  //         expires_at: expiresAt.toISOString() // Send in ISO format
+  //       }
+  //     );
+  
+  //     if (response.status === 201) {
+  //       // Generate the magic link (matches your Django view)
+  //       const magic_link = `http://localhost:3000/MagicLoginPage?token=${token}`;
+        
+  //       console.log("Token generated successfully");
+  //       // Open the magic link in new tab
+  //       window.open(magic_link, '_blank');
+  //     } else {
+  //       setError('Failed to generate token');
+  //     }
+  //   } catch (err) {
+  //     setError(err.response?.data?.error || 'An error occurred');
+  //     } finally {
+  //       setLoading(false);
+  //       handleCloseModal();
+  //     }
+  // };
+
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -146,13 +248,12 @@ function Admin() {
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Schedule Icon with Tooltip */}
-            <Tooltip title="Certificate Builder">
+          <Tooltip title="Certificate Options">
               <IconButton 
-                component={Link}
-                to="/admin/builder"
+                onClick={handleCertificateIconClick}
                 size="large" 
                 color="inherit"
-                aria-label="certificate-builder"
+                aria-label="certificate-options"
                 sx={{
                   color: location.pathname === '/admin/builder' ? 
                     theme.palette.primary.main : 'inherit'
@@ -448,6 +549,12 @@ function Admin() {
           </Routes>
         </Box>
       </Box>
+      <ChoiceModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        onNavigateToBuilder={handleNavigateToBuilder}
+        onGenerateToken={handleGenerateToken}
+      />
     </Box>
   );
 }

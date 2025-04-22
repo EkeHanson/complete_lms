@@ -5,8 +5,9 @@ import {
   InputAdornment, Container, CircularProgress, Alert
 } from '@mui/material';
 import { CloudUpload, Visibility, VisibilityOff } from '@mui/icons-material';
-import axios from 'axios';
 import { useAuth } from '../../../contexts/AuthContext';
+import { userAPI, authAPI, API_BASE_URL } from '../../../config';
+
 
 const AdminProfileSettings = () => {
   const { user, updateUser } = useAuth();
@@ -53,7 +54,7 @@ const AdminProfileSettings = () => {
         bio: user.bio || '',
         phone: user.phone || ''
       });
-      setImagePreview(user.profile_picture ? `${process.env.REACT_APP_API_URL}${user.profile_picture}` : '');
+      setImagePreview(user.profile_picture ? `${API_BASE_URL}${user.profile_picture}` : '');
     }
   }, [user]);
 
@@ -98,12 +99,8 @@ const AdminProfileSettings = () => {
         formData.append('profile_picture', selectedImage);
       }
 
-      const response = await axios.put('/api/profile/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
+      // Use the userAPI.updateUser endpoint
+      const response = await userAPI.updateUser(user.id, formData);
       updateUser(response.data);
       setSuccess('Profile updated successfully!');
       setSelectedImage(null);
@@ -127,7 +124,13 @@ const AdminProfileSettings = () => {
     }
 
     try {
-      await axios.post('/api/password/change/', passwordData);
+      // Use the authAPI.changePassword endpoint
+      await authAPI.changePassword({
+        old_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+        confirm_password: passwordData.confirmPassword
+      });
+      
       setSuccess('Password updated successfully!');
       setPasswordData({
         currentPassword: '',

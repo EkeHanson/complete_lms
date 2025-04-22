@@ -1,35 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Chip, IconButton, Box, 
   useTheme, Typography, Menu, MenuItem, TablePagination,
-  TextField, Button, Grid, Tabs, Tab, Divider
+  TextField, Button, Grid, Tabs, Tab, Divider, CircularProgress, Alert
 } from '@mui/material';
 import { 
   Edit, Visibility, MoreVert, 
   Search, FilterList, Refresh 
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-
-// Dummy data for courses
-const dummyCourses = Array.from({ length: 25 }, (_, i) => ({
-  id: i + 1,
-  title: `Course ${i + 1}`,
-  code: `CODE-${i + 100}`,
-  category: ['Web Development', 'Backend Development', 'Design', 'Data Science'][i % 4],
-  level: ['Beginner', 'Intermediate', 'Advanced'][i % 3],
-  price: 100 + (i * 10),
-  discountPrice: i % 2 === 0 ? 80 + (i * 8) : null,
-  currency: 'NGN',
-  status: ['Published', 'Draft', 'Archived'][i % 3],
-  learningOutcomes: [
-    'Master key concepts',
-    'Build practical applications',
-    'Implement advanced techniques',
-    'Develop professional skills'
-  ].slice(0, (i % 4) + 1),
-  createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)).toISOString()
-}));
+import { coursesAPI } from '../../../../config';
 
 const CourseList = () => {
   const theme = useTheme();
@@ -45,18 +26,91 @@ const CourseList = () => {
     level: 'all'
   });
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [allCourses, setAllCourses] = useState([]); // Store all courses
+  const [filteredCourses, setFilteredCourses] = useState([]); // Store filtered courses
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter courses based on active tab, search term and other filters
-  const filteredCourses = dummyCourses.filter(course => {
-    const matchesStatus = activeStatusTab === 'all' || course.status === activeStatusTab;
-    const matchesSearch = searchTerm === '' || 
-      course.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      course.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filters.category === 'all' || course.category === filters.category;
-    const matchesLevel = filters.level === 'all' || course.level === filters.level;
-    
-    return matchesStatus && matchesSearch && matchesCategory && matchesLevel;
-  });
+  // Fetch courses once on component mount
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const params = {
+          page: 1,
+          page_size: 1000, // Fetch all courses (adjust if needed)
+          search: searchTerm || undefined,
+          category: filters.category === 'all' ? undefined : filters.category,
+          level: filters.level === 'all' ? undefined : filters.level
+        };
+        
+        // Remove undefined/null parameters
+        Object.keys(params).forEach(key => {
+          if (params[key] === undefined || params[key] === null) {
+            delete params[key];
+          }
+        });
+
+        //console.log('API Request Params:', params); // Debug: Log params
+        const response = await coursesAPI.getCourses(params);
+       // console.log('API Response:', response.data); // Debug: Log response
+
+        setAllCourses(response.data.results || []);
+        setTotalCourses(response.data.count || 0);
+      } catch (err) {
+        const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch courses';
+        setError(errorMsg);
+        console.error('Error fetching courses:', err, 'Response:', err.response?.data);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchCourses();
+  }, []); // Empty dependency array: fetch once on mount
+
+  // Filter courses client-side whenever status, search, or filters change
+  useEffect(() => {
+    let filtered = [...allCourses];
+
+    // Apply status filter
+    if (activeStatusTab !== 'all') {
+      filtered = filtered.filter(course => course.status === activeStatusTab);
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(searchLower) ||
+        course.code.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(course => course.category.name === filters.category);
+    }
+
+    // Apply level filter
+    if (filters.level !== 'all') {
+      filtered = filtered.filter(course => course.level === filters.level);
+    }
+
+    // Update filtered courses and total count
+    setFilteredCourses(filtered);
+    setTotalCourses(filtered.length);
+
+    // Reset page if filtered results are fewer than current page
+    if (page * rowsPerPage >= filtered.length) {
+      setPage(0);
+    }
+
+    //console.log('Filtered Courses:', filtered); // Debug: Log filtered results
+  }, [activeStatusTab, searchTerm, filters, allCourses, page, rowsPerPage]);
 
   const handleMenuOpen = (event, course) => {
     setAnchorEl(event.currentTarget);
@@ -78,9 +132,16 @@ const CourseList = () => {
     handleMenuClose();
   };
 
-  const handleDelete = (courseId) => {
-    console.log('Delete course', courseId);
-    handleMenuClose();
+  const handleDelete = async (courseId) => {
+    try {
+      await coursesAPI.deleteCourse(courseId);
+      setAllCourses(prev => prev.filter(course => course.id !== courseId));
+      setTotalCourses(prev => prev - 1);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to delete course');
+    } finally {
+      handleMenuClose();
+    }
   };
 
   const handleChangePage = (event, newPage) => {
@@ -93,6 +154,7 @@ const CourseList = () => {
   };
 
   const handleStatusTabChange = (event, newValue) => {
+    // console.log('Status Tab Changed:', newValue); // Debug: Log tab change
     setActiveStatusTab(newValue);
     setPage(0);
   };
@@ -114,6 +176,7 @@ const CourseList = () => {
     });
     setSearchTerm('');
     setActiveStatusTab('all');
+    setPage(0);
   };
 
   const getStatusColor = (status) => {
@@ -126,12 +189,9 @@ const CourseList = () => {
   };
 
   const formatPrice = (price, currency) => {
+    if (price === undefined || price === null) return 'Free';
+    
     const priceNumber = typeof price === 'string' ? parseFloat(price) : price;
-    
-    if (priceNumber === undefined || priceNumber === null || isNaN(priceNumber)) {
-      return 'Price not set';
-    }
-    
     const currencyToUse = currency || 'NGN';
     
     try {
@@ -143,6 +203,9 @@ const CourseList = () => {
       return `${currencyToUse} ${priceNumber.toFixed(2)}`;
     }
   };
+
+  // Paginate filtered courses
+  const paginatedCourses = filteredCourses.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <Box>
@@ -205,7 +268,7 @@ const CourseList = () => {
         <Divider />
       </Paper>
 
-      {/* Filter Dialog - Would implement as a separate modal component in a real app */}
+      {/* Filter Dialog */}
       {filterDialogOpen && (
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>Advanced Filters</Typography>
@@ -219,10 +282,11 @@ const CourseList = () => {
                 onChange={(e) => handleFilterChange('category', e.target.value)}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="Web Development">Web Development</MenuItem>
-                <MenuItem value="Backend Development">Backend Development</MenuItem>
-                <MenuItem value="Design">Design</MenuItem>
-                <MenuItem value="Data Science">Data Science</MenuItem>
+                {Array.from(new Set(allCourses.map(c => c.category.name))).map(categoryName => (
+                  <MenuItem key={categoryName} value={categoryName}>
+                    {categoryName}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -253,6 +317,15 @@ const CourseList = () => {
         </Paper>
       )}
 
+      {/* Error Alert */}
+      {error && (
+        <Box sx={{ mb: 2 }}>
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        </Box>
+      )}
+
       {/* Courses Table */}
       <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
         <Table sx={{ minWidth: 650 }}>
@@ -267,25 +340,42 @@ const CourseList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredCourses
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((course) => (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <CircularProgress />
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <Typography color="error">{error}</Typography>
+                </TableCell>
+              </TableRow>
+            ) : paginatedCourses.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  <Typography>No courses found</Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedCourses.map((course) => (
                 <TableRow key={course.id} hover>
                   <TableCell>
                     <Typography sx={{ fontWeight: 500 }}>{course.title}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {course.category} • {course.level}
+                      {course.category.name} • {course.level}
                     </Typography>
                   </TableCell>
                   <TableCell>{course.code}</TableCell>
                   <TableCell>
-                    {course.discountPrice ? (
+                    {course.discount_price ? (
                       <>
                         <Typography sx={{ textDecoration: 'line-through' }}>
                           {formatPrice(course.price, course.currency)}
                         </Typography>
                         <Typography color="error" sx={{ fontWeight: 600 }}>
-                          {formatPrice(course.discountPrice, course.currency)}
+                          {formatPrice(course.discount_price, course.currency)}
                         </Typography>
                       </>
                     ) : (
@@ -294,9 +384,9 @@ const CourseList = () => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ maxWidth: 200 }}>
-                      {course.learningOutcomes && course.learningOutcomes.length > 0 ? (
+                      {course.learning_outcomes?.length > 0 ? (
                         <>
-                          {course.learningOutcomes.slice(0, 2).map((outcome, i) => (
+                          {course.learning_outcomes.slice(0, 2).map((outcome, i) => (
                             <Typography 
                               key={i} 
                               variant="body2" 
@@ -309,9 +399,9 @@ const CourseList = () => {
                               • {outcome}
                             </Typography>
                           ))}
-                          {course.learningOutcomes.length > 2 && (
+                          {course.learning_outcomes.length > 2 && (
                             <Typography variant="caption">
-                              +{course.learningOutcomes.length - 2} more
+                              +{course.learning_outcomes.length - 2} more
                             </Typography>
                           )}
                         </>
@@ -353,14 +443,15 @@ const CourseList = () => {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+            )}
           </TableBody>
         </Table>
 
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredCourses.length}
+          count={totalCourses}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

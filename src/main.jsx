@@ -1,3 +1,6 @@
+if (typeof global === 'undefined') {
+  window.global = window;
+}
 import React, { useState } from 'react';
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

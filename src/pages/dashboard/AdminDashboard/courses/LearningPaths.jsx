@@ -1,58 +1,192 @@
-import React, { useState } from 'react';
+import { coursesAPI } from '../../../../config';
+import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, Paper,
-  List, ListItem, ListItemText, ListItemSecondaryAction,
-  IconButton, TextField, Chip, useTheme, Grid, useMediaQuery
+  Box, Typography, Button, Paper, List, ListItem,
+  ListItemText, ListItemSecondaryAction, IconButton,
+  TextField, Chip, useTheme, Grid, useMediaQuery,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  CircularProgress, Alert, Checkbox
 } from '@mui/material';
 import {
   Add, Delete, DragHandle, School, Edit
 } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
-const LearningPaths = ({ courseId }) => {
+const LearningPaths = ({ courseId, isMobile }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [paths, setPaths] = useState([
-    { id: '1', name: 'Beginner Track', description: 'For students new to the subject', courses: ['101', '102'] },
-    { id: '2', name: 'Advanced Track', description: 'For experienced learners', courses: ['201', '202'] }
-  ]);
-  const [newPath, setNewPath] = useState({ name: '', description: '' });
+  const isMobileView = useMediaQuery(theme.breakpoints.down('sm'));
+  const [paths, setPaths] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [newPath, setNewPath] = useState({ title: '', description: '', courses: [] });
   const [editingPath, setEditingPath] = useState(null);
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
+  const [selectedCourses, setSelectedCourses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleAddPath = () => {
-    if (!newPath.name.trim()) return;
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      coursesAPI.getLearningPaths(),
+      coursesAPI.getCourses()
+    ])
+      .then(([pathsResponse, coursesResponse]) => {
+        setPaths(pathsResponse.data?.results || []);
+        setCourses(coursesResponse.data?.results || []);
+      })
+      .catch(err => {
+        setError('Failed to load learning paths or courses');
+        console.error(err);
+        setPaths([]);
+        setCourses([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  // const handleAddPath = async () => {
+  //   if (!newPath.title.trim()) {
+  //     setError('Title is required');
+  //     return;
+  //   }
     
-    const path = {
-      id: Date.now().toString(),
-      name: newPath.name,
-      description: newPath.description,
-      courses: []
-    };
-    
-    setPaths([...paths, path]);
-    setNewPath({ name: '', description: '' });
+  //   if (newPath.courses.length === 0) {
+  //     setError('At least one course is required');
+  //     return;
+  //   }
+
+  //   setLoading(true);
+  //   try {
+  //     const pathData = {
+  //       title: newPath.title,
+  //       description: newPath.description,
+  //       course_ids: newPath.courses.map(c => typeof c === 'object' ? c.id : c)
+  //     };
+      
+  //     const response = await coursesAPI.createLearningPath(pathData);
+  //     setPaths([...paths, response.data]);
+  //     setNewPath({ title: '', description: '', courses: [] });
+  //     setSelectedCourses([]);
+  //     setError('');
+  //   } catch (err) {
+  //     const errorData = err.response?.data;
+  //     if (errorData) {
+  //       const errorMessages = [];
+  //       if (errorData.title) errorMessages.push(errorData.title.join(' '));
+  //       if (errorData.course_ids) errorMessages.push(errorData.course_ids.join(' '));
+  //       setError(errorMessages.join(' ') || 'Failed to create learning path');
+  //     } else {
+  //       setError(err.message || 'Failed to create learning path');
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const handleAddPath = async () => {
+    if (!newPath.title.trim()) {
+      setError("Title is required");
+      return;
+    }
+  
+    if (newPath.courses.length === 0 || !newPath.courses.every((c) => c.id)) {
+      setError("At least one valid course with an ID is required");
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      const pathData = {
+        title: newPath.title,
+        description: newPath.description,
+        course_ids: newPath.courses.map((c) => c.id),
+      };
+      console.log("Sending pathData:", pathData);
+      const response = await coursesAPI.createLearningPath(pathData);
+      setPaths([...paths, response.data]);
+      setNewPath({ title: "", description: "", courses: [] });
+      setSelectedCourses([]);
+      setError("");
+    } catch (err) {
+      console.error("Error creating path:", err.response?.data);
+      const errorData = err.response?.data;
+      if (errorData) {
+        const errorMessages = [];
+        if (errorData.title) errorMessages.push(errorData.title.join(" "));
+        if (errorData.course_ids) errorMessages.push(errorData.course_ids.join(" "));
+        setError(errorMessages.join(" ") || "Failed to create learning path");
+      } else {
+        setError(err.message || "Failed to create learning path");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleDeletePath = (id) => {
-    setPaths(paths.filter(path => path.id !== id));
+  
+  const handleDeletePath = async (id) => {
+    setLoading(true);
+    try {
+      await coursesAPI.deleteLearningPath(id);
+      setPaths(paths.filter(path => path.id !== id));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete learning path');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditPath = (path) => {
     setEditingPath(path);
-    setNewPath({ name: path.name, description: path.description });
+    setNewPath({ 
+      title: path.title, 
+      description: path.description, 
+      courses: path.courses 
+    });
+    setSelectedCourses(path.courses.map(c => c.id));
+    setCourseDialogOpen(true);
   };
 
-  const handleUpdatePath = () => {
-    if (!editingPath || !newPath.name.trim()) return;
+  const handleUpdatePath = async () => {
+    if (!editingPath || !newPath.title.trim()) return;
     
-    setPaths(paths.map(path => 
-      path.id === editingPath.id ? 
-      { ...path, name: newPath.name, description: newPath.description } : 
-      path
-    ));
-    
-    setEditingPath(null);
-    setNewPath({ name: '', description: '' });
+    setLoading(true);
+    try {
+      const pathData = {
+        title: newPath.title,
+        description: newPath.description,
+        course_ids: newPath.courses.map(c => typeof c === 'object' ? c.id : c)
+      };
+      const response = await coursesAPI.updateLearningPath(editingPath.id, pathData);
+      setPaths(paths.map(path => path.id === editingPath.id ? response.data : path));
+      setEditingPath(null);
+      setNewPath({ title: '', description: '', courses: [] });
+      setSelectedCourses([]);
+      setCourseDialogOpen(false);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update learning path');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleCourseSelection = (courseId) => {
+    setSelectedCourses(prev =>
+      prev.includes(courseId)
+        ? prev.filter(id => id !== courseId)
+        : [...prev, courseId]
+    );
+  };
+
+  const saveSelectedCourses = () => {
+    setNewPath(prev => ({ 
+      ...prev, 
+      courses: selectedCourses.map(id => {
+        const fullCourse = courses.find(c => c.id === id);
+        return fullCourse || id;
+      })
+    }));
+    setCourseDialogOpen(false);
   };
 
   const onDragEnd = (result) => {
@@ -67,11 +201,17 @@ const LearningPaths = ({ courseId }) => {
 
   return (
     <Box sx={{ 
-      p: isMobile ? 2 : 3,
+      p: isMobileView ? 2 : 3,
       maxWidth: '100%',
       overflowX: 'hidden'
     }}>
-      <Typography variant={isMobile ? "h5" : "h4"} sx={{ 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      <Typography variant={isMobileView ? "h5" : "h4"} sx={{ 
         mb: 3, 
         fontWeight: 600,
         wordBreak: 'break-word'
@@ -79,16 +219,15 @@ const LearningPaths = ({ courseId }) => {
         Learning Paths
       </Typography>
       
-      {/* Create/Edit Path Form */}
       <Paper sx={{ 
-        p: isMobile ? 2 : 3, 
+        p: isMobileView ? 2 : 3, 
         mb: 3,
         overflow: 'hidden'
       }}>
         <Typography variant="h6" sx={{ 
           mb: 2, 
           fontWeight: 600,
-          fontSize: isMobile ? '1.1rem' : '1.25rem'
+          fontSize: isMobileView ? '1.1rem' : '1.25rem'
         }}>
           {editingPath ? 'Edit Learning Path' : 'Create New Learning Path'}
         </Typography>
@@ -97,11 +236,11 @@ const LearningPaths = ({ courseId }) => {
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              label="Path Name"
-              value={newPath.name}
-              onChange={(e) => setNewPath({...newPath, name: e.target.value})}
+              label="Path Title"
+              value={newPath.title}
+              onChange={(e) => setNewPath({...newPath, title: e.target.value})}
               sx={{ mb: 2 }}
-              size={isMobile ? "small" : "medium"}
+              size={isMobileView ? "small" : "medium"}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -111,10 +250,24 @@ const LearningPaths = ({ courseId }) => {
               value={newPath.description}
               onChange={(e) => setNewPath({...newPath, description: e.target.value})}
               sx={{ mb: 2 }}
-              size={isMobile ? "small" : "medium"}
+              size={isMobileView ? "small" : "medium"}
             />
           </Grid>
         </Grid>
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Selected Courses: {newPath.courses.length}
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<Add />}
+            onClick={() => setCourseDialogOpen(true)}
+            size={isMobileView ? "small" : "medium"}
+          >
+            Select Courses
+          </Button>
+        </Box>
         
         <Box sx={{ 
           display: 'flex', 
@@ -128,47 +281,52 @@ const LearningPaths = ({ courseId }) => {
                 variant="outlined" 
                 onClick={() => {
                   setEditingPath(null);
-                  setNewPath({ name: '', description: '' });
+                  setNewPath({ title: '', description: '', courses: [] });
+                  setSelectedCourses([]);
                 }}
-                size={isMobile ? "small" : "medium"}
-                sx={{ minWidth: isMobile ? 'auto' : 100 }}
+                size={isMobileView ? "small" : "medium"}
+                sx={{ minWidth: isMobileView ? 'auto' : 100 }}
               >
                 Cancel
               </Button>
               <Button 
                 variant="contained" 
                 onClick={handleUpdatePath}
-                size={isMobile ? "small" : "medium"}
-                sx={{ minWidth: isMobile ? 'auto' : 120 }}
+                disabled={loading || !newPath.title.trim()}
+                size={isMobileView ? "small" : "medium"}
+                sx={{ minWidth: isMobileView ? 'auto' : 120 }}
               >
-                Update
+                {loading ? <CircularProgress size={24} /> : 'Update'}
               </Button>
             </>
           ) : (
             <Button 
               variant="contained" 
               onClick={handleAddPath}
-              disabled={!newPath.name.trim()}
+              disabled={loading || !newPath.title.trim()}
               startIcon={<Add />}
-              size={isMobile ? "small" : "medium"}
-              fullWidth={isMobile}
+              size={isMobileView ? "small" : "medium"}
+              fullWidth={isMobileView}
             >
-              Add Path
+              {loading ? <CircularProgress size={24} /> : 'Add Path'}
             </Button>
           )}
         </Box>
       </Paper>
       
-      {/* Existing Paths List */}
       <Typography variant="h6" sx={{ 
         mb: 2, 
         fontWeight: 600,
-        fontSize: isMobile ? '1.1rem' : '1.25rem'
+        fontSize: isMobileView ? '1.1rem' : '1.25rem'
       }}>
         Existing Learning Paths
       </Typography>
       
-      {paths.length === 0 ? (
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (paths || []).length === 0 ? (
         <Paper sx={{ 
           p: 3, 
           textAlign: 'center',
@@ -211,8 +369,7 @@ const LearningPaths = ({ courseId }) => {
                           overflow: 'hidden'
                         }}
                       >
-                        <Box sx={{ p: isMobile ? 1.5 : 2 }}>
-                          {/* Path Header */}
+                        <Box sx={{ p: isMobileView ? 1.5 : 2 }}>
                           <Box sx={{ 
                             display: 'flex',
                             alignItems: 'flex-start',
@@ -226,15 +383,15 @@ const LearningPaths = ({ courseId }) => {
                                 alignItems: 'center',
                                 height: '100%',
                                 cursor: 'grab',
-                                pt: isMobile ? 0.5 : 0
+                                pt: isMobileView ? 0.5 : 0
                               }}
                             >
-                              <DragHandle fontSize={isMobile ? "small" : "medium"} />
+                              <DragHandle fontSize={isMobileView ? "small" : "medium"} />
                             </Box>
                             
                             <Box sx={{ 
                               flex: 1,
-                              minWidth: 0, // Prevent overflow
+                              minWidth: 0,
                               mr: 1
                             }}>
                               <Typography 
@@ -244,7 +401,7 @@ const LearningPaths = ({ courseId }) => {
                                   wordBreak: 'break-word'
                                 }}
                               >
-                                {path.name}
+                                {path.title}
                               </Typography>
                               {path.description && (
                                 <Typography 
@@ -266,23 +423,22 @@ const LearningPaths = ({ courseId }) => {
                               <IconButton 
                                 onClick={() => handleEditPath(path)} 
                                 size="small"
-                                sx={{ p: isMobile ? 0.5 : 1 }}
+                                sx={{ p: isMobileView ? 0.5 : 1 }}
                               >
-                                <Edit fontSize={isMobile ? "small" : "medium"} />
+                                <Edit fontSize={isMobileView ? "small" : "medium"} />
                               </IconButton>
                               <IconButton 
                                 onClick={() => handleDeletePath(path.id)} 
                                 size="small"
-                                sx={{ p: isMobile ? 0.5 : 1 }}
+                                sx={{ p: isMobileView ? 0.5 : 1 }}
                               >
-                                <Delete fontSize={isMobile ? "small" : "medium"} color="error" />
+                                <Delete fontSize={isMobileView ? "small" : "medium"} color="error" />
                               </IconButton>
                             </Box>
                           </Box>
                           
-                          {/* Courses Section */}
                           <Box sx={{ 
-                            pl: isMobile ? 3 : 4,
+                            pl: isMobileView ? 3 : 4,
                             pt: 1
                           }}>
                             <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -296,12 +452,18 @@ const LearningPaths = ({ courseId }) => {
                                 gap: 1,
                                 mb: 1
                               }}>
-                                {path.courses.map(courseId => (
+                                {path.courses.map(course => (
                                   <Chip 
-                                    key={courseId} 
-                                    label={`Course ${courseId}`} 
-                                    onDelete={() => {}}
-                                    size={isMobile ? "small" : "medium"}
+                                    key={course.id} 
+                                    label={course.title} 
+                                    onDelete={() => {
+                                      setNewPath(prev => ({
+                                        ...prev,
+                                        courses: prev.courses.filter(c => c.id !== course.id)
+                                      }));
+                                      setSelectedCourses(prev => prev.filter(id => id !== course.id));
+                                    }}
+                                    size={isMobileView ? "small" : "medium"}
                                   />
                                 ))}
                               </Box>
@@ -316,9 +478,9 @@ const LearningPaths = ({ courseId }) => {
                             )}
                             
                             <Button 
-                              size={isMobile ? "small" : "medium"}
+                              size={isMobileView ? "small" : "medium"}
                               startIcon={<Add />}
-                              sx={{ mt: 0.5 }}
+                              onClick={() => setCourseDialogOpen(true)}
                             >
                               Add Courses
                             </Button>
@@ -334,6 +496,63 @@ const LearningPaths = ({ courseId }) => {
           </Droppable>
         </DragDropContext>
       )}
+
+      <Dialog 
+        open={courseDialogOpen} 
+        onClose={() => setCourseDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobileView}
+      >
+        <DialogTitle>Select Courses</DialogTitle>
+        <DialogContent>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List sx={{ maxHeight: isMobileView ? '40vh' : 300, overflow: 'auto' }}>
+              {Array.isArray(courses) && courses.length > 0 ? (
+                courses.map(course => (
+                  <ListItem 
+                    key={course.id} 
+                    button 
+                    onClick={() => toggleCourseSelection(course.id)}
+                  >
+                    <ListItemText 
+                      primary={course.title} 
+                      secondary={course.description} 
+                      primaryTypographyProps={{ variant: isMobileView ? 'body2' : 'body1' }}
+                      secondaryTypographyProps={{ variant: isMobileView ? 'caption' : 'body2' }}
+                    />
+                    <Checkbox
+                      edge="end"
+                      checked={selectedCourses.includes(course.id)}
+                      size={isMobileView ? 'small' : 'medium'}
+                    />
+                  </ListItem>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+                  No courses available
+                </Typography>
+              )}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCourseDialogOpen(false)} size={isMobileView ? 'small' : 'medium'}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={saveSelectedCourses}
+            variant="contained"
+            size={isMobileView ? 'small' : 'medium'}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
