@@ -44,7 +44,9 @@ import Advertorial from './Advertorial/Advertorial';
 import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain';
 import UserGroupsManagement from './UserGroupsManagement';
 import axios from 'axios';
-import config from  '../../../config';
+import {API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL} from  '../../../config';
+
+
 
 const drawerWidth = 240;
 
@@ -95,15 +97,15 @@ function Admin() {
   
       // Make the request
       const response = await axios.post(
-        console.log(config.CMVP_API_URL)
-        `${config.CMVP_API_URL}/api/accounts/auth/api/register-token/`,
+        //console.log(CMVP_API_URL)
+        `${CMVP_API_URL}/api/accounts/auth/api/register-token/`,
         payload
       );
   
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
       if (response.status === 201) {
         // Generate the magic link (matches your Django view)
-        const magic_link = `${config.CMVP_SITE_URL}/MagicLoginPage?token=${token}`;
+        const magic_link = `${CMVP_SITE_URL}/MagicLoginPage?token=${token}`;
         
         // console.log("Token generated successfully");
         // Open the magic link in new tab
@@ -118,47 +120,6 @@ function Admin() {
         handleCloseModal();
       }
   };
-  // const handleGenerateToken = async () => {
-  //   setLoading(true);
-  //   setError(null);
-    
-  //   try {
-  //     // Generate token and expiry date (matches Django view logic)
-  //     const token = crypto.randomUUID(); // Equivalent to Python's uuid.uuid4()
-  //     const user_email = 'ekenehanson@gmail.com'; // Get this from your auth state
-      
-  //     // Calculate expiry time (10 minutes from now)
-  //     const expiresAt = new Date();
-  //     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-      
-  //     // Call the CMVP endpoint (matches your Django view)
-  //     const response = await axios.post(
-  //       'http://127.0.0.1:9091/api/accounts/auth/api/register-token/', 
-  //       {
-  //         token: token,
-  //         user_email: user_email,
-  //         expires_at: expiresAt.toISOString() // Send in ISO format
-  //       }
-  //     );
-  
-  //     if (response.status === 201) {
-  //       // Generate the magic link (matches your Django view)
-  //       const magic_link = `http://localhost:3000/MagicLoginPage?token=${token}`;
-        
-  //       console.log("Token generated successfully");
-  //       // Open the magic link in new tab
-  //       window.open(magic_link, '_blank');
-  //     } else {
-  //       setError('Failed to generate token');
-  //     }
-  //   } catch (err) {
-  //     setError(err.response?.data?.error || 'An error occurred');
-  //     } finally {
-  //       setLoading(false);
-  //       handleCloseModal();
-  //     }
-  // };
-
 
   const handleDrawerToggle = () => {
     setOpen(!open);

@@ -117,7 +117,7 @@ const Login = () => {
           navigate('/owner-dashboard');
           break;
         default:
-          navigate('/dashboard');
+          navigate('/');
       }
       
     } catch (error) {
