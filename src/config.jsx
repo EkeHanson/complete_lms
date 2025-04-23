@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:9090';
+//export const API_BASE_URL = 'http://localhost:9090';
 export const CMVP_SITE_URL = 'http://localhost:3000';
 // export const CMVP_API_URL = 'http://localhost:9091';
 
 
-// export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
+export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
 // export const CMVP_SITE_URL = 'https://cmvp.net';
 export const CMVP_API_URL =  'https://test.api.cmvp.net';
 

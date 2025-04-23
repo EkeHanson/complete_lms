@@ -451,7 +451,7 @@ function Admin() {
         sx={{
           flexGrow: 1,
           width: `calc(100% - ${drawerWidth}px - ${showActivityFeed ? activityFeedWidth : 0}px)`,
-          ml: '4px',
+          ml: '0px', // Changed from '4px' to '0px'
           mr: showActivityFeed ? `${activityFeedWidth}px` : '0px',
           overflowX: 'hidden',
           display: 'flex',
@@ -464,7 +464,7 @@ function Admin() {
           sx={{
             flex: 1,
             backgroundColor: theme.palette.background.paper,
-            p: 3,
+            p: 1, // Reduced from p: 3 to p: 1
             overflowY: 'auto',
             width: '100%'
           }}
