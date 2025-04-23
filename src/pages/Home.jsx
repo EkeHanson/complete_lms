@@ -136,8 +136,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.9,
       students: 12500,
       duration: '28 hours',
-      price: '$129.99',
-      discount: '$89.99',
+      price: 'NGN 1200009',
+      discount: 'NGN 1015000',
       image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'Bestseller'
     },
@@ -148,8 +148,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.8,
       students: 8700,
       duration: '35 hours',
-      price: '$149.99',
-      discount: '$99.99',
+      price: 'NGN 1200009',
+      discount: 'NGN 120000',
       image: 'https://images.unsplash.com/photo-1541462608143-67571c6738dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'Hot'
     },
@@ -160,8 +160,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.7,
       students: 15300,
       duration: '42 hours',
-      price: '$159.99',
-      discount: '$109.99',
+      price: 'NGN 1200009',
+      discount: 'NGN 1200009',
       image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'New'
     },
@@ -172,8 +172,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.6,
       students: 9800,
       duration: '24 hours',
-      price: '$119.99',
-      discount: '$79.99',
+      price: 'NGN 1200009',
+      discount: 'NGN 120000',
       image: 'https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'
     }
   ];

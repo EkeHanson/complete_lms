@@ -1,3 +1,4 @@
+import CourseView  from './courses/CourseView ';
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -10,11 +11,10 @@ import {
 import {
   Dashboard as DashboardIcon, People as UsersIcon,
   Security as SecurityIcon, AttachMoney as FinanceIcon,
-  Menu as MenuIcon, CalendarToday as ScheduleIcon,Campaign as AdvertIcon,
-  ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
+  CalendarToday as ScheduleIcon, Campaign as AdvertIcon,
   Notifications as NotificationsIcon, Settings as SettingsIcon,
   Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
-  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon,Groups as GroupsIcon,
+  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon, Groups as GroupsIcon,
   Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Mail as MessagesIcon
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -35,29 +35,27 @@ import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
 import CourseManagement from './courses/CourseManagement';
 import CourseForm from './courses/CourseForm';
-import CourseView  from './courses/CourseView ';
 import ScheduleManagement from './ScheduleManagement';
-import ActivityFeed from './ActivityFeed'; // Add this import
+import AdminActivityFeed from './AdminActivityFeed';
 import Messaging from './Messaging';
 import LearnerProfile from './LearnerProfile';
 import Advertorial from './Advertorial/Advertorial';
 import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain';
 import UserGroupsManagement from './UserGroupsManagement';
 import axios from 'axios';
-import {API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL} from  '../../../config';
+import { API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL } from '../../../config';
 
-
-
-const drawerWidth = 240;
+const drawerWidth = 280;
+const activityFeedWidth = 280;
 
 function Admin() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
-  const [open, setOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
   const settingsOpen = Boolean(anchorEl);
+  const [showActivityFeed, setShowActivityFeed] = useState(!isMobile);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,6 +69,7 @@ function Admin() {
     setModalOpen(false);
     setError(null);
   };
+
   const handleNavigateToBuilder = () => {
     navigate('/admin/builder');
     handleCloseModal();
@@ -81,48 +80,33 @@ function Admin() {
     setError(null);
   
     try {
-      // Generate the token and expiry timestamp
       const token = crypto.randomUUID();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 10);
   
-      // Create the full payload
       const payload = {
         token: token,
-        user_email: "ekenehanson@gmail.com",
+        user_email: "andybes90@gmail.com",
         expires_at: expiresAt.toISOString(),
       };
   
-      //console.log("Sending payload to API:", payload);
-  
-      // Make the request
       const response = await axios.post(
-        //console.log(CMVP_API_URL)
         `${CMVP_API_URL}/api/accounts/auth/api/register-token/`,
         payload
       );
   
-      // console.log("API Response:", response.data);
       if (response.status === 201) {
-        // Generate the magic link (matches your Django view)
         const magic_link = `${CMVP_SITE_URL}/MagicLoginPage?token=${token}`;
-        
-        // console.log("Token generated successfully");
-        // Open the magic link in new tab
         window.open(magic_link, '_blank');
       } else {
         setError('Failed to generate token');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'An error occurred');
-      } finally {
-        setLoading(false);
-        handleCloseModal();
-      }
-  };
-
-  const handleDrawerToggle = () => {
-    setOpen(!open);
+    } finally {
+      setLoading(false);
+      handleCloseModal();
+    }
   };
 
   const handleSettingsClick = (event) => {
@@ -133,20 +117,22 @@ function Admin() {
     setAnchorEl(null);
   };
 
-  const menuItems = [
+  const toggleActivityFeed = () => {
+    setShowActivityFeed(!showActivityFeed);
+  };
 
-    { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> },
+  const menuItems = [
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
+    { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> }, 
     { path: '/admin/users', name: 'User Management', icon: <UsersIcon /> },
-    { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },
-    { path: '/admin/finance', name: 'Financial Dashboard', icon: <FinanceIcon /> },
     { path: '/admin/quality-assurance', name: 'Quality Assurance', icon: <ChecklistIcon /> },
+    { path: '/admin/finance', name: 'Financial Dashboard', icon: <FinanceIcon /> },
+    { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },   
     { path: '/admin/analytics', name: 'Content & Analytics', icon: <AnalyticsIcon /> },
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
     { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
     { path: '/admin/groups', name: 'User Groups', icon: <GroupsIcon /> },
-    // { path: '/admin/profile', name: 'Profile Settings', icon: <SettingsIcon /> }
   ];
 
   const settingsMenuItems = [
@@ -179,7 +165,7 @@ function Admin() {
   ];
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
       <CssBaseline />
       
       {/* App Bar */}
@@ -190,26 +176,18 @@ function Admin() {
           backgroundColor: theme.palette.background.paper,
           color: theme.palette.text.primary,
           boxShadow: 'none',
-          borderBottom: `1px solid ${theme.palette.divider}`
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          width: `calc(100% - ${drawerWidth}px - ${showActivityFeed ? activityFeedWidth : 0}px)`,
+          left: drawerWidth,
         }}
       > 
         <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerToggle}
-            edge="start"
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
             Admin Portal
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* Schedule Icon with Tooltip */}
-          <Tooltip title="Certificate Options">
+            <Tooltip title="Certificate Options">
               <IconButton 
                 onClick={handleCertificateIconClick}
                 size="large" 
@@ -221,7 +199,7 @@ function Admin() {
                 }}
               >
                 <EmojiEventsIcon />
-              </IconButton>
+              </IconButton>    
             </Tooltip>
             <Tooltip title="Advert Management">
               <IconButton 
@@ -253,32 +231,28 @@ function Admin() {
                 <ScheduleIcon />
               </IconButton>
             </Tooltip>
-
             <Tooltip title="Messages">
               <IconButton 
                 component={Link}
                 to="/admin/messaging"
                 size="large" 
                 color="inherit"
-                aria-label="schedule"
+                aria-label="messages"
                 sx={{
                   color: location.pathname === '/admin/messaging' ? 
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                {/* <MessagesIcon /> */}
                 <ChatIcon />
               </IconButton>
             </Tooltip>
-
             <Tooltip title="Activity Feed">
               <IconButton
-                component={Link}
-                to="/admin/activity-feed"
                 size="large"
                 color="inherit"
+                onClick={toggleActivityFeed}
                 sx={{
-                  color: location.pathname === '/admin/activity-feed' ? 
+                  color: showActivityFeed ? 
                     theme.palette.primary.main : 'inherit'
                 }}
               >
@@ -287,12 +261,6 @@ function Admin() {
                 </Badge>
               </IconButton>
             </Tooltip>
-
-            {/* <IconButton size="large" color="inherit">
-              <Badge badgeContent={4} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton> */}
             
             <IconButton 
               size="large" 
@@ -367,9 +335,8 @@ function Admin() {
 
       {/* Sidebar */}
       <Drawer
-        variant={isMobile ? 'temporary' : 'persistent'}
-        open={open}
-        onClose={handleDrawerToggle}
+        variant="persistent"
+        open={true}
         sx={{
           width: drawerWidth,
           flexShrink: 0,
@@ -377,7 +344,8 @@ function Admin() {
             width: drawerWidth,
             boxSizing: 'border-box',
             backgroundColor: theme.palette.background.default,
-            borderRight: `1px solid ${theme.palette.divider}`
+            borderRight: `1px solid ${theme.palette.divider}`,
+            overflowX: 'hidden',
           },
         }}
       >
@@ -385,74 +353,95 @@ function Admin() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between',
-          p: theme.spacing(2, 3),
+          p: theme.spacing(2),
           height: '64px'
         }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>
             Admin Console
           </Typography>
-          <IconButton onClick={handleDrawerToggle}>
-            {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </IconButton>
         </Box>
         
         <Divider />
         
-        <List>
+        <List sx={{ px: 0.5 }}>
           {menuItems.map((item) => (
-            <ListItem 
-              key={item.path} 
-              disablePadding
-              sx={{
-                backgroundColor: location.pathname === item.path ? 
-                  theme.palette.action.selected : 'transparent'
-              }}
-            >
-              <ListItemButton 
-                component={Link} 
-                to={item.path}
+            <Tooltip title={item.name} placement="right" key={item.path}>
+              <ListItem 
+                disablePadding
                 sx={{
-                  py: 1.5,
-                  px: 3,
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover
-                  }
+                  backgroundColor: location.pathname === item.path ? 
+                    theme.palette.action.selected : 'transparent',
+                  mb: 0.5
                 }}
               >
-                <ListItemIcon sx={{ minWidth: '40px', color: 'inherit' }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.name} 
-                  primaryTypographyProps={{ fontWeight: 500 }}
-                />
-              </ListItemButton>
-            </ListItem>
+                <ListItemButton 
+                  component={Link} 
+                  to={item.path}
+                  sx={{
+                    py: 1.5,
+                    px: 2,
+                    justifyContent: 'flex-start',
+                    '&:hover': {
+                      backgroundColor: theme.palette.action.hover
+                    },
+                    minHeight: '48px'
+                  }}
+                >
+                  <ListItemIcon sx={{ 
+                    minWidth: 'auto',
+                    mr: 2,
+                    justifyContent: 'center',
+                    color: 'inherit'
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.name} 
+                    primaryTypographyProps={{ 
+                      fontWeight: 500,
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            </Tooltip>
           ))}
         </List>
 
         <Divider sx={{ my: 1 }} />
         
-        <List>
-          <ListItem disablePadding>
-            <ListItemButton
-              sx={{
-                py: 1.5,
-                px: 3,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover
-                }
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: '40px', color: 'inherit' }}>
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Logout" 
-                primaryTypographyProps={{ fontWeight: 500 }}
-              />
-            </ListItemButton>
-          </ListItem>
+        <List sx={{ px: 0.5 }}>
+          <Tooltip title="Logout" placement="right">
+            <ListItem disablePadding>
+              <ListItemButton
+                sx={{
+                  py: 1.5,
+                  px: 2,
+                  justifyContent: 'flex-start',
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover
+                  },
+                  minHeight: '48px'
+                }}
+              >
+                <ListItemIcon sx={{ 
+                  minWidth: 'auto',
+                  mr: 2,
+                  justifyContent: 'center',
+                  color: 'inherit'
+                }}>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Logout" 
+                  primaryTypographyProps={{ 
+                    fontWeight: 500,
+                    fontSize: '0.9rem'
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
         </List>
       </Drawer>
 
@@ -461,23 +450,23 @@ function Admin() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: `calc(100% - ${open ? drawerWidth : 0}px)`,
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-          overflowX: 'hidden'
+          width: `calc(100% - ${drawerWidth}px - ${showActivityFeed ? activityFeedWidth : 0}px)`,
+          ml: '4px',
+          mr: showActivityFeed ? `${activityFeedWidth}px` : '0px',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh'
         }}
       >
         <Toolbar />
         <Box
           sx={{
+            flex: 1,
             backgroundColor: theme.palette.background.paper,
-            borderRadius: 2,
-            boxShadow: theme.shadows[1],
             p: 3,
-            minHeight: 'calc(100vh - 96px)'
+            overflowY: 'auto',
+            width: '100%'
           }}
         >
           <Routes>
@@ -499,17 +488,36 @@ function Admin() {
             <Route path="/courses/edit/:id" element={<CourseForm />} />
             <Route path="/courses/view/:id" element={<CourseView />} />
             <Route path="/schedule" element={<ScheduleManagement />} />
-            <Route path="/activity-feed" element={<ActivityFeed />} />
+            <Route path="/activity-feed" element={<AdminActivityFeed />} />
             <Route path="/messaging" element={<Messaging />} /> 
             <Route path="/advertorial" element={<Advertorial />} />
             <Route path="/groups" element={<UserGroupsManagement />} />
-
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
             <Route path="/builder" element={<CertificateBuilderMain />} />
-
           </Routes>
         </Box>
       </Box>
+
+      {/* Activity Feed Sidebar */}
+      {showActivityFeed && (
+        <Box
+          sx={{
+            width: activityFeedWidth,
+            flexShrink: 0,
+            position: 'fixed',
+            right: 0,
+            top: 64,
+            height: 'calc(100vh - 64px)',
+            borderLeft: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            overflowY: 'auto',
+            zIndex: theme.zIndex.drawer - 1, // Lower zIndex to prevent overlap
+          }}
+        >
+          <AdminActivityFeed />
+        </Box>
+      )}
+
       <ChoiceModal
         open={modalOpen}
         onClose={handleCloseModal}

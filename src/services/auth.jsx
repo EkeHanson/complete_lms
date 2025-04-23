@@ -72,4 +72,6 @@ const authService = {
   getProfile
 };
 
+export { authAPI };
 export default authService;
+

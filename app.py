@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 # Set the base directory (relative or absolute)
-base_dir = Path('src/pages/dashboard/AdminDashboard/courses')
+base_dir = Path('src/pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement')
 # Output file where you want to store the combined contents
 output_file = Path('all_src_contents.txt')
 

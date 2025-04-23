@@ -48,26 +48,62 @@ A modern marketplace platform for renting and hiring items, built with React (Vi
 ## Project Structure
 
 ```
-hiring-web-app/
-├── client/                  # React frontend (this project)
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/          # Static assets
-│   │   ├── components/      # Reusable components
-│   │   ├── contexts/        # React contexts
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── pages/           # Application pages
-│   │   ├── services/        # API services
-│   │   ├── utils/           # Utility functions
-│   │   ├── App.jsx          # Main app component
-│   │   └── main.jsx         # Entry point
-│   ├── package.json
-│   └── vite.config.js
-└── server/                  # Django backend
-    ├── config/              # Django project settings
-    ├── apps/                # Django apps
-    ├── manage.py
-    └── requirements.txt
+complete_lms/
+├── .gitignore
+├── README.md
+├── app.py (backend API extensions)
+├── package.json
+├── public/
+└── src/
+    ├── App.jsx
+    ├── components/
+    │   ├── common/
+    │   └── listings/
+    ├── contexts/
+    │   ├── AuthContext.jsx (updated for QA roles)
+    │   └── **QualityContext.jsx** (new)
+    ├── hooks/
+    │   ├── useWebSocket.jsx
+    │   └── **useRiskScore.jsx** (new)
+    ├── pages/
+    │   ├── dashboard/
+    │   │   ├── AdminDashboard/
+    │   │   │   └── QualityAssurance/ (renamed from "QaulityAssurance")
+    │   │   │       ├── **Audit/** (new)
+    │   │   │       │   ├── AuditTrail.jsx
+    │   │   │       │   └── MockAudit.jsx (new)
+    │   │   │       ├── Compliance/
+    │   │   │       │   ├── ComplianceReports.jsx
+    │   │   │       │   └── **StandardsRegistry.jsx** (new)
+    │   │   │       ├── EQA/
+    │   │   │       │   ├── AccreditationStatus.jsx
+    │   │   │       │   ├── EvidenceSubmission.jsx
+    │   │   │       │   └── **AuditScheduler.jsx** (new)
+    │   │   │       ├── IQA/
+    │   │   │       │   ├── **SamplingEngine/** (new)
+    │   │   │       │   │   ├── AssessmentSampling.jsx (updated)
+    │   │   │       │   │   └── RiskCalculator.jsx (new)
+    │   │   │       │   ├── FeedbackManagement.jsx
+    │   │   │       │   ├── **ObservationTracker.jsx** (new)
+    │   │   │       │   └── **StandardizationMeetings.jsx** (new)
+    │   │   │       ├── Reports/
+    │   │   │       │   ├── IQAReports.jsx
+    │   │   │       │   └── **AutoExporter.jsx** (new)
+    │   │   │       ├── Shared/
+    │   │   │       │   ├── ActionItems.jsx (enhanced)
+    │   │   │       │   └── **RiskDashboard.jsx** (new)
+    │   │   │       └── QualityDashboard.jsx (renamed + updated)
+    │   │   └── courses/
+    │   │       └── **CourseRiskFlags.jsx** (new)
+    ├── services/
+    │   ├── **qualityAPI.jsx** (new)
+    │   └── listings.jsx
+    └── utils/
+        ├── **samplingAlgorithms.js** (new)
+        └── **reportTemplates/** (new)
+            ├── ofqualTemplate.js
+            └── iso9001Template.js
+
 ```
 
 ## Getting Started

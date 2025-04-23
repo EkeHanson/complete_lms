@@ -332,7 +332,7 @@ const CourseList = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ minWidth: 200 }}>Title</TableCell>
-              <TableCell sx={{ minWidth: 100 }}>Code</TableCell>
+              {/* <TableCell sx={{ minWidth: 100 }}>Code</TableCell> */}
               <TableCell sx={{ minWidth: 150 }}>Price</TableCell>
               <TableCell sx={{ minWidth: 200 }}>Outcomes</TableCell>
               <TableCell sx={{ minWidth: 100 }}>Status</TableCell>
@@ -367,7 +367,7 @@ const CourseList = () => {
                       {course.category.name} • {course.level}
                     </Typography>
                   </TableCell>
-                  <TableCell>{course.code}</TableCell>
+                  {/* <TableCell>{course.code}</TableCell> */}
                   <TableCell>
                     {course.discount_price ? (
                       <>
