@@ -136,8 +136,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.9,
       students: 12500,
       duration: '28 hours',
-      price: 'NGN 1200009',
-      discount: 'NGN 1015000',
+      price: 'NGN 1800009',
+      discount: 'NGN 155,000',
       image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'Bestseller'
     },
@@ -148,8 +148,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.8,
       students: 8700,
       duration: '35 hours',
-      price: 'NGN 1200009',
-      discount: 'NGN 120000',
+      price: 'NGN 140,0009',
+      discount: 'NGN 135,000',
       image: 'https://images.unsplash.com/photo-1541462608143-67571c6738dd?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'Hot'
     },
@@ -160,8 +160,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.7,
       students: 15300,
       duration: '42 hours',
-      price: 'NGN 1200009',
-      discount: 'NGN 1200009',
+      price: 'NGN 170,000',
+      discount: 'NGN 150,000',
       image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
       badge: 'New'
     },
@@ -172,8 +172,8 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
       rating: 4.6,
       students: 9800,
       duration: '24 hours',
-      price: 'NGN 1200009',
-      discount: 'NGN 120000',
+      price: 'NGN 100009',
+      discount: 'NGN 90000',
       image: 'https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'
     }
   ];
@@ -282,7 +282,7 @@ const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
                       fontWeight: 300
                     }}
                   >
-                    Join over 250,000 students advancing their careers with our expert-led courses and hands-on projects.
+                    Join over 120 students advancing their careers with our expert-led courses and hands-on projects.
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     <Button 
