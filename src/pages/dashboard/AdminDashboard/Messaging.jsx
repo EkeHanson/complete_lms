@@ -129,47 +129,6 @@ const Messaging = () => {
     }
   };
 
-  // Fetch initial data
-  // const fetchData = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const params = {
-  //       page: pagination.page,
-  //       page_size: rowsPerPage,
-  //       ...(filters.search && { search: filters.search }),
-  //       ...(filters.type !== 'all' && { type: filters.type }),
-  //       ...(filters.status !== 'all' && { status: filters.status }),
-  //       ...(filters.readStatus !== 'all' && { read_status: filters.readStatus }),
-  //       ...(filters.dateFrom && { date_from: format(filters.dateFrom, 'yyyy-MM-dd') }),
-  //       ...(filters.dateTo && { date_to: format(filters.dateTo, 'yyyy-MM-dd') })
-  //     };
-
-  //     const [messagesRes, groupsRes, unreadRes, messageTypesRes] = await Promise.all([
-  //       messagingAPI.getMessages(params),
-  //       groupsAPI.getGroups(),
-  //       messagingAPI.getUnreadCount(),
-  //       messagingAPI.getMessageTypes()
-  //     ]);
-
-  //     setMessages(messagesRes.data.results || []);
-  //     setGroups(groupsRes.data.results || []);
-  //     setUnreadCount(unreadRes.data.count || 0);
-  //     setMessageTypes(messageTypesRes.data || []);
-  //     setPagination({
-  //       count: messagesRes.data.count || 0,
-  //       next: messagesRes.data.next,
-  //       previous: messagesRes.data.previous,
-  //       page: pagination.page
-  //     });
-
-  //     await fetchUsers();
-  //   } catch (error) {
-  //     setError(error.message);
-  //     enqueueSnackbar('Failed to load data', { variant: 'error' });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   const fetchData = async () => {
     setLoading(true);
     try {

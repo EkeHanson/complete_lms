@@ -148,7 +148,7 @@ const CourseManagement = () => {
       <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
         {/* Most Popular Course */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
+          <Card sx={{ height: '70%' }}>
             <CardContent>
               <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                 <Star color="warning" sx={{ mr: 1 }} /> Most Popular

@@ -496,7 +496,6 @@ const AdminUserManagement = () => {
                   <TableCell>User</TableCell>
                   <TableCell>Role</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Last Login</TableCell>
                   <TableCell>Signup Date</TableCell>
                   <TableCell>Login Attempts</TableCell>
                   <TableCell align="right">Actions</TableCell>
@@ -552,22 +551,7 @@ const AdminUserManagement = () => {
                       <TableCell>
                         <StatusChip status={user.status} />
                       </TableCell>
-                      <TableCell>
-                        {user.last_login ? (
-                          <>
-                            <Typography variant="body2">
-                              {new Date(user.last_login).toLocaleDateString()}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {user.last_login_ip || 'Unknown'} • {user.last_login_device || 'Unknown'}
-                            </Typography>
-                          </>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Never logged in
-                          </Typography>
-                        )}
-                      </TableCell>
+               
                       <TableCell>
                         {new Date(user.signup_date).toLocaleDateString()}
                       </TableCell>

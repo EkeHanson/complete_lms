@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Box, Container, Typography, Paper, Button, Divider, Alert, LinearProgress, useTheme,
+  Box, Container, Typography, Paper, Button, Divider, Alert, CircularProgress, useTheme,
   List, ListItem, ListItemAvatar, ListItemText, Avatar, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, MenuItem, Grid, InputAdornment
+  DialogContent, DialogActions, TextField, MenuItem, Grid, InputAdornment, Backdrop
 } from '@mui/material';
 import {
   Publish as UploadIcon, Description as FileIcon, CheckCircle as SuccessIcon,
@@ -44,7 +44,6 @@ const BulkUserUpload = ({ onUpload }) => {
         setFile(acceptedFiles[0]);
         setUploadResult(null);
 
-        // Parse file and show preview modal
         const data = await acceptedFiles[0].arrayBuffer();
         const workbook = XLSX.read(data);
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -65,6 +64,7 @@ const BulkUserUpload = ({ onUpload }) => {
   const validateUserData = (userData, index) => {
     const errors = [];
     const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
+    
     requiredFields.forEach(field => {
       if (!userData[field]) {
         errors.push(`Row ${index + 2}: Missing required field: ${field}`);
@@ -108,44 +108,38 @@ const BulkUserUpload = ({ onUpload }) => {
   };
 
   const handleSaveUser = async () => {
-    if (validationErrors.length) {
-      return; // Don't proceed if there are validation errors
-    }
+    if (validationErrors.length) return;
+
     try {
-      // Prepare user data for the API
       const userData = {
         first_name: editedUser.firstName || '',
         last_name: editedUser.lastName || '',
         email: editedUser.email || '',
         password: editedUser.password || '',
-        role: editedUser.role || 'learner', // Default role if not specified
+        role: editedUser.role || 'learner',
         birth_date: editedUser.birthDate || null,
-        status: editedUser.status || 'active', // Default status if not specified
+        status: editedUser.status || 'active',
         department: editedUser.department || null,
       };
-  
-      // Call the createUser API to save the user
+
       const response = await userAPI.createUser(userData);
-  
+
       if (response.status === 201 || response.status === 200) {
-        // Update previewData with the saved user
         setPreviewData((prev) => {
           const newData = [...prev];
           newData[selectedUserIndex] = {
             ...editedUser,
-            id: response.data.id, // Optionally store the user ID if returned
+            id: response.data.id,
           };
           return newData;
         });
-  
-        // Show success message
+
         setUploadResult({
           success: true,
           message: `User ${userData.email} saved successfully`,
           details: [],
         });
-  
-        // Reset form
+
         setSelectedUserIndex(null);
         setEditedUser(null);
         setValidationErrors([]);
@@ -154,14 +148,14 @@ const BulkUserUpload = ({ onUpload }) => {
       console.error('Error saving user:', error);
       let errorMessage = 'Failed to save user';
       let errorDetails = [];
-  
+
       if (error.response?.data) {
         errorMessage = error.response.data.error || 'Error saving user';
         errorDetails = error.response.data.errors || [errorMessage];
       } else {
         errorDetails = [error.message || 'Network error'];
       }
-  
+
       setUploadResult({
         success: false,
         message: errorMessage,
@@ -192,62 +186,13 @@ const BulkUserUpload = ({ onUpload }) => {
     setOpenRemoveConfirm(false);
   };
 
-  // const processFile = async () => {
-  //   if (!file) return;
-    
-  //   setIsProcessing(true);
-  //   setUploadResult(null);
-    
-  //   try {
-  //     const response = await userAPI.bulkUpload(file);
-      
-  //     if (response.data.success) {
-  //       setUploadResult({
-  //         success: true,
-  //         message: `Successfully processed ${response.data.created_count} users`,
-  //         details: response.data.errors || []
-  //       });
-        
-  //       if (onUpload && response.data.created_count > 0) {
-  //         onUpload();
-  //       }
-  //     } else {
-  //       setUploadResult({
-  //         success: false,
-  //         message: response.data.error || 'Upload failed',
-  //         details: response.data.errors || []
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error('Upload error:', error);
-  //     let errorDetails = [];
-      
-  //     if (error.response?.data?.errors) {
-  //       errorDetails = error.response.data.errors;
-  //     } else if (error.response?.data?.error) {
-  //       errorDetails = [error.response.data.error];
-  //     } else {
-  //       errorDetails = [error.message || 'Network error'];
-  //     }
-      
-  //     setUploadResult({
-  //       success: false,
-  //       message: 'Error processing file',
-  //       details: errorDetails
-  //     });
-  //   } finally {
-  //     setIsProcessing(false);
-  //   }
-  // };
-
   const processFile = async () => {
     if (!file || previewData.length === 0) return;
-  
+
     setIsProcessing(true);
     setUploadResult(null);
-  
+
     try {
-      // Filter out users that were already saved (have an ID)
       const unsavedUsers = previewData.filter(user => !user.id);
       if (unsavedUsers.length === 0) {
         setUploadResult({
@@ -258,22 +203,21 @@ const BulkUserUpload = ({ onUpload }) => {
         setIsProcessing(false);
         return;
       }
-  
-      // Convert unsaved users to CSV or FormData for bulk upload
+
       const ws = XLSX.utils.json_to_sheet(unsavedUsers);
       const csv = XLSX.utils.sheet_to_csv(ws);
       const blob = new Blob([csv], { type: 'text/csv' });
       const csvFile = new File([blob], 'users.csv', { type: 'text/csv' });
-  
+
       const response = await userAPI.bulkUpload(csvFile);
-  
+
       if (response.data.success) {
         setUploadResult({
           success: true,
           message: `Successfully processed ${response.data.created_count} users`,
           details: response.data.errors || [],
         });
-  
+
         if (onUpload && response.data.created_count > 0) {
           onUpload();
         }
@@ -287,7 +231,7 @@ const BulkUserUpload = ({ onUpload }) => {
     } catch (error) {
       console.error('Upload error:', error);
       let errorDetails = [];
-  
+
       if (error.response?.data?.errors) {
         errorDetails = error.response.data.errors;
       } else if (error.response?.data?.error) {
@@ -295,7 +239,7 @@ const BulkUserUpload = ({ onUpload }) => {
       } else {
         errorDetails = [error.message || 'Network error'];
       }
-  
+
       setUploadResult({
         success: false,
         message: 'Error processing file',
@@ -305,13 +249,12 @@ const BulkUserUpload = ({ onUpload }) => {
       setIsProcessing(false);
     }
   };
-  
+
   const getInitial = (user) => {
     if (user.firstName) return user.firstName.charAt(0).toUpperCase();
     return user.email?.charAt(0).toUpperCase() || '?';
   };
 
-  // Filter users based on search query
   const filteredUsers = previewData.filter(user => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -323,6 +266,21 @@ const BulkUserUpload = ({ onUpload }) => {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={isProcessing}
+      >
+        <Box textAlign="center">
+          <CircularProgress color="inherit" size={60} thickness={4} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Processing your file...
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Please wait while we upload and validate your data
+          </Typography>
+        </Box>
+      </Backdrop>
+
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
           Bulk User Upload
@@ -396,15 +354,6 @@ const BulkUserUpload = ({ onUpload }) => {
           )}
         </Box>
 
-        {isProcessing && (
-          <Box sx={{ mt: 3 }}>
-            <LinearProgress />
-            <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
-              Processing your file...
-            </Typography>
-          </Box>
-        )}
-
         {uploadResult && (
           <Alert
             icon={uploadResult.success ? <SuccessIcon fontSize="inherit" /> : <ErrorIcon fontSize="inherit" />}
@@ -417,7 +366,6 @@ const BulkUserUpload = ({ onUpload }) => {
                 {uploadResult.details.map((detail, index) => (
                   <li key={index}>
                     <Typography variant="body2">
-                      {/* Handle both string and object error details */}
                       {typeof detail === 'string' ? detail : 
                       detail.error ? `Row ${detail.row}: ${detail.error}` : 
                       JSON.stringify(detail)}
@@ -430,21 +378,27 @@ const BulkUserUpload = ({ onUpload }) => {
         )}
       </Paper>
 
-      {/* Preview Modal */}
       <Dialog
         open={openPreviewModal}
         onClose={() => setOpenPreviewModal(false)}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: '80vh',
+            width: '90%',
+          }
+        }}
       >
-        <DialogTitle>Preview and Edit Users</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2}>
-            {/* User List */}
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
-                Users ({filteredUsers.length}/{previewData.length})
-              </Typography>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Preview and Edit Users</span>
+          <Typography variant="body2" color="text.secondary">
+            {previewData.length} users found
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ height: '100%' }}>
+            <Grid item xs={12} md={5}>
               <TextField
                 fullWidth
                 size="small"
@@ -460,8 +414,8 @@ const BulkUserUpload = ({ onUpload }) => {
                 }}
                 sx={{ mb: 2 }}
               />
-              <Paper sx={{ maxHeight: '55vh', overflow: 'auto' }}>
-                <List>
+              <Paper sx={{ height: '50vh', overflow: 'auto' }}>
+                <List dense>
                   {filteredUsers.length === 0 ? (
                     <Box sx={{ p: 2, textAlign: 'center' }}>
                       <Typography color="text.secondary">
@@ -473,10 +427,11 @@ const BulkUserUpload = ({ onUpload }) => {
                       <ListItem
                         key={index}
                         button
+                        dense
                         selected={selectedUserIndex === previewData.indexOf(user)}
                         onClick={() => handleSelectUser(previewData.indexOf(user))}
                         sx={{
-                          borderLeft: selectedUserIndex === previewData.indexOf(user) ? `4px solid ${theme.palette.primary.main}` : 'none',
+                          borderLeft: selectedUserIndex === previewData.indexOf(user) ? `3px solid ${theme.palette.primary.main}` : 'none',
                           bgcolor: selectedUserIndex === previewData.indexOf(user) ? theme.palette.action.selected : 'inherit',
                           '&:hover': {
                             bgcolor: theme.palette.action.hover,
@@ -486,8 +441,11 @@ const BulkUserUpload = ({ onUpload }) => {
                         <ListItemAvatar>
                           <Avatar
                             sx={{
+                              width: 32,
+                              height: 32,
                               bgcolor: theme.palette.primary.light,
                               color: theme.palette.primary.main,
+                              fontSize: '0.875rem',
                             }}
                           >
                             {getInitial(user)}
@@ -496,8 +454,16 @@ const BulkUserUpload = ({ onUpload }) => {
                         <ListItemText
                           primary={`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User'}
                           secondary={user.email || 'No email'}
-                          primaryTypographyProps={{ fontWeight: 500 }}
-                          secondaryTypographyProps={{ color: 'text.secondary' }}
+                          primaryTypographyProps={{ 
+                            fontWeight: 500,
+                            variant: 'body2',
+                            noWrap: true
+                          }}
+                          secondaryTypographyProps={{ 
+                            color: 'text.secondary',
+                            variant: 'caption',
+                            noWrap: true
+                          }}
                         />
                       </ListItem>
                     ))
@@ -506,118 +472,151 @@ const BulkUserUpload = ({ onUpload }) => {
               </Paper>
             </Grid>
 
-            {/* User Edit Form */}
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12} md={7}>
               {selectedUserIndex !== null && editedUser ? (
-                <>
+                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
                     Edit User (Row {selectedUserIndex + 2})
                   </Typography>
-                  <Paper sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <TextField
-                        label="First Name"
-                        value={editedUser.firstName || ''}
-                        onChange={(e) => handleEditUser('firstName', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Last Name"
-                        value={editedUser.lastName || ''}
-                        onChange={(e) => handleEditUser('lastName', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Email"
-                        value={editedUser.email || ''}
-                        onChange={(e) => handleEditUser('email', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        label="Password"
-                        value={editedUser.password || ''}
-                        onChange={(e) => handleEditUser('password', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        select
-                        label="Role"
-                        value={editedUser.role || ''}
-                        onChange={(e) => handleEditUser('role', e.target.value)}
-                        fullWidth
+                  <Paper sx={{ p: 2, flexGrow: 1, overflow: 'auto' }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          label="First Name"
+                          value={editedUser.firstName || ''}
+                          onChange={(e) => handleEditUser('firstName', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          label="Last Name"
+                          value={editedUser.lastName || ''}
+                          onChange={(e) => handleEditUser('lastName', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Email"
+                          value={editedUser.email || ''}
+                          onChange={(e) => handleEditUser('email', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          label="Password"
+                          value={editedUser.password || ''}
+                          onChange={(e) => handleEditUser('password', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          select
+                          label="Role"
+                          value={editedUser.role || ''}
+                          onChange={(e) => handleEditUser('role', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        >
+                          {['admin', 'instructor', 'learner', 'owner'].map((role) => (
+                            <MenuItem key={role} value={role}>
+                              {role}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          label="Birth Date (YYYY-MM-DD)"
+                          value={editedUser.birthDate || ''}
+                          onChange={(e) => handleEditUser('birthDate', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          select
+                          label="Status"
+                          value={editedUser.status || ''}
+                          onChange={(e) => handleEditUser('status', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        >
+                          {['active', 'pending', 'suspended'].map((status) => (
+                            <MenuItem key={status} value={status}>
+                              {status}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Department"
+                          value={editedUser.department || ''}
+                          onChange={(e) => handleEditUser('department', e.target.value)}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      </Grid>
+                    </Grid>
+                    
+                    {validationErrors.length > 0 && (
+                      <Alert severity="error" sx={{ mt: 2 }}>
+                        <Box component="ul" sx={{ pl: 2, mb: 0 }}>
+                          {validationErrors.map((error, idx) => (
+                            <li key={idx}>
+                              <Typography variant="body2">{error}</Typography>
+                            </li>
+                          ))}
+                        </Box>
+                      </Alert>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        onClick={handleSaveUser}
+                        disabled={validationErrors.length > 0}
                         size="small"
                       >
-                        {['admin', 'instructor', 'learner', 'owner'].map((role) => (
-                          <MenuItem key={role} value={role}>
-                            {role}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <TextField
-                        label="Birth Date (YYYY-MM-DD)"
-                        value={editedUser.birthDate || ''}
-                        onChange={(e) => handleEditUser('birthDate', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      <TextField
-                        select
-                        label="Status"
-                        value={editedUser.status || ''}
-                        onChange={(e) => handleEditUser('status', e.target.value)}
-                        fullWidth
+                        Save
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleRemoveUser}
                         size="small"
                       >
-                        {['active', 'pending', 'suspended'].map((status) => (
-                          <MenuItem key={status} value={status}>
-                            {status}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <TextField
-                        label="Department"
-                        value={editedUser.department || ''}
-                        onChange={(e) => handleEditUser('department', e.target.value)}
-                        fullWidth
-                        size="small"
-                      />
-                      {validationErrors.length > 0 && (
-                        <Alert severity="error">
-                          <Typography variant="body2">Validation Errors:</Typography>
-                          <ul>
-                            {validationErrors.map((error, idx) => (
-                              <li key={idx}>{error}</li>
-                            ))}
-                          </ul>
-                        </Alert>
-                      )}
-                      <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                          variant="contained"
-                          onClick={handleSaveUser}
-                          disabled={validationErrors.length > 0}
-                        >
-                          Save User
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={handleRemoveUser}
-                        >
-                          Remove User
-                        </Button>
-                      </Box>
+                        Remove
+                      </Button>
                     </Box>
                   </Paper>
-                </>
+                </Box>
               ) : (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <Box sx={{ 
+                  height: '50vh',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
                   <Typography color="text.secondary">
-                    Select a user to edit or remove their details
+                    Select a user to edit details
                   </Typography>
                 </Box>
               )}
@@ -625,42 +624,36 @@ const BulkUserUpload = ({ onUpload }) => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setOpenPreviewModal(false);
-              setFile(null);
-              setPreviewData([]);
-              setSearchQuery('');
-            }}
-          >
+          <Button onClick={() => setOpenPreviewModal(false)}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={processFile}
             disabled={isProcessing || previewData.length === 0}
+            startIcon={isProcessing ? <CircularProgress size={20} /> : null}
           >
             {isProcessing ? 'Processing...' : 'Submit All Users'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Remove User Confirmation Dialog */}
       <Dialog
         open={openRemoveConfirm}
         onClose={() => setOpenRemoveConfirm(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Remove User</DialogTitle>
+        <DialogTitle>Confirm Removal</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to remove this user from the upload list?
-            {editedUser && (
-              <strong> {editedUser.email || 'Unnamed User'}</strong>
-            )}
-            This action cannot be undone.
+            Remove this user from the upload list?
           </Typography>
+          {editedUser && (
+            <Typography fontWeight="bold" sx={{ mt: 1 }}>
+              {editedUser.email || 'Unnamed User'}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenRemoveConfirm(false)}>Cancel</Button>

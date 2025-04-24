@@ -20,7 +20,7 @@ import {
   MoreVert as MoreIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon,
   Search as SearchIcon, FilterList as FilterIcon, Add as AddIcon
 } from '@mui/icons-material';
-import { userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAPI, groupsAPI, advertAPI } from '../../../config';
+import {isSuperAdmin, userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAPI, groupsAPI, advertAPI } from '../../../config';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -43,7 +43,6 @@ const StatusChip = ({ status }) => {
     />
   );
 };
-
 
 const getStatusIcon = (status) => {
   switch (status) {
@@ -162,67 +161,72 @@ const AdminDashboard = () => {
   // Dashboard data
   const [recentActivities, setRecentActivities] = useState([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [totalMessages, setTotalMessages] = useState(0);
   const [upcomingSchedules, setUpcomingSchedules] = useState([]);
+  const [totalSchedules, setTotalSchedules] = useState(0);
   const [paymentData, setPaymentData] = useState(null);
   const [groupStats, setGroupStats] = useState(null);
   const [certificateStats, setCertificateStats] = useState(null);
   const [advertStats, setAdvertStats] = useState(null);
 
   // Fetch dashboard data
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [
-        userStats,
-        courseStats,
-        recentUsersRes,
-        popularCoursesRes,
-        activitiesRes,
-        messagesRes,
-        schedulesRes,
-        paymentsRes,
-        groupsRes,
-        certificatesRes,
-        advertsRes
-      ] = await Promise.all([
-        userAPI.getUserStats(),
-       
-        coursesAPI.getCourses(),
-        fetchUsers(1, usersPerPage, userFilters),
-        fetchCourses(1, coursesPerPage, courseFilters),
-        userAPI.getUserActivities({ limit: 10 }),
-        messagingAPI.getUnreadCount(),
-        scheduleAPI.getUpcomingSchedules(),
-        paymentAPI.getPaymentConfig(),
-        groupsAPI.getGroups({ limit: 10 }),
-        coursesAPI.getCertificates(),
-        advertAPI.getAdverts()
-      ]);
+// Update the fetchDashboardData function in your AdminDashboard component:
 
-      setStats({
-        users: userStats.data,
-        courses: courseStats.data
-      });
+const fetchDashboardData = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const [
+      userStats,
+      courseStats,
+      recentUsersRes,
+      popularCoursesRes,
+      activitiesRes,
+      messagesRes,
+      schedulesRes,
+      paymentsRes,
+      groupsRes,
+      certificatesRes,
+      advertsRes,
+      totalMessagesRes,
+      totalSchedulesRes
+    ] = await Promise.all([
+      userAPI.getUserStats(),
+      coursesAPI.getCourses(),
+      fetchUsers(1, usersPerPage, userFilters),
+      fetchCourses(1, coursesPerPage, courseFilters),
+      userAPI.getUserActivities({ limit: 10 }),
+      messagingAPI.getUnreadCount(),
+      scheduleAPI.getUpcomingSchedules(),
+      paymentAPI.getPaymentConfig(),
+      groupsAPI.getGroups({ limit: 10 }),
+      coursesAPI.getCertificates(),
+      advertAPI.getAdverts(),
+      messagingAPI.getTotalMessages(),
+      scheduleAPI.getTotalSchedules()
+    ]);
 
-      // console.log("courseStats")
-      // console.log(courseStats)
-      // console.log("courseStats")
+    setStats({
+      users: userStats.data,
+      courses: courseStats.data
+    });
 
-      setRecentActivities(activitiesRes.data.results);
-      setUnreadMessages(messagesRes.data.count);
-      setUpcomingSchedules(schedulesRes.data);
-      setPaymentData(paymentsRes.data);
-      setGroupStats(groupsRes.data);
-      setCertificateStats(certificatesRes.data);
-      setAdvertStats(advertsRes.data);
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
-      setError('Failed to load dashboard data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setRecentActivities(activitiesRes.data.results);
+    setUnreadMessages(messagesRes.data.count);
+    setTotalMessages(totalMessagesRes.data.total_messages);
+    setUpcomingSchedules(schedulesRes.data);
+    setTotalSchedules(totalSchedulesRes.data.total_schedule);
+    setPaymentData(paymentsRes.data);
+    setGroupStats(groupsRes.data);
+    setCertificateStats(certificatesRes.data);
+    setAdvertStats(advertsRes.data);
+  } catch (err) {
+    console.error('Failed to fetch dashboard data:', err);
+    setError('Failed to load dashboard data. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch users with pagination and filtering
   const fetchUsers = async (page, pageSize, filters) => {
@@ -466,13 +470,6 @@ const AdminDashboard = () => {
   };
   const getSuspiciousActivityCount = () => users.filter(u => u.login_attempts > 0).length;
 
-  const statsCards = [
-    { title: 'Total Users', value: userPagination.count, icon: <UsersIcon fontSize="large" />, change: '+12% from last month' },
-    { title: 'Active Users', value: getActiveUsersCount(), icon: <SuccessIcon fontSize="large" />, change: 'Active in last 30 days' },
-    { title: 'New Signups', value: getNewSignupsCount(), icon: <AddIcon fontSize="large" />, change: 'This month' },
-    { title: 'Suspicious Activity', value: getSuspiciousActivityCount(), icon: <WarningIcon fontSize="large" />, change: 'Failed login attempts' }
-  ];
-
   // Render user stats chart
   const renderUserStatsChart = () => {
     if (!stats?.users?.role_distribution) return null;
@@ -584,13 +581,25 @@ const AdminDashboard = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
           LMS Admin Dashboard
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <MessagesIcon color="action" />
+            <Typography variant="body2">
+              Messages: <strong>{totalMessages}</strong> ({unreadMessages} unread)
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ScheduleIcon color="action" />
+            <Typography variant="body2">
+              Schedules: <strong>{totalSchedules}</strong> ({upcomingSchedules.length} upcoming)
+            </Typography>
+          </Box>
           <Tooltip title="Refresh data">
             <IconButton onClick={fetchDashboardData} disabled={loading}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
-        </Stack>
+        </Box>
       </Box>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -646,28 +655,30 @@ const AdminDashboard = () => {
         </Grid>
 
         {/* Revenue Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.success.light, width: 24, height: 24 }}>
-                <PaymentsIcon sx={{ fontSize: 16, color: theme.palette.success.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              ${paymentData?.total_revenue?.toLocaleString() || '0'}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                ${paymentData?.monthly_revenue ? Object.values(paymentData.monthly_revenue).reduce((a, b) => a + b, 0).toLocaleString() : '0'} this month
+        {isSuperAdmin() && (
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Paper sx={{ p: 2, height: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
+                <Avatar sx={{ bgcolor: theme.palette.success.light, width: 24, height: 24 }}>
+                  <PaymentsIcon sx={{ fontSize: 16, color: theme.palette.success.contrastText }} />
+                </Avatar>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                ${paymentData?.total_revenue?.toLocaleString() || '0'}
               </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {paymentData?.active_payment_methods?.length || 0} methods
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  ${paymentData?.monthly_revenue ? Object.values(paymentData.monthly_revenue).reduce((a, b) => a + b, 0).toLocaleString() : '0'} this month
+                </Typography>
+                <Divider orientation="vertical" flexItem />
+                <Typography variant="caption" color="text.secondary">
+                  {paymentData?.active_payment_methods?.length || 0} methods
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        )}
 
         {/* Groups Card */}
         <Grid item xs={12} sm={6} md={2.4}>
@@ -727,11 +738,11 @@ const AdminDashboard = () => {
               </Avatar>
             </Box>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {advertStats?.total_adverts || 0}
+              {advertStats?.count || 0}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                {advertStats?.total_clicks || 0} clicks
+                {advertStats?.advertStats || 0} clicks
               </Typography>
               <Divider orientation="vertical" flexItem />
               <Typography variant="caption" color="text.secondary">
@@ -741,29 +752,49 @@ const AdminDashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Activity Card */}
+        {/* Messages Card */}
         <Grid item xs={12} sm={6} md={2.4}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Recent Activity</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 24, height: 24 }}>
-                <ActivityIcon sx={{ fontSize: 16, color: theme.palette.warning.contrastText }} />
+              <Typography variant="body2" color="text.secondary">Messages</Typography>
+              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
+                <MessagesIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
               </Avatar>
             </Box>
-            <Box sx={{ mb: 0.5 }}>
-              <Badge badgeContent={unreadMessages} color="error" sx={{ mr: 1 }}>
-                <MessagesIcon sx={{ fontSize: 16 }} color="action" />
-              </Badge>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {totalMessages}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                {recentActivities.length > 0 ? dayjs(recentActivities[0].timestamp).fromNow() : 'No activity'}
+                {unreadMessages} unread
+              </Typography>
+              <Divider orientation="vertical" flexItem />
+              <Typography variant="caption" color="text.secondary">
+                {recentActivities.filter(a => a.action_type === 'message').length} recent
               </Typography>
             </Box>
-            <Box>
-              <Badge badgeContent={upcomingSchedules.length} color="info" sx={{ mr: 1 }}>
-                <ScheduleIcon sx={{ fontSize: 16 }} color="action" />
-              </Badge>
+          </Paper>
+        </Grid>
+
+        {/* Schedules Card */}
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">Schedules</Typography>
+              <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 24, height: 24 }}>
+                <ScheduleIcon sx={{ fontSize: 16, color: theme.palette.warning.contrastText }} />
+              </Avatar>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {totalSchedules}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                {upcomingSchedules.length > 0 ? `${upcomingSchedules.length} events` : 'No events'}
+                {upcomingSchedules.length} upcoming
+              </Typography>
+              <Divider orientation="vertical" flexItem />
+              <Typography variant="caption" color="text.secondary">
+                {recentActivities.filter(a => a.action_type === 'schedule').length} recent
               </Typography>
             </Box>
           </Paper>
@@ -773,36 +804,19 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <Paper sx={{ mb: 4 }}>
         <Tabs value={activeTab} onChange={(e, newVal) => setActiveTab(newVal)} variant="scrollable" scrollButtons="auto">
-          <Tab label="Overview" icon={<AnalyticsIcon fontSize="small" />} />
+          {/* <Tab label="Overview" icon={<AnalyticsIcon fontSize="small" />} /> */}
           <Tab label="Users" icon={<UsersIcon fontSize="small" />} />
           <Tab label="Courses" icon={<CoursesIcon fontSize="small" />} />
-          <Tab label="Payments" icon={<PaymentsIcon fontSize="small" />} />
+          {isSuperAdmin() && <Tab label="Payments" icon={<PaymentsIcon fontSize="small" />} />}
           <Tab label="Activity" icon={<ActivityIcon fontSize="small" />} />
+          <Tab label="Messages" icon={<MessagesIcon fontSize="small" />} />
+          <Tab label="Schedules" icon={<ScheduleIcon fontSize="small" />} />
         </Tabs>
         <Divider />
 
-        {/* Overview Tab */}
-        {activeTab === 0 && (
-          <Box sx={{ p: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>User Distribution</Typography>
-                {renderUserStatsChart()}
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Enrollment Trends</Typography>
-                {renderEnrollmentTrends()}
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>Revenue Overview</Typography>
-                {renderRevenueChart()}
-              </Grid>
-            </Grid>
-          </Box>
-        )}
 
         {/* Users Tab */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Users Table Filter */}
             <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -925,7 +939,7 @@ const AdminDashboard = () => {
                               <Box>
                                 <Typography variant="subtitle2">{user.first_name} {user.last_name}</Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {user.email}
+                                  {/* {user.email} */}
                                 </Typography>
                               </Box>
                             </Box>
@@ -1000,7 +1014,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Courses Tab */}
-        {activeTab === 2 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 3 }}>
             {/* Courses Table Filter */}
             <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -1137,13 +1151,6 @@ const AdminDashboard = () => {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                          {/* <IconButton 
-                            size="small" 
-                            onClick={(e) => handleCourseMenuOpen(e, course)}
-                            aria-label="more options"
-                          >
-                            <MoreIcon fontSize="small" />
-                          </IconButton> */}
                         </TableCell>
                       </TableRow>
                     ))
@@ -1184,7 +1191,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Payments Tab */}
-        {activeTab === 3 && (
+        {activeTab === 2 && (
           <Box sx={{ p: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -1262,7 +1269,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Activity Tab */}
-        {activeTab === 4 && (
+        {activeTab === 3 && (
           <Box sx={{ p: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -1330,6 +1337,138 @@ const AdminDashboard = () => {
                 )}
               </Grid>
             </Grid>
+          </Box>
+        )}
+
+        {/* Messages Tab */}
+        {activeTab === 4 && (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h5" gutterBottom>Messages Overview</Typography>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">{totalMessages}</Typography>
+                  <Typography variant="subtitle1">Total Messages</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">{unreadMessages}</Typography>
+                  <Typography variant="subtitle1">Unread Messages</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">
+                    {totalMessages > 0 ? Math.round((unreadMessages / totalMessages) * 100) : 0}%
+                  </Typography>
+                  <Typography variant="subtitle1">Unread Percentage</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">
+                    {recentActivities.filter(a => a.action_type === 'message').length}
+                  </Typography>
+                  <Typography variant="subtitle1">Recent Message Activities</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+            <Typography variant="h6" gutterBottom>Recent Messages</Typography>
+            {recentActivities.filter(a => a.action_type === 'message').length > 0 ? (
+              <List>
+                {recentActivities
+                  .filter(a => a.action_type === 'message')
+                  .slice(0, 5)
+                  .map((activity, index) => (
+                    <ListItem key={index} sx={{ py: 2, borderBottom: 1, borderColor: 'divider' }}>
+                      <ListItemIcon>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.light }}>
+                          <MessagesIcon sx={{ color: theme.palette.primary.contrastText }} />
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={activity.description}
+                        secondary={
+                          <>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.primary"
+                              sx={{ display: 'inline' }}
+                            >
+                              {activity.user?.full_name || 'System'}
+                            </Typography>
+                            {` • ${dayjs(activity.timestamp).fromNow()}`}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No recent message activities
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {/* Schedules Tab */}
+        {activeTab === 5 && (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h5" gutterBottom>Schedules Overview</Typography>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">{totalSchedules}</Typography>
+                  <Typography variant="subtitle1">Total Schedules</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">{upcomingSchedules.length}</Typography>
+                  <Typography variant="subtitle1">Upcoming Schedules</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h4">
+                    {recentActivities.filter(a => a.action_type === 'schedule').length}
+                  </Typography>
+                  <Typography variant="subtitle1">Recent Schedule Activities</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+            <Typography variant="h6" gutterBottom>Upcoming Schedules</Typography>
+            {upcomingSchedules.length > 0 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Title</TableCell>
+                      <TableCell>Start Time</TableCell>
+                      <TableCell>End Time</TableCell>
+                      <TableCell>Description</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {upcomingSchedules.map((schedule) => (
+                      <TableRow key={schedule.id}>
+                        <TableCell>{schedule.title}</TableCell>
+                        <TableCell>{new Date(schedule.start_time).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(schedule.end_time).toLocaleString()}</TableCell>
+                        <TableCell>{schedule.description.substring(0, 50)}...</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No upcoming schedules
+              </Typography>
+            )}
           </Box>
         )}
       </Paper>

@@ -1,13 +1,14 @@
 import axios from 'axios';
 
-//export const API_BASE_URL = 'http://localhost:9090';
+export const API_BASE_URL = 'http://localhost:9090';
 export const CMVP_SITE_URL = 'http://localhost:3000';
-// export const CMVP_API_URL = 'http://localhost:9091';
+export const CMVP_API_URL = 'http://localhost:9091';
 
 
-export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
+// export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
 // export const CMVP_SITE_URL = 'https://cmvp.net';
-export const CMVP_API_URL =  'https://test.api.cmvp.net';
+//export const CMVP_API_URL =  'https://test.api.cmvp.net';
+
 
 // Payment Methods Configuration
 export const paymentMethods = [
@@ -55,6 +56,21 @@ export const currencies = ['USD', 'NGN', 'EUR', 'GBP', 'KES', 'GHS'];
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
+
+export const isSuperAdmin = () => {
+  try {
+    // Get user data from local storage or API
+    const userData = localStorage.getItem('user_data');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.role === 'super_admin'; // Adjust this based on your role system
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking super admin status:', error);
+    return false;
+  }
+};
 
 api.interceptors.request.use(
   (config) => {
@@ -188,12 +204,13 @@ export const messagingAPI = {
   markAsRead: (id) => api.patch(`/messaging/api/messages/${id}/mark_as_read/`),
   forwardMessage: (id, data) => api.post(`/messaging/api/messages/${id}/forward/`, data),
   replyToMessage: (id, data) => api.post(`/messaging/api/messages/${id}/reply/`, data),
-  getUnreadCount: () => api.get('/messaging/api/messages/unread_count/'),
   getMessageTypes: () => api.get('/messaging/api/message-types'),
   createMessageType: (data) => api.post('/messaging/api/message-types/', data),
   updateMessageType: (id, data) => api.patch(`/messaging/api/message-types/${id}/`, data),
   deleteMessageType: (id) => api.delete(`/messaging/api/message-types/${id}/`),
   setDefaultMessageType: (id) => api.post(`/message-types/${id}/set_default/`),
+  getTotalMessages: () => api.get('/messaging/api/messages/stats/'),
+  getUnreadCount: () => api.get('/messaging/api/messages/unread_count/'),
   uploadAttachment: (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -209,7 +226,8 @@ export const scheduleAPI = {
   updateSchedule: (id, data) => api.put(`/schedule/api/schedules/${id}/`, data),
   deleteSchedule: (id) => api.delete(`/schedule/api/schedules/${id}/`),
   respondToSchedule: (id, response) => api.post(`/schedule/api/schedules/${id}/respond/`, { response_status: response }),
-  getUpcomingSchedules: () => api.get('/schedule/api/schedules/'),
+  getTotalSchedules: () => api.get('/schedule/api/schedules/stats/'),
+  getUpcomingSchedules: () => api.get('/schedule/api/schedules/upcoming/'),
 };
 
 export const advertAPI = {
@@ -290,13 +308,97 @@ export const coursesAPI = {
   deleteResource: (courseId, resourceId) => api.delete(`/courses/courses/${courseId}/resources/${resourceId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
+
+/* ENROLLMENT METHODS */
+  
+  // 1. ADMIN ENROLLMENT METHODS
+  
+  /**
+   * Admin enrolls a single user in a course
+   * @param {number} courseId - ID of the course to enroll in
+   * @param {object} data - Should contain { user_id: number }
+   * @returns {Promise} Axios response
+   */
+  adminSingleEnroll: (courseId, data) => api.post(`/enrollments/course/${courseId}/`, data, {
+    headers: { 
+      'X-CSRFToken': getCSRFToken(), 
+      'Content-Type': 'application/json' 
+    }
+  }),
+  
+  /**
+   * Admin bulk enrolls users in a specific course
+   * @param {number} courseId - ID of the course
+   * @param {Array} userIds - Array of user IDs to enroll
+   * @returns {Promise} Axios response
+   */
+  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
+    headers: { 
+      'X-CSRFToken': getCSRFToken(), 
+      'Content-Type': 'application/json' 
+    }
+  }),
+  
+  /**
+   * Admin bulk enrolls users across multiple courses
+   * @param {Array} enrollmentsData - Array of { course_id: number, user_id: number } objects
+   * @returns {Promise} Axios response
+   */
+  adminBulkEnroll: (enrollmentsData) => api.post('/enrollments/admin_bulk_enroll/', enrollmentsData, {
+    headers: { 
+      'X-CSRFToken': getCSRFToken(), 
+      'Content-Type': 'application/json' 
+    }
+  }),
+
+  // 2. USER SELF-ENROLLMENT METHOD
+  
+  /**
+   * User enrolls themselves in a course
+   * @param {number} courseId - ID of the course to enroll in
+   * @returns {Promise} Axios response
+   */
+  selfEnroll: (courseId) => api.post(`/enrollments/self-enroll/${courseId}/`, {}, {
+    headers: { 
+      'X-CSRFToken': getCSRFToken(), 
+      'Content-Type': 'application/json' 
+    }
+  }),
+
+  // 3. ENROLLMENT QUERY METHODS
+  
+  /**
+   * Get enrollments - all or filtered by course
+   * @param {number|null} courseId - Optional course ID to filter by
+   * @returns {Promise} Axios response
+   */
   getEnrollments: (courseId = null) => {
-    const url = courseId ? `/courses/enrollments/course/${courseId}/` : '/courses/enrollments/';
+    const url = courseId ? `/enrollments/course/${courseId}/` : '/enrollments/';
     return api.get(url);
   },
-  enrollCourse: (courseId) => api.post(`/courses/enrollments/course/${courseId}/`, {}, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
-  }),
+  
+  /**
+   * Get all enrollments for a specific user
+   * @param {number} userId - ID of the user
+   * @returns {Promise} Axios response
+   */
+  getUserEnrollments: (userId) => api.get(`/enrollments/user-enrollments/${userId}/`),
+  
+  /**
+   * Admin-only: Get all enrollments for a specific course
+   * @param {number} courseId - ID of the course
+   * @returns {Promise} Axios response
+   */
+  getCourseEnrollmentsAdmin: (courseId) => api.get(`/enrollments/course-enrollments/${courseId}/`),
+  
+  /**
+   * Admin-only: Get all enrollments in the system
+   * @returns {Promise} Axios response
+   */
+  getAllEnrollments: () => api.get('/enrollments/all-enrollments/'),
+  
+ 
+
   getRatings: (courseId = null) => {
     const url = courseId ? `/courses/ratings/course/${courseId}/` : '/courses/ratings/';
     return api.get(url);

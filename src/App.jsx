@@ -13,7 +13,11 @@ import Signup from './pages/Signup';
 
 
 import InstructorDashboard from './pages/dashboard/InstructorDashboard.jsx';
+import InstructorDashboards from './pages/dashboard/InstructorDashboard/InstructorDashboard.jsx';
+
+
 import StudentDashboard from './pages/dashboard/StudentDashboard.jsx';
+import StudentDashboards from './pages/dashboard/StudentDashboard/Studentdashboard.jsx';
 
 
 import BrowseListings from './components/listings/BrowseListings';
@@ -61,9 +65,11 @@ function App() {
 
         {/* Instructor Dashboard */}
           <Route path="/instructor-dashboard" element={<InstructorDashboard />} />
+          <Route path="/trainer-dashboard" element={<InstructorDashboards />} />
 
         {/* Instructor Dashboard */}
           <Route path="/learner-dashboard" element={<StudentDashboard />} />
+          <Route path="/student-dashboard" element={<StudentDashboards />} />
 
         {/* Admin Dashboard */}
         <Route path="/admin/*" element={<AdminDashboard />} />

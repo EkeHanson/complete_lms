@@ -232,6 +232,10 @@ const Schedule = () => {
         groupsAPI.getGroups({ page_size: 50 })
       ]);
 
+      // console.log("schedulesRes")
+      // console.log(schedulesRes)
+      // console.log("schedulesRes")
+
       setSchedules(schedulesRes.data.results || []);
       setGroups(groupsRes.data.results || []);
       setFilteredGroups(groupsRes.data.results || []);

@@ -1,20 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Chip, IconButton, Box, 
-  useTheme, Typography, Menu, MenuItem, TablePagination,
-  TextField, Button, Grid, Tabs, Tab, Divider, CircularProgress, Alert
+  Box, Typography, Button, Grid, Paper, TextField, Divider, Tabs, Tab,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Chip, IconButton, CircularProgress, Alert, Dialog, DialogTitle,
+  DialogContent, DialogActions, Autocomplete, Checkbox, List, ListItem,
+  ListItemText, ListItemIcon, Input, useTheme, TablePagination, Menu, MenuItem, 
 } from '@mui/material';
-import { 
-  Edit, Visibility, MoreVert, 
-  Search, FilterList, Refresh 
+import {
+  Edit, Visibility, MoreVert, Search, FilterList, Refresh,
+  PersonAdd, GroupAdd, UploadFile, Person, Groups, Description,
+  CheckBoxOutlineBlank, CheckBox, Warning
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { coursesAPI } from '../../../../config';
+import { useDropzone } from 'react-dropzone';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+import { coursesAPI, userAPI } from '../../../../config';
 
 const CourseList = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  
+  // Course list state
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [page, setPage] = useState(0);
@@ -26,13 +33,44 @@ const CourseList = () => {
     level: 'all'
   });
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const [allCourses, setAllCourses] = useState([]); // Store all courses
-  const [filteredCourses, setFilteredCourses] = useState([]); // Store filtered courses
+  const [allCourses, setAllCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
   const [totalCourses, setTotalCourses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch courses once on component mount
+  // Enrollment state
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [bulkEnrollDialogOpen, setBulkEnrollDialogOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [enrollmentError, setEnrollmentError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // File upload state
+  const [activeTab, setActiveTab] = useState('manual');
+  const [file, setFile] = useState(null);
+  const [fileData, setFileData] = useState([]);
+  const [fileError, setFileError] = useState(null);
+
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+    },
+    maxFiles: 1,
+    onDrop: acceptedFiles => {
+      setFileError(null);
+      if (acceptedFiles.length > 0) {
+        parseFile(acceptedFiles[0]);
+      }
+    }
+  });
+
+  // Fetch courses
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -41,47 +79,57 @@ const CourseList = () => {
         
         const params = {
           page: 1,
-          page_size: 1000, // Fetch all courses (adjust if needed)
+          page_size: 1000,
           search: searchTerm || undefined,
           category: filters.category === 'all' ? undefined : filters.category,
           level: filters.level === 'all' ? undefined : filters.level
         };
         
-        // Remove undefined/null parameters
         Object.keys(params).forEach(key => {
           if (params[key] === undefined || params[key] === null) {
             delete params[key];
           }
         });
 
-        //console.log('API Request Params:', params); // Debug: Log params
         const response = await coursesAPI.getCourses(params);
-       // console.log('API Response:', response.data); // Debug: Log response
-
         setAllCourses(response.data.results || []);
         setTotalCourses(response.data.count || 0);
       } catch (err) {
         const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch courses';
         setError(errorMsg);
-        console.error('Error fetching courses:', err, 'Response:', err.response?.data);
+        console.error('Error fetching courses:', err);
       } finally {
         setLoading(false);
       }
     };
   
     fetchCourses();
-  }, []); // Empty dependency array: fetch once on mount
+  }, []);
 
-  // Filter courses client-side whenever status, search, or filters change
+  // Fetch users when enrollment dialogs open
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await userAPI.getUsers({ page_size: 1000 });
+        setUsers(response.data.results || []);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+      }
+    };
+    
+    if (enrollDialogOpen || bulkEnrollDialogOpen) {
+      fetchUsers();
+    }
+  }, [enrollDialogOpen, bulkEnrollDialogOpen]);
+
+  // Filter courses
   useEffect(() => {
     let filtered = [...allCourses];
 
-    // Apply status filter
     if (activeStatusTab !== 'all') {
       filtered = filtered.filter(course => course.status === activeStatusTab);
     }
 
-    // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(course =>
@@ -90,28 +138,205 @@ const CourseList = () => {
       );
     }
 
-    // Apply category filter
     if (filters.category !== 'all') {
-      filtered = filtered.filter(course => course.category.name === filters.category);
+      filtered = filtered.filter(course => course.category?.name === filters.category);
     }
 
-    // Apply level filter
     if (filters.level !== 'all') {
       filtered = filtered.filter(course => course.level === filters.level);
     }
 
-    // Update filtered courses and total count
     setFilteredCourses(filtered);
     setTotalCourses(filtered.length);
 
-    // Reset page if filtered results are fewer than current page
     if (page * rowsPerPage >= filtered.length) {
       setPage(0);
     }
-
-    //console.log('Filtered Courses:', filtered); // Debug: Log filtered results
   }, [activeStatusTab, searchTerm, filters, allCourses, page, rowsPerPage]);
 
+  // Parse uploaded file
+  const parseFile = (file) => {
+    setFile(file);
+    
+    if (file.name.endsWith('.csv')) {
+      Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+          if (results.data.length === 0) {
+            setFileError('CSV file is empty or improperly formatted');
+            return;
+          }
+          setFileData(results.data);
+        },
+        error: (error) => {
+          setFileError(error.message);
+        }
+      });
+    } else {
+      // Handle Excel files
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          
+          if (jsonData.length === 0) {
+            setFileError('Excel file is empty or improperly formatted');
+            return;
+          }
+          setFileData(jsonData);
+        } catch (error) {
+          setFileError('Error parsing Excel file');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  // Enrollment functions
+  const handleEnrollClick = (course) => {
+    setSelectedCourse(course);
+    setEnrollDialogOpen(true);
+  };
+
+  const handleBulkEnrollClick = (course) => {
+    setSelectedCourse(course);
+    setBulkEnrollDialogOpen(true);
+    setActiveTab('manual');
+    setFile(null);
+    setFileData([]);
+  };
+
+  const handleEnrollSubmit = async () => {
+    if (!selectedUser || !selectedCourse) return;
+    
+    try {
+      setEnrollmentLoading(true);
+      setEnrollmentError(null);
+      
+      // Send the user_id in the request body
+      const response = await coursesAPI.adminSingleEnroll(selectedCourse.id, { 
+        user_id: selectedUser.id 
+      });
+      
+      setSuccessMessage(`Successfully enrolled ${selectedUser.first_name} ${selectedUser.last_name} in ${selectedCourse.title}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      setEnrollDialogOpen(false);
+      setSelectedUser(null);
+    } catch (err) {
+      let errorMessage = 'Failed to enroll user';
+      
+      if (err.response) {
+        // Handle 400 Bad Request with detailed error
+        if (err.response.status === 400) {
+          errorMessage = err.response.data.error || errorMessage;
+          if (err.response.data.details) {
+            errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
+          }
+        } 
+        // Handle 500 Internal Server Error
+        else if (err.response.status === 500) {
+          errorMessage = err.response.data.error || errorMessage;
+          if (err.response.data.details) {
+            console.error('Server error details:', err.response.data.details);
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setEnrollmentError(errorMessage);
+      console.error('Enrollment error:', err);
+    } finally {
+      setEnrollmentLoading(false);
+    }
+  };
+  const handleBulkEnrollSubmit = async () => {
+    if (activeTab === 'manual' && selectedUsers.length === 0) return;
+    if (activeTab === 'file' && fileData.length === 0) return;
+    
+    try {
+      setEnrollmentLoading(true);
+      setEnrollmentError(null);
+      
+      let userIds = [];
+      
+      if (activeTab === 'manual') {
+        userIds = selectedUsers.map(user => user.id);
+      } else {
+        // Extract emails from file data
+        const emails = fileData.map(row => row.email || row.Email || row.EMAIL).filter(Boolean);
+        if (emails.length === 0) {
+          throw new Error('No valid email addresses found in the file');
+        }
+        
+        // Match emails with existing users
+        const matchingUsers = users.filter(user => emails.includes(user.email));
+        if (matchingUsers.length === 0) {
+          throw new Error('No matching users found for the provided emails');
+        }
+        userIds = matchingUsers.map(user => user.id);
+      }
+  
+      const response = await coursesAPI.adminBulkEnroll(selectedCourse.id, { user_ids: userIds });
+      
+      // Handle success response
+      let successMsg = `Successfully enrolled ${response.data.created || userIds.length} users`;
+      if (response.data.warning) {
+        successMsg += ` (${response.data.warning})`;
+      }
+      
+      setSuccessMessage(successMsg);
+      setTimeout(() => setSuccessMessage(null), 5000);
+      setBulkEnrollDialogOpen(false);
+      setSelectedUsers([]);
+      setFile(null);
+      setFileData([]);
+    } catch (err) {
+      let errorMessage = 'Failed to bulk enroll users';
+      
+      if (err.response) {
+        // Handle validation errors (400)
+        if (err.response.status === 400) {
+          errorMessage = err.response.data.error || errorMessage;
+          
+          // Add details about invalid data if available
+          if (err.response.data.details) {
+            errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
+          }
+          if (err.response.data.invalid_data) {
+            console.error('Invalid data:', err.response.data.invalid_data);
+          }
+        }
+        // Handle other error responses
+        else {
+          errorMessage = err.response.data.error || errorMessage;
+          if (err.response.data.details) {
+            console.error('Error details:', err.response.data.details);
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setEnrollmentError(errorMessage);
+      console.error('Bulk enrollment error:', err);
+    } finally {
+      setEnrollmentLoading(false);
+    }
+  };
+  const toggleUserSelection = (user) => {
+    setSelectedUsers(prev => {
+      const isSelected = prev.some(u => u.id === user.id);
+      return isSelected 
+        ? prev.filter(u => u.id !== user.id)
+        : [...prev, user];
+    });
+  };
+
+  // Course actions
   const handleMenuOpen = (event, course) => {
     setAnchorEl(event.currentTarget);
     setSelectedCourse(course);
@@ -144,6 +369,7 @@ const CourseList = () => {
     }
   };
 
+  // Pagination and filtering
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -154,7 +380,6 @@ const CourseList = () => {
   };
 
   const handleStatusTabChange = (event, newValue) => {
-    // console.log('Status Tab Changed:', newValue); // Debug: Log tab change
     setActiveStatusTab(newValue);
     setPage(0);
   };
@@ -179,6 +404,7 @@ const CourseList = () => {
     setPage(0);
   };
 
+  // Helper functions
   const getStatusColor = (status) => {
     switch (status) {
       case 'Published': return 'success';
@@ -204,13 +430,19 @@ const CourseList = () => {
     }
   };
 
-  // Paginate filtered courses
   const paginatedCourses = filteredCourses.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <Box>
+      {/* Success Message */}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+          {successMessage}
+        </Alert>
+      )}
+
       {/* Filter and Search Bar */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={6}>
             <TextField
@@ -219,6 +451,7 @@ const CourseList = () => {
               placeholder="Search courses..."
               value={searchTerm}
               onChange={handleSearchChange}
+              size="small"
               InputProps={{
                 startAdornment: <Search sx={{ color: theme.palette.text.secondary, mr: 1 }} />
               }}
@@ -229,7 +462,7 @@ const CourseList = () => {
               fullWidth
               variant="outlined"
               startIcon={<FilterList />}
-              sx={{ height: '56px' }}
+              size="small"
               onClick={() => setFilterDialogOpen(true)}
             >
               Filters
@@ -240,7 +473,7 @@ const CourseList = () => {
               fullWidth
               variant="outlined"
               startIcon={<Refresh />}
-              sx={{ height: '56px' }}
+              size="small"
               onClick={resetFilters}
             >
               Reset
@@ -252,13 +485,9 @@ const CourseList = () => {
         <Tabs 
           value={activeStatusTab} 
           onChange={handleStatusTabChange}
-          sx={{
-            mt: 3,
-            '& .MuiTabs-indicator': {
-              backgroundColor: theme.palette.primary.main,
-              height: 3
-            }
-          }}
+          sx={{ mt: 2 }}
+          variant="scrollable"
+          scrollButtons="auto"
         >
           <Tab label="All" value="all" />
           <Tab label="Published" value="Published" />
@@ -270,8 +499,8 @@ const CourseList = () => {
 
       {/* Filter Dialog */}
       {filterDialogOpen && (
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>Advanced Filters</Typography>
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>Advanced Filters</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <TextField
@@ -280,13 +509,14 @@ const CourseList = () => {
                 label="Category"
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
+                size="small"
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                {Array.from(new Set(allCourses.map(c => c.category.name))).map(categoryName => (
+                {Array.from(new Set(allCourses.map(c => c.category?.name).filter(Boolean)).map(categoryName => (
                   <MenuItem key={categoryName} value={categoryName}>
                     {categoryName}
                   </MenuItem>
-                ))}
+                )))}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -296,6 +526,7 @@ const CourseList = () => {
                 label="Level"
                 value={filters.level}
                 onChange={(e) => handleFilterChange('level', e.target.value)}
+                size="small"
               >
                 <MenuItem value="all">All Levels</MenuItem>
                 <MenuItem value="Beginner">Beginner</MenuItem>
@@ -305,13 +536,14 @@ const CourseList = () => {
             </Grid>
           </Grid>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => setFilterDialogOpen(false)} size="small">Cancel</Button>
             <Button 
               variant="contained" 
               onClick={() => setFilterDialogOpen(false)}
-              sx={{ ml: 2 }}
+              size="small"
+              sx={{ ml: 1 }}
             >
-              Apply Filters
+              Apply
             </Button>
           </Box>
         </Paper>
@@ -327,34 +559,33 @@ const CourseList = () => {
       )}
 
       {/* Courses Table */}
-      <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 650 }}>
+      <TableContainer component={Paper}>
+        <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ minWidth: 200 }}>Title</TableCell>
-              {/* <TableCell sx={{ minWidth: 100 }}>Code</TableCell> */}
-              <TableCell sx={{ minWidth: 150 }}>Price</TableCell>
-              <TableCell sx={{ minWidth: 200 }}>Outcomes</TableCell>
-              <TableCell sx={{ minWidth: 100 }}>Status</TableCell>
-              <TableCell sx={{ minWidth: 120 }}>Actions</TableCell>
+              <TableCell>Title</TableCell>
+              <TableCell>Price</TableCell>
+              <TableCell>Outcomes</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <CircularProgress />
+                <TableCell colSpan={5} align="center">
+                  <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   <Typography color="error">{error}</Typography>
                 </TableCell>
               </TableRow>
             ) : paginatedCourses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   <Typography>No courses found</Typography>
                 </TableCell>
               </TableRow>
@@ -364,53 +595,53 @@ const CourseList = () => {
                   <TableCell>
                     <Typography sx={{ fontWeight: 500 }}>{course.title}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {course.category.name} • {course.level}
+                      {course.category?.name} • {course.level}
                     </Typography>
                   </TableCell>
-                  {/* <TableCell>{course.code}</TableCell> */}
                   <TableCell>
                     {course.discount_price ? (
                       <>
-                        <Typography sx={{ textDecoration: 'line-through' }}>
+                        <Typography sx={{ textDecoration: 'line-through', fontSize: '0.8rem' }}>
                           {formatPrice(course.price, course.currency)}
                         </Typography>
-                        <Typography color="error" sx={{ fontWeight: 600 }}>
+                        <Typography color="error" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
                           {formatPrice(course.discount_price, course.currency)}
                         </Typography>
                       </>
                     ) : (
-                      <Typography>{formatPrice(course.price, course.currency)}</Typography>
+                      <Typography sx={{ fontSize: '0.8rem' }}>
+                        {formatPrice(course.price, course.currency)}
+                      </Typography>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Box sx={{ maxWidth: 200 }}>
-                      {course.learning_outcomes?.length > 0 ? (
-                        <>
-                          {course.learning_outcomes.slice(0, 2).map((outcome, i) => (
-                            <Typography 
-                              key={i} 
-                              variant="body2" 
-                              sx={{ 
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
-                              }}
-                            >
-                              • {outcome}
-                            </Typography>
-                          ))}
-                          {course.learning_outcomes.length > 2 && (
-                            <Typography variant="caption">
-                              +{course.learning_outcomes.length - 2} more
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        <Typography variant="caption" color="text.secondary">
-                          No outcomes specified
-                        </Typography>
-                      )}
-                    </Box>
+                  <TableCell sx={{ maxWidth: 200 }}>
+                    {course.learning_outcomes?.length > 0 ? (
+                      <>
+                        {course.learning_outcomes.slice(0, 2).map((outcome, i) => (
+                          <Typography 
+                            key={i} 
+                            variant="body2" 
+                            sx={{ 
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            • {outcome}
+                          </Typography>
+                        ))}
+                        {course.learning_outcomes.length > 2 && (
+                          <Typography variant="caption">
+                            +{course.learning_outcomes.length - 2} more
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        No outcomes
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Chip 
@@ -420,6 +651,22 @@ const CourseList = () => {
                     />
                   </TableCell>
                   <TableCell>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleEnrollClick(course)}
+                      aria-label="enroll"
+                      color="primary"
+                    >
+                      <PersonAdd fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleBulkEnrollClick(course)}
+                      aria-label="bulk enroll"
+                      color="secondary"
+                    >
+                      <GroupAdd fontSize="small" />
+                    </IconButton>
                     <IconButton 
                       size="small" 
                       onClick={() => handleEdit(course.id)}
@@ -457,24 +704,267 @@ const CourseList = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
-
-        {/* More options menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <MenuItem onClick={() => handleEdit(selectedCourse?.id)}>
-            <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
-          </MenuItem>
-          <MenuItem onClick={() => handleView(selectedCourse?.id)}>
-            <Visibility fontSize="small" sx={{ mr: 1 }} /> View Details
-          </MenuItem>
-          <MenuItem onClick={() => handleDelete(selectedCourse?.id)} sx={{ color: 'error.main' }}>
-            Delete
-          </MenuItem>
-        </Menu>
       </TableContainer>
+
+      {/* Single Enrollment Dialog */}
+      <Dialog open={enrollDialogOpen} onClose={() => setEnrollDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
+            <Person sx={{ mr: 1, fontSize: 20 }} /> Enroll User
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedCourse?.title}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          {enrollmentError && (
+            <Alert severity="error" sx={{ mb: 1 }} onClose={() => setEnrollmentError(null)}>
+              {enrollmentError}
+            </Alert>
+          )}
+          
+          <Autocomplete
+            options={users}
+            getOptionLabel={(user) => `${user.first_name} ${user.last_name} (${user.email})`}
+            value={selectedUser}
+            onChange={(event, newValue) => setSelectedUser(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select User"
+                variant="outlined"
+                fullWidth
+                size="small"
+                sx={{ mt: 1 }}
+              />
+            )}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1 }}>
+          <Button 
+            onClick={() => setEnrollDialogOpen(false)}
+            size="small"
+            sx={{ minWidth: 80 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleEnrollSubmit}
+            variant="contained"
+            disabled={!selectedUser || enrollmentLoading}
+            size="small"
+            sx={{ minWidth: 80 }}
+            startIcon={enrollmentLoading ? <CircularProgress size={16} /> : null}
+          >
+            Enroll
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Enrollment Dialog */}
+      <Dialog open={bulkEnrollDialogOpen} onClose={() => setBulkEnrollDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
+            <Groups sx={{ mr: 1, fontSize: 20 }} /> Bulk Enroll
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedCourse?.title}
+          </Typography>
+        </DialogTitle>
+        
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{ px: 2 }}
+          variant="fullWidth"
+        >
+          <Tab label="Manual" value="manual" icon={<Person fontSize="small" />} sx={{ minHeight: 48 }} />
+          <Tab label="File Upload" value="file" icon={<Description fontSize="small" />} sx={{ minHeight: 48 }} />
+        </Tabs>
+        
+        <DialogContent sx={{ pt: 1 }}>
+          {enrollmentError && (
+            <Alert severity="error" sx={{ mb: 1 }} onClose={() => setEnrollmentError(null)}>
+              {enrollmentError}
+            </Alert>
+          )}
+          
+          {activeTab === 'manual' ? (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Select users to enroll:
+              </Typography>
+              <List dense sx={{ maxHeight: 250, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                {users.map((user) => (
+                  <ListItem 
+                    key={user.id} 
+                    button
+                    onClick={() => toggleUserSelection(user)}
+                    sx={{ py: 0 }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <Checkbox
+                        edge="start"
+                        checked={selectedUsers.some(u => u.id === user.id)}
+                        tabIndex={-1}
+                        disableRipple
+                        size="small"
+                      />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={`${user.first_name} ${user.last_name}`}
+                      secondary={user.email}
+                      primaryTypographyProps={{ variant: 'body2' }}
+                      secondaryTypographyProps={{ variant: 'caption' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+              {selectedUsers.length > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Selected: {selectedUsers.length} users
+                </Typography>
+              )}
+            </>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Upload CSV/Excel file with user emails:
+              </Typography>
+              
+              <Box 
+                {...getRootProps()} 
+                sx={{
+                  border: '1px dashed',
+                  borderColor: fileError ? 'error.main' : 'divider',
+                  borderRadius: 1,
+                  p: 2,
+                  textAlign: 'center',
+                  backgroundColor: theme.palette.action.hover,
+                  cursor: 'pointer',
+                  mb: 1
+                }}
+              >
+                <input {...getInputProps()} />
+                {file ? (
+                  <Box>
+                    <Description fontSize="small" />
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {file.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {fileData.length} records found
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box>
+                    <UploadFile fontSize="small" />
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Drag & drop file here
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      or click to browse (CSV, XLS, XLSX)
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              
+              {fileError && (
+                <Alert severity="error" sx={{ mb: 1 }}>
+                  {fileError}
+                </Alert>
+              )}
+              
+              {fileData.length > 0 && (
+                <Box sx={{ maxHeight: 150, overflow: 'auto' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Preview (first 3 rows):
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined" sx={{ mt: 0.5 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          {Object.keys(fileData[0]).slice(0, 3).map(key => (
+                            <TableCell key={key} sx={{ fontWeight: 'bold', p: 0.5 }}>
+                              {key}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {fileData.slice(0, 3).map((row, i) => (
+                          <TableRow key={i}>
+                            {Object.values(row).slice(0, 3).map((value, j) => (
+                              <TableCell key={j} sx={{ p: 0.5 }}>
+                                {String(value)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1 }}>
+          <Button 
+            onClick={() => {
+              setBulkEnrollDialogOpen(false);
+              setSelectedUsers([]);
+              setFile(null);
+              setFileData([]);
+            }}
+            size="small"
+            sx={{ minWidth: 80 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBulkEnrollSubmit}
+            variant="contained"
+            disabled={
+              (activeTab === 'manual' && selectedUsers.length === 0) ||
+              (activeTab === 'file' && fileData.length === 0) ||
+              enrollmentLoading
+            }
+            size="small"
+            sx={{ minWidth: 120 }}
+            startIcon={enrollmentLoading ? <CircularProgress size={16} /> : null}
+          >
+            {activeTab === 'manual' 
+              ? `Enroll ${selectedUsers.length}`
+              : `Enroll from File`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Course Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem onClick={() => handleView(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
+          <Visibility fontSize="small" sx={{ mr: 1 }} /> View
+        </MenuItem>
+        <MenuItem onClick={() => handleEdit(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
+          <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+        </MenuItem>
+        <MenuItem onClick={() => handleDelete(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
+          <Warning fontSize="small" sx={{ mr: 1 }} /> Delete
+        </MenuItem>
+      </Menu>
     </Box>
   );
 };
