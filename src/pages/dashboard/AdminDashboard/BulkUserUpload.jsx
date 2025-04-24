@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Paper, Button, Divider, Alert, CircularProgress, useTheme,
   List, ListItem, ListItemAvatar, ListItemText, Avatar, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, MenuItem, Grid, InputAdornment, Backdrop
+  DialogContent, DialogActions, TextField, MenuItem, Grid, InputAdornment, Backdrop,
+  FormControl, InputLabel, Select, Checkbox, FormControlLabel
 } from '@mui/material';
 import {
   Publish as UploadIcon, Description as FileIcon, CheckCircle as SuccessIcon,
@@ -10,7 +11,7 @@ import {
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { userAPI } from '../../../config';
+import { userAPI, coursesAPI, messagingAPI } from '../../../config';
 
 const BulkUserUpload = ({ onUpload }) => {
   const theme = useTheme();
@@ -24,12 +25,15 @@ const BulkUserUpload = ({ onUpload }) => {
   const [validationErrors, setValidationErrors] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [openRemoveConfirm, setOpenRemoveConfirm] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [existingEmails, setExistingEmails] = useState([]);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
 
   // Template data for download
   const templateData = [
-    ['firstName', 'lastName', 'email', 'password', 'role', 'birthDate', 'status', 'department'],
-    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner', '1990-01-15', 'active', 'Engineering'],
-    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'instructor', '1985-05-22', 'active', 'Mathematics']
+    ['firstName', 'lastName', 'email', 'password', 'role', 'birthDate', 'status', 'department', 'courseIds'],
+    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner', '1990-01-15', 'active', 'Engineering', 'course1,course2'],
+    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'instructor', '1985-05-22', 'active', 'Mathematics', '']
   ];
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -54,6 +58,27 @@ const BulkUserUpload = ({ onUpload }) => {
     }
   });
 
+  // Fetch courses and existing emails
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [coursesResponse, usersResponse] = await Promise.all([
+          coursesAPI.getCourses(),
+          userAPI.getUsers({ page_size: 1000 })
+        ]);
+        setCourses(coursesResponse.data.results || []);
+        setExistingEmails(usersResponse.data.results.map(user => user.email.toLowerCase()));
+      } catch (err) {
+        setUploadResult({
+          success: false,
+          message: 'Failed to fetch initial data',
+          details: [err.message]
+        });
+      }
+    };
+    fetchData();
+  }, []);
+
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -61,7 +86,7 @@ const BulkUserUpload = ({ onUpload }) => {
     XLSX.writeFile(wb, "user_upload_template.xlsx");
   };
 
-  const validateUserData = (userData, index) => {
+  const validateUserData = (userData, index, allUsers) => {
     const errors = [];
     const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
     
@@ -71,8 +96,17 @@ const BulkUserUpload = ({ onUpload }) => {
       }
     });
 
-    if (userData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
-      errors.push(`Row ${index + 2}: Invalid email format`);
+    if (userData.email) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
+        errors.push(`Row ${index + 2}: Invalid email format`);
+      }
+      const emailCount = allUsers.filter(u => u.email?.toLowerCase() === userData.email.toLowerCase()).length;
+      if (emailCount > 1) {
+        errors.push(`Row ${index + 2}: Duplicate email in upload batch`);
+      }
+      if (existingEmails.includes(userData.email.toLowerCase())) {
+        errors.push(`Row ${index + 2}: Email already exists in the system`);
+      }
     }
 
     if (userData.password && userData.password.length < 8) {
@@ -93,18 +127,27 @@ const BulkUserUpload = ({ onUpload }) => {
       errors.push(`Row ${index + 2}: Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
 
+    if (userData.courseIds) {
+      const courseIds = userData.courseIds.split(',').map(id => id.trim()).filter(id => id);
+      courseIds.forEach(id => {
+        if (!courses.some(course => course.id === id)) {
+          errors.push(`Row ${index + 2}: Invalid course ID: ${id}`);
+        }
+      });
+    }
+
     return errors.length ? errors : null;
   };
 
   const handleSelectUser = (index) => {
     setSelectedUserIndex(index);
     setEditedUser({ ...previewData[index] });
-    setValidationErrors(validateUserData(previewData[index], index) || []);
+    setValidationErrors(validateUserData(previewData[index], index, previewData) || []);
   };
 
   const handleEditUser = (field, value) => {
     setEditedUser(prev => ({ ...prev, [field]: value }));
-    setValidationErrors(validateUserData({ ...editedUser, [field]: value }, selectedUserIndex) || []);
+    setValidationErrors(validateUserData({ ...editedUser, [field]: value }, selectedUserIndex, previewData) || []);
   };
 
   const handleSaveUser = async () => {
@@ -125,6 +168,20 @@ const BulkUserUpload = ({ onUpload }) => {
       const response = await userAPI.createUser(userData);
 
       if (response.status === 201 || response.status === 200) {
+        const courseIds = editedUser.courseIds?.split(',').map(id => id.trim()).filter(id => id) || [];
+        for (const courseId of courseIds) {
+          await coursesAPI.adminSingleEnroll(courseId, { user_id: response.data.id });
+        }
+
+        if (sendWelcomeEmail) {
+          await messagingAPI.createMessage({
+            recipient_id: response.data.id,
+            subject: 'Welcome to Our Platform!',
+            content: `Hello ${editedUser.firstName},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${editedUser.email}\n\nPlease login to get started.`,
+            type: 'welcome'
+          });
+        }
+
         setPreviewData((prev) => {
           const newData = [...prev];
           newData[selectedUserIndex] = {
@@ -137,7 +194,7 @@ const BulkUserUpload = ({ onUpload }) => {
         setUploadResult({
           success: true,
           message: `User ${userData.email} saved successfully`,
-          details: [],
+          details: courseIds.length ? [`Enrolled in courses: ${courseIds.join(', ')}`] : [],
         });
 
         setSelectedUserIndex(null);
@@ -145,7 +202,6 @@ const BulkUserUpload = ({ onUpload }) => {
         setValidationErrors([]);
       }
     } catch (error) {
-      console.error('Error saving user:', error);
       let errorMessage = 'Failed to save user';
       let errorDetails = [];
 
@@ -212,6 +268,25 @@ const BulkUserUpload = ({ onUpload }) => {
       const response = await userAPI.bulkUpload(csvFile);
 
       if (response.data.success) {
+        for (const createdUser of response.data.created_users) {
+          const userData = unsavedUsers.find(u => u.email === createdUser.email);
+          if (userData?.courseIds) {
+            const courseIds = userData.courseIds.split(',').map(id => id.trim()).filter(id => id);
+            for (const courseId of courseIds) {
+              await coursesAPI.adminSingleEnroll(courseId, { user_id: createdUser.id });
+            }
+          }
+
+          if (sendWelcomeEmail) {
+            await messagingAPI.createMessage({
+              recipient_id: createdUser.id,
+              subject: 'Welcome to Our Platform!',
+              content: `Hello ${userData.firstName},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
+              type: 'welcome'
+            });
+          }
+        }
+
         setUploadResult({
           success: true,
           message: `Successfully processed ${response.data.created_count} users`,
@@ -229,7 +304,6 @@ const BulkUserUpload = ({ onUpload }) => {
         });
       }
     } catch (error) {
-      console.error('Upload error:', error);
       let errorDetails = [];
 
       if (error.response?.data?.errors) {
@@ -265,107 +339,111 @@ const BulkUserUpload = ({ onUpload }) => {
   });
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container sx={{ py: 2, width: '600px', maxWidth: '600px' }}>
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={isProcessing}
       >
         <Box textAlign="center">
-          <CircularProgress color="inherit" size={60} thickness={4} />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Processing your file...
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Please wait while we upload and validate your data
+          <CircularProgress color="inherit" size={40} thickness={4}/>
+          <Typography variant="body1" sx={{ mt: 1 }}>
+            Processing...
           </Typography>
         </Box>
       </Backdrop>
 
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+      <Paper elevation={3} sx={{ p: 2, maxHeight: '70vh', overflow: 'auto' }}>
+        <Typography variant="h6" component="h1" gutterBottom sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
           Bulk User Upload
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Upload an Excel or CSV file to register multiple users at once
+        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+          Upload an Excel or CSV file to register users
         </Typography>
 
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 1 }}>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={downloadTemplate}
-            sx={{ mr: 2 }}
+            size="small"
+            sx={{ mr: 1 }}
           >
-            Download Template
+            Template
           </Button>
           <Typography variant="caption" color="text.secondary">
-            Use our template to ensure proper formatting
+            Use our template for formatting
           </Typography>
         </Box>
 
-        <Box sx={{ mb: 3, p: 2, backgroundColor: theme.palette.grey[100], borderRadius: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            Required Fields:
+        <Box sx={{ mb: 1, p: 1, backgroundColor: theme.palette.grey[100], borderRadius: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+            Required: firstName, lastName, email, password, role
           </Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            - firstName, lastName, email, password, role
-          </Typography>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            Optional Fields:
-          </Typography>
-          <Typography variant="body2">
-            - birthDate (YYYY-MM-DD), status (active/pending/suspended), department
+          <Typography variant="caption">
+            Optional: birthDate (YYYY-MM-DD), status, department, courseIds
           </Typography>
         </Box>
 
-        <Divider sx={{ my: 3 }} />
+        <Divider sx={{ my: 1 }} />
 
         <Box
           {...getRootProps()}
           sx={{
             border: `2px dashed ${theme.palette.divider}`,
             borderRadius: 1,
-            p: 4,
+            p: 2,
             textAlign: 'center',
             backgroundColor: isDragActive ? theme.palette.action.hover : theme.palette.background.paper,
             cursor: 'pointer',
-            mb: 3
+            mb: 1
           }}
         >
           <input {...getInputProps()} />
           {file ? (
             <>
-              <FileIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-              <Typography variant="h6">{file.name}</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <FileIcon sx={{ fontSize: 24, color: 'primary.main', mb: 1 }} />
+              <Typography variant="body2">{file.name}</Typography>
+              <Typography variant="caption" color="text.secondary">
                 {Math.round(file.size / 1024)} KB
               </Typography>
             </>
           ) : (
             <>
-              <UploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-              <Typography variant="h6">
-                {isDragActive ? 'Drop the file here' : 'Drag & drop a file here, or click to select'}
+              <UploadIcon sx={{ fontSize: 24, color: 'text.secondary', mb: 1 }} />
+              <Typography variant="body2">
+                {isDragActive ? 'Drop file' : 'Drag & drop or click to select'}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Excel (.xlsx, .xls) or CSV files only
+              <Typography variant="caption" color="text.secondary">
+                Excel (.xlsx, .xls) or CSV
               </Typography>
             </>
           )}
         </Box>
 
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={sendWelcomeEmail}
+              onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              size="small"
+            />
+          }
+          label={<Typography variant="caption">Send welcome email</Typography>}
+          sx={{ mb: 1 }}
+        />
+
         {uploadResult && (
           <Alert
             icon={uploadResult.success ? <SuccessIcon fontSize="inherit" /> : <ErrorIcon fontSize="inherit" />}
             severity={uploadResult.success ? 'success' : 'error'}
-            sx={{ mt: 3 }}
+            sx={{ mt: 1, py: 0.5 }}
           >
-            <Typography fontWeight="bold">{uploadResult.message}</Typography>
+            <Typography variant="body2" fontWeight="bold">{uploadResult.message}</Typography>
             {uploadResult.details && (
-              <Box component="ul" sx={{ pl: 2, mt: 1 }}>
+              <Box component="ul" sx={{ pl: 2, mt: 0.5 }}>
                 {uploadResult.details.map((detail, index) => (
                   <li key={index}>
-                    <Typography variant="body2">
+                    <Typography variant="caption">
                       {typeof detail === 'string' ? detail : 
                       detail.error ? `Row ${detail.row}: ${detail.error}` : 
                       JSON.stringify(detail)}
@@ -385,41 +463,42 @@ const BulkUserUpload = ({ onUpload }) => {
         fullWidth
         sx={{
           '& .MuiDialog-paper': {
-            maxHeight: '80vh',
-            width: '90%',
+            width: '600px',
+            maxHeight: '70vh',
+            m: 1,
           }
         }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Preview and Edit Users</span>
-          <Typography variant="body2" color="text.secondary">
-            {previewData.length} users found
+        <DialogTitle sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body1">Preview Users</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {previewData.length} users
           </Typography>
         </DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2} sx={{ height: '100%' }}>
+        <DialogContent dividers sx={{ p: 1 }}>
+          <Grid container spacing={1}>
             <Grid item xs={12} md={5}>
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search users..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon />
+                      <SearchIcon fontSize="small" />
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 2 }}
+                sx={{ mb: 1 }}
               />
-              <Paper sx={{ height: '50vh', overflow: 'auto' }}>
-                <List dense>
+              <Paper sx={{ height: '300px', overflow: 'auto' }}>
+                <List dense sx={{ py: 0 }}>
                   {filteredUsers.length === 0 ? (
-                    <Box sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography color="text.secondary">
-                        No users found
+                    <Box sx={{ p: 1, textAlign: 'center' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        No users
                       </Typography>
                     </Box>
                   ) : (
@@ -431,7 +510,8 @@ const BulkUserUpload = ({ onUpload }) => {
                         selected={selectedUserIndex === previewData.indexOf(user)}
                         onClick={() => handleSelectUser(previewData.indexOf(user))}
                         sx={{
-                          borderLeft: selectedUserIndex === previewData.indexOf(user) ? `3px solid ${theme.palette.primary.main}` : 'none',
+                          py: 0.5,
+                          borderLeft: selectedUserIndex === previewData.indexOf(user) ? `2px solid ${theme.palette.primary.main}` : 'none',
                           bgcolor: selectedUserIndex === previewData.indexOf(user) ? theme.palette.action.selected : 'inherit',
                           '&:hover': {
                             bgcolor: theme.palette.action.hover,
@@ -441,22 +521,22 @@ const BulkUserUpload = ({ onUpload }) => {
                         <ListItemAvatar>
                           <Avatar
                             sx={{
-                              width: 32,
-                              height: 32,
+                              width: 24,
+                              height: 24,
                               bgcolor: theme.palette.primary.light,
                               color: theme.palette.primary.main,
-                              fontSize: '0.875rem',
+                              fontSize: '0.75rem',
                             }}
                           >
                             {getInitial(user)}
                           </Avatar>
                         </ListItemAvatar>
                         <ListItemText
-                          primary={`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User'}
+                          primary={`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed'}
                           secondary={user.email || 'No email'}
                           primaryTypographyProps={{ 
                             fontWeight: 500,
-                            variant: 'body2',
+                            variant: 'caption',
                             noWrap: true
                           }}
                           secondaryTypographyProps={{ 
@@ -474,12 +554,12 @@ const BulkUserUpload = ({ onUpload }) => {
 
             <Grid item xs={12} md={7}>
               {selectedUserIndex !== null && editedUser ? (
-                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                    Edit User (Row {selectedUserIndex + 2})
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                    Edit (Row {selectedUserIndex + 2})
                   </Typography>
-                  <Paper sx={{ p: 2, flexGrow: 1, overflow: 'auto' }}>
-                    <Grid container spacing={2}>
+                  <Paper sx={{ p: 1, flexGrow: 1, overflow: 'auto' }}>
+                    <Grid container spacing={1}>
                       <Grid item xs={12} sm={6}>
                         <TextField
                           label="First Name"
@@ -488,6 +568,7 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -498,6 +579,7 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12}>
@@ -508,6 +590,7 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -518,6 +601,7 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -529,9 +613,10 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         >
                           {['admin', 'instructor', 'learner', 'owner'].map((role) => (
-                            <MenuItem key={role} value={role}>
+                            <MenuItem key={role} value={role} dense>
                               {role}
                             </MenuItem>
                           ))}
@@ -539,12 +624,13 @@ const BulkUserUpload = ({ onUpload }) => {
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <TextField
-                          label="Birth Date (YYYY-MM-DD)"
+                          label="Birth Date"
                           value={editedUser.birthDate || ''}
                           onChange={(e) => handleEditUser('birthDate', e.target.value)}
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -556,9 +642,10 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         >
                           {['active', 'pending', 'suspended'].map((status) => (
-                            <MenuItem key={status} value={status}>
+                            <MenuItem key={status} value={status} dense>
                               {status}
                             </MenuItem>
                           ))}
@@ -572,23 +659,43 @@ const BulkUserUpload = ({ onUpload }) => {
                           fullWidth
                           size="small"
                           margin="dense"
+                          variant="outlined"
                         />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <FormControl fullWidth size="small" margin="dense" variant="outlined">
+                          <InputLabel shrink>Courses</InputLabel>
+                          <Select
+                            multiple
+                            value={editedUser.courseIds?.split(',').map(id => id.trim()).filter(id => id) || []}
+                            onChange={(e) => handleEditUser('courseIds', e.target.value.join(','))}
+                            renderValue={(selected) => selected.join(', ')}
+                            MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
+                            label="Courses"
+                          >
+                            {courses.map((course) => (
+                              <MenuItem key={course.id} value={course.id} dense>
+                                {course.title}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
                       </Grid>
                     </Grid>
                     
                     {validationErrors.length > 0 && (
-                      <Alert severity="error" sx={{ mt: 2 }}>
+                      <Alert severity="error" sx={{ mt: 1, py: 0.5 }}>
                         <Box component="ul" sx={{ pl: 2, mb: 0 }}>
                           {validationErrors.map((error, idx) => (
                             <li key={idx}>
-                              <Typography variant="body2">{error}</Typography>
+                              <Typography variant="caption">{error}</Typography>
                             </li>
                           ))}
                         </Box>
                       </Alert>
                     )}
                     
-                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                       <Button
                         variant="contained"
                         onClick={handleSaveUser}
@@ -610,30 +717,31 @@ const BulkUserUpload = ({ onUpload }) => {
                 </Box>
               ) : (
                 <Box sx={{ 
-                  height: '50vh',
+                  height: '300px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <Typography color="text.secondary">
-                    Select a user to edit details
+                  <Typography variant="caption" color="text.secondary">
+                    Select a user
                   </Typography>
                 </Box>
               )}
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPreviewModal(false)}>
+        <DialogActions sx={{ p: 1 }}>
+          <Button onClick={() => setOpenPreviewModal(false)} size="small">
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={processFile}
             disabled={isProcessing || previewData.length === 0}
-            startIcon={isProcessing ? <CircularProgress size={20} /> : null}
+            startIcon={isProcessing ? <CircularProgress size={16} /> : null}
+            size="small"
           >
-            {isProcessing ? 'Processing...' : 'Submit All Users'}
+            Submit
           </Button>
         </DialogActions>
       </Dialog>
@@ -642,25 +750,33 @@ const BulkUserUpload = ({ onUpload }) => {
         open={openRemoveConfirm}
         onClose={() => setOpenRemoveConfirm(false)}
         maxWidth="xs"
-        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            width: '300px',
+            m: 1,
+          }
+        }}
       >
-        <DialogTitle>Confirm Removal</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Remove this user from the upload list?
+        <DialogTitle sx={{ p: 1 }}>
+          <Typography variant="body1">Confirm</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 1 }}>
+          <Typography variant="body2">
+            Remove user?
           </Typography>
           {editedUser && (
-            <Typography fontWeight="bold" sx={{ mt: 1 }}>
-              {editedUser.email || 'Unnamed User'}
+            <Typography variant="body2" fontWeight="bold" sx={{ mt: 0.5 }}>
+              {editedUser.email || 'Unnamed'}
             </Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRemoveConfirm(false)}>Cancel</Button>
+        <DialogActions sx={{ p: 1 }}>
+          <Button onClick={() => setOpenRemoveConfirm(false)} size="small">Cancel</Button>
           <Button
             onClick={confirmRemoveUser}
             variant="contained"
             color="error"
+            size="small"
           >
             Remove
           </Button>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Container, Typography, Grid, Paper, Avatar, Divider,
@@ -7,25 +7,26 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress
 } from '@mui/material';
 import {
-  Email as EmailIcon,
-  Phone as PhoneIcon,
-  CheckCircle as CheckCircleIcon,
-  Pending as PendingIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Close as CloseIcon,
-  ArrowBack as ArrowBackIcon
+  Email as EmailIcon, Phone as PhoneIcon,
+  CheckCircle as CheckCircleIcon, Pending as PendingIcon,
+  Edit as EditIcon, Delete as DeleteIcon,
+  Add as AddIcon, Close as CloseIcon, ArrowBack as ArrowBackIcon,
+  Star as StarIcon
 } from '@mui/icons-material';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { coursesAPI } from '../../../config';
 
 const LearnerProfile = ({ learnerId }) => {
   const navigate = useNavigate();
-  const [openModal, setOpenModal] = React.useState(false);
-  const [tabValue, setTabValue] = React.useState(0);
-  const [isEditingContact, setIsEditingContact] = React.useState(null);
-  
-  // Mock data state
-  const [learnerData, setLearnerData] = React.useState({
+  const [openModal, setOpenModal] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
+  const [isEditingContact, setIsEditingContact] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Learner data state
+  const [learnerData, setLearnerData] = useState({
     id: learnerId,
     name: 'Alex Johnson',
     email: 'alex@example.com',
@@ -50,12 +51,48 @@ const LearnerProfile = ({ learnerId }) => {
     ]
   });
 
-  const [newContactLog, setNewContactLog] = React.useState({
+  // Gamification state
+  const [userBadges, setUserBadges] = useState([]);
+  const [userPoints, setUserPoints] = useState(0);
+
+  // Contact log state
+  const [newContactLog, setNewContactLog] = useState({
     date: new Date().toISOString().split('T')[0],
     method: 'email',
     notes: '',
     admin: 'Current User'
   });
+
+  // Fetch gamification data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const [badgesResponse, pointsResponse] = await Promise.all([
+          coursesAPI.getUserBadges(learnerId),
+          coursesAPI.getUserPoints(learnerId),
+        ]);
+        setUserBadges(badgesResponse.data?.results || []);
+        setUserPoints(pointsResponse.data?.total_points || 0);
+        if (badgesResponse.data?.results?.length > 0) {
+          toast.success('New badge earned!', {
+            position: 'top-right',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        }
+      } catch (err) {
+        setError('Failed to load gamification data');
+        console.error('Error fetching gamification data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserData();
+  }, [learnerId]);
 
   // Tab change handler
   const handleTabChange = (event, newValue) => {
@@ -89,7 +126,6 @@ const LearnerProfile = ({ learnerId }) => {
       contactLogs: [...prev.contactLogs, newLog]
     }));
     
-    // Reset form
     setNewContactLog({
       date: new Date().toISOString().split('T')[0],
       method: 'email',
@@ -111,6 +147,7 @@ const LearnerProfile = ({ learnerId }) => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <ToastContainer />
       <Button 
         onClick={() => navigate('/admin/users')}
         variant="outlined" 
@@ -225,6 +262,7 @@ const LearnerProfile = ({ learnerId }) => {
       <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 3 }}>
         <Tab label="Courses" />
         <Tab label="Contact Log" />
+        <Tab label="Gamification" />
       </Tabs>
 
       {/* Courses Tab */}
@@ -362,6 +400,73 @@ const LearnerProfile = ({ learnerId }) => {
             </TableContainer>
           </Paper>
         </Box>
+      )}
+
+      {/* Gamification Tab */}
+      {tabValue === 2 && (
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+            Gamification
+          </Typography>
+          {error && (
+            <Typography color="error" variant="body2" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+          )}
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <StarIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Typography variant="h6">
+                  Total Points: {userPoints}
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1 }}>
+                Earned Badges
+              </Typography>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <LinearProgress sx={{ width: '100%' }} />
+                </Box>
+              ) : userBadges.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No badges earned yet
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {userBadges.map(badge => (
+                    <Box key={badge.id} sx={{ mb: 2, width: { xs: '100%', sm: 'auto' } }}>
+                      <Chip
+                        avatar={<Avatar src={badge.badge.image} />}
+                        label={badge.badge.title}
+                        variant="outlined"
+                        sx={{ mb: 1 }}
+                      />
+                      <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
+                        Progress: {learnerData.coursesCompleted} / {badge.badge.criteria.courses_completed} courses
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(learnerData.coursesCompleted / badge.badge.criteria.courses_completed) * 100}
+                        sx={{ 
+                          height: 8, 
+                          borderRadius: 4,
+                          backgroundColor: 'grey.200',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                            backgroundColor: 'primary.main'
+                          }
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Grid>
+          </Grid>
+        </Paper>
       )}
 
       {/* Add Contact Log Modal */}

@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:9090';
-export const CMVP_SITE_URL = 'http://localhost:3000';
-export const CMVP_API_URL = 'http://localhost:9091';
+// export const API_BASE_URL = 'http://localhost:9090';
+// export const CMVP_SITE_URL = 'http://localhost:3000';
+// export const CMVP_API_URL = 'http://localhost:9091';
 
 
-// export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
-// export const CMVP_SITE_URL = 'https://cmvp.net';
-//export const CMVP_API_URL =  'https://test.api.cmvp.net';
+export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
+export const CMVP_SITE_URL = 'https://cmvp.net';
+export const CMVP_API_URL =  'https://test.api.cmvp.net';
 
 
 // Payment Methods Configuration
@@ -127,6 +127,7 @@ const getCSRFToken = () => {
 
 // API endpoints configuration
 export const userAPI = {
+  impersonateUser: (id) => api.post(`/users/api/users/${id}/impersonate/`),
   getUsers: (params = {}) => api.get('/users/api/users/', { params }),
   getUser: (id) => api.get(`/users/api/users/${id}/`),
   createUser: (userData) => api.post('/users/api/register/', userData),
@@ -309,6 +310,14 @@ export const coursesAPI = {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
 
+    getBadges: () => axios.get('/courses/api/badges/'),
+    createBadge: data => axios.post('/courses/api/badges/', data),
+    updateBadge: (id, data) => axios.put(`/courses/api/badges/${id}/`, data),
+    deleteBadge: id => axios.delete(`/courses/api/badges/${id}/`),
+    getLeaderboard: courseId =>
+      axios.get(`/courses/api/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
+    updatePointsConfig: (courseId, config) => axios.post(`/courses/api/courses/${courseId}/points-config/`, config),
+
 /* ENROLLMENT METHODS */
   
   // 1. ADMIN ENROLLMENT METHODS
@@ -397,7 +406,9 @@ export const coursesAPI = {
    */
   getAllEnrollments: () => api.get('/enrollments/all-enrollments/'),
   
- 
+  deleteEnrollment: (id) => api.delete(`/enrollments/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
 
   getRatings: (courseId = null) => {
     const url = courseId ? `/courses/ratings/course/${courseId}/` : '/courses/ratings/';
@@ -458,24 +469,28 @@ export const getAuthHeader = () => ({
   Authorization: `Bearer ${localStorage.getItem('access_token')}`
 });
 
+
+export const forumAPI = {
+  getForums: (params) => api.get('/forums/api/forums/', { params }),
+  createForum: (data) => api.post('/forums/api/forums/', data),
+  updateForum: (id, data) => api.patch(`/forums/api/forums/${id}/`, data),
+  deleteForum: (id) => api.delete(`/forums/api/forums/${id}/`),
+  getForumStats: () => api.get('/forums/api/forums/stats/')
+};
+
+export const moderationAPI = {
+  getModerationQueue: (params) => api.get('/forums/api/queue/', { params }),
+  moderateItem: (id, data) => api.patch(`/forums/api/queue/${id}/`, data),
+  getPendingCount: () => api.get('/forums/api/queue/pending_count/')
+};
 export default {
-  API_BASE_URL,
-  CMVP_SITE_URL,
-  CMVP_API_URL,
-  paymentMethods,
-  currencies,
-  api,
-  userAPI,
-  authAPI,
-  rolesAPI,
-  groupsAPI,
-  activityAPI,
-  messagingAPI,
-  scheduleAPI,
-  advertAPI,
-  coursesAPI,
-  paymentAPI,
-  setAuthTokens,
-  clearAuthTokens,
-  getAuthHeader,
+  API_BASE_URL,moderationAPI, forumAPI,
+  CMVP_SITE_URL,  CMVP_API_URL,
+  paymentMethods,  currencies,
+  api,  userAPI,  authAPI,
+  rolesAPI,  groupsAPI,  activityAPI,
+  messagingAPI,  scheduleAPI,
+  advertAPI,  coursesAPI,
+  paymentAPI,  setAuthTokens,
+  clearAuthTokens,  getAuthHeader,
 };

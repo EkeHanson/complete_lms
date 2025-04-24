@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Box,   Typography,   Button,   Grid,   Paper,   TextField,  Divider,  Tabs,  Tab,  useTheme,  Card,
-  CardContent,  LinearProgress,  Chip,  Avatar,  List,  ListItem,
-  ListItemAvatar,  ListItemText,  IconButton,  Stack,  useMediaQuery, ListItemSecondaryAction 
+import {
+  Box, Typography, Button, Grid, Paper, TextField, Divider, Tabs, Tab, useTheme, Card,
+  CardContent, LinearProgress, Chip, Avatar, List, ListItem,
+  ListItemAvatar, ListItemText, IconButton, Stack, useMediaQuery, ListItemSecondaryAction
 } from '@mui/material';
-import { 
-  Add,   Search,   FilterList,  People,
-  School,  CheckCircle,  TrendingUp,  Warning,
-  Star,  Category,  AccessTime,  Menu as MenuIcon
+import {
+  Add, Search, FilterList, People,
+  School, CheckCircle, TrendingUp, Warning,
+  Star, Category, AccessTime, Menu as MenuIcon, Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import CourseList from './CourseList';
+import CourseContentManagement from './CourseContentManagement';
 import { useNavigate } from 'react-router-dom';
 
 const CourseManagement = () => {
@@ -19,7 +20,7 @@ const CourseManagement = () => {
   const [activeTab, setActiveTab] = useState(0);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   // Dummy data
   const courseStats = {
     totalCourses: 42,
@@ -60,8 +61,8 @@ const CourseManagement = () => {
     <Card sx={{ height: '100%' }}>
       <CardContent>
         <Stack direction={isMobile ? "column" : "row"} alignItems="center" spacing={2}>
-          <Avatar sx={{ 
-            bgcolor: `${color}.light`, 
+          <Avatar sx={{
+            bgcolor: `${color}.light`,
             color: `${color}.dark`,
             ...(isMobile && { mb: 1 })
           }}>
@@ -84,62 +85,40 @@ const CourseManagement = () => {
     setSearchTerm(e.target.value);
   };
 
-  return (
-    <Box sx={{ p: isMobile ? 1 : 3 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: isMobile ? 'column' : 'row', 
-        justifyContent: 'space-between', 
-        alignItems: isMobile ? 'flex-start' : 'center',
-        mb: 3,
-        gap: isMobile ? 2 : 0
-      }}>
-        <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 600 }}>
-          Course Management
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleAddCourse}
-          fullWidth={isMobile}
-          size={isMobile ? "small" : "medium"}
-        >
-          {isMobile ? 'New Course' : 'Add New Course'}
-        </Button>
-      </Box>
-
+  const renderOverview = () => (
+    <>
       {/* Quick Stats Section */}
       <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: 3 }}>
         <Grid item xs={6} sm={6} md={6} lg={3}>
-          <StatCard 
-            icon={<School />} 
-            title="Total Courses" 
-            value={courseStats.totalCourses} 
-            color="primary" 
+          <StatCard
+            icon={<School />}
+            title="Total Courses"
+            value={courseStats.totalCourses}
+            color="primary"
           />
         </Grid>
         <Grid item xs={6} sm={6} md={6} lg={3}>
-          <StatCard 
-            icon={<People />} 
-            title="Enrollments" 
-            value={courseStats.totalEnrollments} 
-            color="secondary" 
+          <StatCard
+            icon={<People />}
+            title="Enrollments"
+            value={courseStats.totalEnrollments}
+            color="secondary"
           />
         </Grid>
         <Grid item xs={6} sm={6} md={6} lg={3}>
-          <StatCard 
-            icon={<CheckCircle />} 
-            title="Completed" 
-            value={courseStats.completedCourses} 
-            color="success" 
+          <StatCard
+            icon={<CheckCircle />}
+            title="Completed"
+            value={courseStats.completedCourses}
+            color="success"
           />
         </Grid>
         <Grid item xs={6} sm={6} md={6} lg={3}>
-          <StatCard 
-            icon={<TrendingUp />} 
-            title="Completion %" 
-            value={`${courseStats.averageCompletionRate}%`} 
-            color="info" 
+          <StatCard
+            icon={<TrendingUp />}
+            title="Completion %"
+            value={`${courseStats.averageCompletionRate}%`}
+            color="info"
           />
         </Grid>
       </Grid>
@@ -195,9 +174,9 @@ const CourseManagement = () => {
                 {courseStats.categories.map((category) => (
                   <Box key={category.name} sx={{ mb: 1 }}>
                     <Typography variant="body2">{category.name} ({category.count})</Typography>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(category.count / courseStats.totalCourses) * 100} 
+                    <LinearProgress
+                      variant="determinate"
+                      value={(category.count / courseStats.totalCourses) * 100}
                       sx={{ height: 8, borderRadius: 4 }}
                     />
                   </Box>
@@ -206,42 +185,56 @@ const CourseManagement = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        {/* Recent Courses */}
-        {/* <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <AccessTime sx={{ mr: 1, color: 'orange' }} /> Recent Courses
-              </Typography>
-              <List dense={isMobile}>
-                {courseStats.recentCourses.map((course, index) => (
-                  <ListItem key={index} secondaryAction={
-                    !isMobile && <Chip label="New" color="info" size="small" />
-                  }>
-                    <ListItemText
-                      primary={course.title}
-                      secondary={`Added: ${course.date} • ${course.instructor}`}
-                      primaryTypographyProps={{ variant: isMobile ? "body2" : "body1" }}
-                      secondaryTypographyProps={{ variant: isMobile ? "caption" : "body2" }}
-                    />
-                    {isMobile && (
-                      <ListItemSecondaryAction>
-                        <Chip label="New" color="info" size="small" />
-                      </ListItemSecondaryAction>
-                    )}
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid> */}
       </Grid>
-      
+
       {/* Courses List Section */}
       <Paper sx={{ mb: 3 }}>
         <Divider />
         <CourseList isMobile={isMobile} />
+      </Paper>
+    </>
+  );
+
+  return (
+    <Box sx={{ p: isMobile ? 1 : 3 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        mb: 3,
+        gap: isMobile ? 2 : 0
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 600 }}>
+          Course Management
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={handleAddCourse}
+          fullWidth={isMobile}
+          size={isMobile ? "small" : "medium"}
+        >
+          {isMobile ? 'New Course' : 'Add New Course'}
+        </Button>
+      </Box>
+
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="Overview" icon={<School />} iconPosition="start" />
+          <Tab label="Content Management" icon={<AssignmentIcon />} iconPosition="start" />
+        </Tabs>
+        <Divider />
+        <Box sx={{ p: isMobile ? 1 : 3 }}>
+          {activeTab === 0 && renderOverview()}
+          {activeTab === 1 && <CourseContentManagement />}
+        </Box>
       </Paper>
     </Box>
   );

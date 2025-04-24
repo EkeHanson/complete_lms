@@ -10,18 +10,19 @@ import {
   InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
   ListItemIcon, Checkbox, FormControlLabel, Tab, Tabs, Avatar,
   useMediaQuery, AppBar, Toolbar, Drawer, ListItemAvatar, Tooltip,
-  CircularProgress, Alert
+  CircularProgress, Alert, 
 } from '@mui/material';
 import {
   Save, Cancel, CloudUpload, AddCircle, Delete,
   Link as LinkIcon, PictureAsPdf, VideoLibrary,
   InsertDriveFile, Edit, Person, People, School,
-  Menu as MenuIcon, ArrowBack, Add
+  Menu as MenuIcon, ArrowBack, Add, Star 
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import LearningPaths from './LearningPaths';
 import SCORMxAPISettings from './SCORMxAPISettings';
 import CertificateSettings from './CertificateSettings';
+import GamificationManager from './GamificationManager';
 import InstructorAssignmentDialog from './InstructorAssignmentDialog';
 
 const resourceTypes = [
@@ -714,7 +715,8 @@ const deleteResource = async (id) => {
     { label: 'Resources', icon: <InsertDriveFile fontSize="small" /> },
     { label: 'Paths', icon: <LinkIcon fontSize="small" /> },
     { label: 'Certificates', icon: <PictureAsPdf fontSize="small" /> },
-    { label: 'SCORM', icon: <VideoLibrary fontSize="small" /> }
+    { label: 'SCORM', icon: <VideoLibrary fontSize="small" /> },
+    { label: 'Gamification', icon: <Star fontSize="small" /> },
   ];
 
   return (
@@ -1421,6 +1423,7 @@ const deleteResource = async (id) => {
                 {activeTab === 4 && <LearningPaths courseId={id} isMobile={isMobile} />}
                 {activeTab === 5 && <CertificateSettings courseId={id} isMobile={isMobile} />}
                 {activeTab === 6 && <SCORMxAPISettings courseId={id} isMobile={isMobile} />}
+                {activeTab === 7 && <GamificationManager courseId={id} isMobile={isMobile} />}
 
                 <Divider sx={{ my: 2 }} />
 

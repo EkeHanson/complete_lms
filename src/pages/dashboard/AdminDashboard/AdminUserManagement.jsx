@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import API_BASE_URL, { userAPI } from '../../../config';
+import API_BASE_URL, { userAPI, coursesAPI, messagingAPI } from '../../../config';
 import {
   Box, Container, Typography, Grid, Paper, Table,
   TableBody, TableCell, TableContainer, TableHead, Snackbar,
   TableRow, TablePagination, Avatar, Chip, TextField, MenuItem,
   Divider, IconButton, useTheme, useMediaQuery, Button,
   Dialog, DialogTitle, DialogContent, DialogActions, Menu, Tooltip,
-  CircularProgress, Alert
+  CircularProgress, Alert, Tabs, Tab, List, ListItem, ListItemText,
+  ListItemAvatar, Select, FormControl, InputLabel
 } from '@mui/material';
 import {
   People as PeopleIcon, PersonAdd as PersonAddIcon,
@@ -14,8 +15,10 @@ import {
   Lock as SuspendedIcon, Schedule as PendingIcon, 
   Search as SearchIcon, FilterList as FilterIcon, 
   Refresh as RefreshIcon, MoreVert as MoreIcon,
-  Add as AddIcon, Upload as UploadIcon,
-  Close as CloseIcon
+  Add as AddIcon, Upload as UploadIcon, Login as LoginIcon,
+  Close as CloseIcon, Login as ImpersonateIcon,
+  Password as PasswordIcon, LockOpen as UnlockIcon,
+  School as CourseIcon, Message as MessageIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -49,6 +52,8 @@ const AdminUserManagement = () => {
 
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showCourseEnrollment, setShowCourseEnrollment] = useState(false);
+  const [showMessaging, setShowMessaging] = useState(false);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -64,12 +69,22 @@ const AdminUserManagement = () => {
     dateTo: null
   });
 
+  const [tabValue, setTabValue] = useState(0);
+  const [userActivities, setUserActivities] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [userEnrollments, setUserEnrollments] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState({
+    subject: '',
+    content: '',
+    type: 'general'
+  });
+
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-  
+
     try {
-      const token = localStorage.getItem('access_token');
       const params = {
         page: pagination.currentPage,
         page_size: rowsPerPage,
@@ -80,28 +95,17 @@ const AdminUserManagement = () => {
         ...(filters.dateTo && { date_to: filters.dateTo?.toISOString().split('T')[0] })
       };
 
-      const response = await fetch(`${API_BASE_URL.API_BASE_URL}/users/api/users/?${new URLSearchParams(params)}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to fetch users');
-      }
-
-      const data = await response.json();
-      setUsers(data.results || []);
+      const response = await userAPI.getUsers(params);
+      setUsers(response.data.results || []);
       setPagination({
-        count: data.count || 0,
-        next: data.next || null,
-        previous: data.previous || null,
+        count: response.data.count || 0,
+        next: response.data.links?.next || null,
+        previous: response.data.links?.previous || null,
         currentPage: pagination.currentPage
       });
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to fetch users';
+      setError(errorMessage);
       setUsers([]);
       setPagination({
         count: 0,
@@ -109,14 +113,80 @@ const AdminUserManagement = () => {
         previous: null,
         currentPage: 1
       });
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchUserActivities = async (userId) => {
+    try {
+      const response = await userAPI.getUserActivities({ user_id: userId });
+      setUserActivities(response.data.results || []);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch user activities',
+        severity: 'error'
+      });
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await coursesAPI.getCourses();
+      setCourses(response.data.results || []);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch courses',
+        severity: 'error'
+      });
+    }
+  };
+
+  const fetchUserEnrollments = async (userId) => {
+    try {
+      const response = await coursesAPI.getUserEnrollments(userId);
+      setUserEnrollments(response.data.results || []);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch user enrollments',
+        severity: 'error'
+      });
+    }
+  };
+
+  const fetchMessages = async (userId) => {
+    try {
+      const response = await messagingAPI.getMessages({ recipient_id: userId });
+      setMessages(response.data.results || []);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch messages',
+        severity: 'error'
+      });
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchCourses();
   }, [pagination.currentPage, rowsPerPage, filters]);
+
+  useEffect(() => {
+    if (selectedUser) {
+      fetchUserActivities(selectedUser.id);
+      fetchUserEnrollments(selectedUser.id);
+      fetchMessages(selectedUser.id);
+    }
+  }, [selectedUser]);
 
   const handleFilterChange = (name, value) => {
     setFilters({
@@ -133,6 +203,105 @@ const AdminUserManagement = () => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleImpersonate = async (userId) => {
+    // Placeholder: userAPI.impersonateUser is not defined in config.jsx or backend
+    setSnackbar({
+      open: true,
+      message: 'Impersonation not implemented yet',
+      severity: 'warning'
+    });
+  };
+
+// In AdminUserManagement.js, update handlePasswordReset
+const handlePasswordReset = async (userId) => {
+  try {
+    const user = users.find(u => u.id === userId);
+    await authAPI.resetPassword({ email: user.email });
+    setSnackbar({
+      open: true,
+      message: 'Password reset email sent successfully',
+      severity: 'success'
+    });
+  } catch (err) {
+    setSnackbar({
+      open: true,
+      message: 'Failed to send password reset email',
+      severity: 'error'
+    });
+  }
+};
+
+  const handleAccountLock = async (userId, lock) => {
+    try {
+      await userAPI.updateUser(userId, { is_locked: lock });
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, is_locked: lock } : user
+      ));
+      setSnackbar({
+        open: true,
+        message: `Account ${lock ? 'locked' : 'unlocked'} successfully`,
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: `Failed to ${lock ? 'lock' : 'unlock'} account`,
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleEnrollCourse = async (courseId) => {
+    try {
+      await coursesAPI.adminSingleEnroll(courseId, { user_id: selectedUser.id });
+      await fetchUserEnrollments(selectedUser.id);
+      setSnackbar({
+        open: true,
+        message: 'User enrolled in course successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to enroll user in course',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDisenrollCourse = async (enrollmentId) => {
+    // Placeholder: coursesAPI.deleteEnrollment is not defined in config.jsx or backend
+    setSnackbar({
+      open: true,
+      message: 'Course disenrollment not implemented yet',
+      severity: 'warning'
+    });
+  };
+
+  const handleSendMessage = async () => {
+    try {
+      await messagingAPI.createMessage({
+        recipient_id: selectedUser.id,
+        subject: newMessage.subject,
+        content: newMessage.content,
+        type: newMessage.type
+      });
+      setNewMessage({ subject: '', content: '', type: 'general' });
+      await fetchMessages(selectedUser.id);
+      setSnackbar({
+        open: true,
+        message: 'Message sent successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to send message',
+        severity: 'error'
+      });
+    }
   };
 
   const resetLoginAttempts = async (userId) => {
@@ -166,7 +335,12 @@ const AdminUserManagement = () => {
 
   const handleActionSelect = (action) => {
     setActionType(action);
-    setOpenConfirmModal(true);
+    if (action === 'courses' || action === 'messages') {
+      setShowCourseEnrollment(action === 'courses');
+      setShowMessaging(action === 'messages');
+    } else {
+      setOpenConfirmModal(true);
+    }
     handleMenuClose();
   };
 
@@ -188,6 +362,12 @@ const AdminUserManagement = () => {
           message: 'User deleted successfully',
           severity: 'success'
         });
+      } else if (actionType === 'impersonate') {
+        await handleImpersonate(selectedUser.id);
+      } else if (actionType === 'reset_password') {
+        await handlePasswordReset(selectedUser.id);
+      } else if (actionType === 'lock' || actionType === 'unlock') {
+        await handleAccountLock(selectedUser.id, actionType === 'lock');
       } else {
         const newStatus = actionType === 'suspend' ? 'suspended' : 'active';
         await userAPI.updateUser(selectedUser.id, { status: newStatus });
@@ -307,7 +487,6 @@ const AdminUserManagement = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  // Safe statistics calculations
   const getActiveUsersCount = () => users.filter(u => u.status === 'active').length;
   const getNewSignupsCount = () => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -498,6 +677,7 @@ const AdminUserManagement = () => {
                   <TableCell>Status</TableCell>
                   <TableCell>Signup Date</TableCell>
                   <TableCell>Login Attempts</TableCell>
+                  <TableCell>Locked</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -551,7 +731,6 @@ const AdminUserManagement = () => {
                       <TableCell>
                         <StatusChip status={user.status} />
                       </TableCell>
-               
                       <TableCell>
                         {new Date(user.signup_date).toLocaleDateString()}
                       </TableCell>
@@ -570,6 +749,14 @@ const AdminUserManagement = () => {
                         ) : (
                           <Typography variant="body2">0</Typography>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={user.is_locked ? 'Locked' : 'Unlocked'}
+                          color={user.is_locked ? 'error' : 'success'}
+                          size="small"
+                          variant="outlined"
+                        />
                       </TableCell>
                       <TableCell align="right">
                         <IconButton
@@ -601,6 +788,21 @@ const AdminUserManagement = () => {
                             Delete
                           </MenuItem>
                           <MenuItem
+                            onClick={() => handleActionSelect('impersonate')}
+                          >
+                            Impersonate
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect('reset_password')}
+                          >
+                            Reset Password
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect(user.is_locked ? 'unlock' : 'lock')}
+                          >
+                            {user.is_locked ? 'Unlock' : 'Lock'} Account
+                          </MenuItem>
+                          <MenuItem
                             onClick={() => {
                               resetLoginAttempts(selectedUser?.id);
                               handleMenuClose();
@@ -608,6 +810,16 @@ const AdminUserManagement = () => {
                             disabled={selectedUser?.login_attempts === 0}
                           >
                             Reset Login Attempts
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect('courses')}
+                          >
+                            Manage Courses
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => handleActionSelect('messages')}
+                          >
+                            Messages
                           </MenuItem>
                         </Menu>
                       </TableCell>
@@ -628,6 +840,92 @@ const AdminUserManagement = () => {
           />
         </Paper>
 
+        {/* User Details Section */}
+        {selectedUser && (
+          <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              User Details: {selectedUser.first_name} {selectedUser.last_name}
+            </Typography>
+            <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} sx={{ mb: 3 }}>
+              <Tab label="Activity Logs" />
+              <Tab label="Course Enrollments" />
+              <Tab label="Messages" />
+            </Tabs>
+
+            {tabValue === 0 && (
+              <List>
+                {userActivities.length > 0 ? (
+                  userActivities.map((activity) => (
+                    <ListItem key={activity.id}>
+                      <ListItemAvatar>
+                        <Avatar>
+                          {activity.activity_type === 'login' ? <LoginIcon /> : <PeopleIcon />}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={`${activity.activity_type} - ${activity.status}`}
+                        secondary={`${activity.details} (${new Date(activity.timestamp).toLocaleString()})`}
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography>No activity logs found</Typography>
+                )}
+              </List>
+            )}
+
+            {tabValue === 1 && (
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Enrolled Courses
+                </Typography>
+                <List>
+                  {userEnrollments.map((enrollment) => (
+                    <ListItem key={enrollment.id} secondaryAction={
+                      <IconButton edge="end" onClick={() => handleDisenrollCourse(enrollment.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    }>
+                      <ListItemAvatar>
+                        <Avatar>
+                          <CourseIcon />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={enrollment.course.title}
+                        secondary={`Enrolled on: ${new Date(enrollment.created_at).toLocaleDateString()}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+
+            {tabValue === 2 && (
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Message History
+                </Typography>
+                <List>
+                  {messages.map((message) => (
+                    <ListItem key={message.id}>
+                      <ListItemAvatar>
+                        <Avatar>
+                          <MessageIcon />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={message.subject}
+                        secondary={`${message.content} (${new Date(message.created_at).toLocaleString()})`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </Paper>
+        )}
+
         {/* User Groups Management Section */}
         <Box sx={{ mt: 4 }}>
           <UserGroupsManagement users={users} />
@@ -642,7 +940,11 @@ const AdminUserManagement = () => {
         >
           <DialogTitle>
             {actionType === 'delete' ? 'Delete User' : 
-             actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
+             actionType === 'suspend' ? 'Suspend User' :
+             actionType === 'impersonate' ? 'Impersonate User' :
+             actionType === 'reset_password' ? 'Reset Password' :
+             actionType === 'lock' ? 'Lock Account' :
+             actionType === 'unlock' ? 'Unlock Account' : 'Activate User'}
           </DialogTitle>
           <DialogContent>
             {actionError && (
@@ -654,6 +956,7 @@ const AdminUserManagement = () => {
               <Typography>
                 Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
                 {actionType === 'delete' && ' This action cannot be undone.'}
+                {actionType === 'impersonate' && ' You will be logged in as this user.'}
               </Typography>
             ) : (
               <Typography color="error">No user selected</Typography>
@@ -670,6 +973,109 @@ const AdminUserManagement = () => {
               Confirm
             </Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Course Enrollment Dialog */}
+        <Dialog
+          open={showCourseEnrollment}
+          onClose={() => setShowCourseEnrollment(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Manage Course Enrollments
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowCourseEnrollment(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>Available Courses</InputLabel>
+              <Select
+                label="Available Courses"
+                onChange={(e) => handleEnrollCourse(e.target.value)}
+              >
+                {courses
+                  .filter(course => !userEnrollments.some(e => e.course.id === course.id))
+                  .map(course => (
+                    <MenuItem key={course.id} value={course.id}>
+                      {course.title}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+        </Dialog>
+
+        {/* Messaging Dialog */}
+        <Dialog
+          open={showMessaging}
+          onClose={() => setShowMessaging(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Send Message
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowMessaging(false)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Subject"
+              value={newMessage.subject}
+              onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
+              sx={{ mt: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Message"
+              multiline
+              rows={4}
+              value={newMessage.content}
+              onChange={(e) => setNewMessage({ ...newMessage, content: e.target.value })}
+              sx={{ mt: 2 }}
+            />
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>Message Type</InputLabel>
+              <Select
+                label="Message Type"
+                value={newMessage.type}
+                onChange={(e) => setNewMessage({ ...newMessage, type: e.target.value })}
+              >
+                <MenuItem value="general">General</MenuItem>
+                <MenuItem value="alert">Alert</MenuItem>
+                <MenuItem value="notification">Notification</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              onClick={handleSendMessage}
+              sx={{ mt: 2 }}
+              disabled={!newMessage.subject || !newMessage.content}
+            >
+              Send Message
+            </Button>
+          </DialogContent>
         </Dialog>
 
         {/* User Roles & Permissions Summary */}

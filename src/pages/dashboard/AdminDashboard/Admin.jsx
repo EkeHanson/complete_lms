@@ -1,4 +1,4 @@
-import CourseView  from './courses/CourseView ';
+import CourseView from './courses/CourseView';
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -13,9 +13,9 @@ import {
   Security as SecurityIcon, AttachMoney as FinanceIcon,
   CalendarToday as ScheduleIcon, Campaign as AdvertIcon,
   Notifications as NotificationsIcon, Settings as SettingsIcon,
-  Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Chat as ChatIcon,
+  Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon,
   Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon, Groups as GroupsIcon,
-  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Mail as MessagesIcon
+  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Forum as ForumIcon
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
@@ -26,7 +26,7 @@ import AdminUserManagement from './AdminUserManagement';
 import SecurityComplianceDashboard from './SecurityComplianceDashboard';
 import ContentUsageDashboard from './ContentUsageDashboard';
 import NotificationsDashboard from './NotificationsDashboard';
-import CommunicationSupportDashboard from './CommunicationSupportDashboard';
+import CommunicationHub from './CommunicationHub'; // New import
 import ReportsDashboard from './ReportsDashboard';
 import AdminProfileSettings from './AdminProfileSettings';
 import PaymentSettings from './PaymentSettings';
@@ -36,7 +36,6 @@ import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
 import CourseManagement from './courses/CourseManagement';
 import CourseForm from './courses/CourseForm';
 import ScheduleManagement from './ScheduleManagement';
-import AdminActivityFeed from './AdminActivityFeed';
 import Messaging from './Messaging';
 import LearnerProfile from './LearnerProfile';
 import Advertorial from './Advertorial/Advertorial';
@@ -46,7 +45,6 @@ import axios from 'axios';
 import { API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL } from '../../../config';
 
 const drawerWidth = 280;
-const activityFeedWidth = 280;
 
 function Admin() {
   const navigate = useNavigate();
@@ -55,7 +53,6 @@ function Admin() {
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
   const settingsOpen = Boolean(anchorEl);
-  const [showActivityFeed, setShowActivityFeed] = useState(!isMobile);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,7 +83,7 @@ function Admin() {
   
       const payload = {
         token: token,
-        user_email: "andybes90@gmail.com",
+        user_email: "ekenehanson@gmail.com",
         expires_at: expiresAt.toISOString(),
       };
   
@@ -117,10 +114,6 @@ function Admin() {
     setAnchorEl(null);
   };
 
-  const toggleActivityFeed = () => {
-    setShowActivityFeed(!showActivityFeed);
-  };
-
   const menuItems = [
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> }, 
@@ -130,7 +123,7 @@ function Admin() {
     { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },   
     { path: '/admin/analytics', name: 'Content & Analytics', icon: <AnalyticsIcon /> },
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
-    { path: '/admin/communication', name: 'Communication & Support', icon: <ChatIcon /> },
+    { path: '/admin/communication', name: 'Communication Hub', icon: <ForumIcon /> }, // Updated name and icon
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
     { path: '/admin/groups', name: 'User Groups', icon: <GroupsIcon /> },
   ];
@@ -177,7 +170,7 @@ function Admin() {
           color: theme.palette.text.primary,
           boxShadow: 'none',
           borderBottom: `1px solid ${theme.palette.divider}`,
-          width: `calc(100% - ${drawerWidth}px - ${showActivityFeed ? activityFeedWidth : 0}px)`,
+          width: `calc(100% - ${drawerWidth}px)`,
           left: drawerWidth,
         }}
       > 
@@ -231,34 +224,19 @@ function Admin() {
                 <ScheduleIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Messages">
+            <Tooltip title="Communication Hub">
               <IconButton 
                 component={Link}
-                to="/admin/messaging"
+                to="/admin/communication"
                 size="large" 
                 color="inherit"
-                aria-label="messages"
+                aria-label="communication"
                 sx={{
-                  color: location.pathname === '/admin/messaging' ? 
+                  color: location.pathname === '/admin/communication' ? 
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                <ChatIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Activity Feed">
-              <IconButton
-                size="large"
-                color="inherit"
-                onClick={toggleActivityFeed}
-                sx={{
-                  color: showActivityFeed ? 
-                    theme.palette.primary.main : 'inherit'
-                }}
-              >
-                <Badge badgeContent={4} color="error">
-                  <NotificationsIcon />
-                </Badge>
+                <ForumIcon />
               </IconButton>
             </Tooltip>
             
@@ -450,9 +428,8 @@ function Admin() {
         component="main"
         sx={{
           flexGrow: 1,
-          width: `calc(100% - ${drawerWidth}px - ${showActivityFeed ? activityFeedWidth : 0}px)`,
-          ml: '0px', // Changed from '4px' to '0px'
-          mr: showActivityFeed ? `${activityFeedWidth}px` : '0px',
+          width: `calc(100% - ${drawerWidth}px)`,
+          ml: '0px',
           overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -464,7 +441,7 @@ function Admin() {
           sx={{
             flex: 1,
             backgroundColor: theme.palette.background.paper,
-            p: 1, // Reduced from p: 3 to p: 1
+            p: 1,
             overflowY: 'auto',
             width: '100%'
           }}
@@ -476,7 +453,7 @@ function Admin() {
             <Route path="/security-info" element={<SecurityComplianceDashboard />} />
             <Route path="/analytics" element={<ContentUsageDashboard />} />
             <Route path="/alerts" element={<NotificationsDashboard />} />
-            <Route path="/communication" element={<CommunicationSupportDashboard />} />
+            <Route path="/communication" element={<CommunicationHub />} /> {/* Updated to CommunicationHub */}
             <Route path="/reports" element={<ReportsDashboard />} />
             <Route path="/profile" element={<AdminProfileSettings />} />
             <Route path="/payment-settings" element={<PaymentSettings />} />
@@ -488,7 +465,6 @@ function Admin() {
             <Route path="/courses/edit/:id" element={<CourseForm />} />
             <Route path="/courses/view/:id" element={<CourseView />} />
             <Route path="/schedule" element={<ScheduleManagement />} />
-            <Route path="/activity-feed" element={<AdminActivityFeed />} />
             <Route path="/messaging" element={<Messaging />} /> 
             <Route path="/advertorial" element={<Advertorial />} />
             <Route path="/groups" element={<UserGroupsManagement />} />
@@ -497,26 +473,6 @@ function Admin() {
           </Routes>
         </Box>
       </Box>
-
-      {/* Activity Feed Sidebar */}
-      {showActivityFeed && (
-        <Box
-          sx={{
-            width: activityFeedWidth,
-            flexShrink: 0,
-            position: 'fixed',
-            right: 0,
-            top: 64,
-            height: 'calc(100vh - 64px)',
-            borderLeft: `1px solid ${theme.palette.divider}`,
-            backgroundColor: theme.palette.background.paper,
-            overflowY: 'auto',
-            zIndex: theme.zIndex.drawer - 1, // Lower zIndex to prevent overlap
-          }}
-        >
-          <AdminActivityFeed />
-        </Box>
-      )}
 
       <ChoiceModal
         open={modalOpen}
