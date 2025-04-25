@@ -648,7 +648,7 @@ const fetchDashboardData = async () => {
               </Typography>
               <Divider orientation="vertical" flexItem />
               <Typography variant="caption" color="text.secondary">
-                {stats?.courses?.total_enrollments || 0} enrollments
+                {stats?.courses?.total_all_enrollments || 3} enrollments
               </Typography>
             </Box>
           </Paper>
