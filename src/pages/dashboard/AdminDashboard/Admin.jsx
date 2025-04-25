@@ -34,6 +34,7 @@ import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
 import CourseManagement from './courses/CourseManagement';
+import CourseDetailPage from './courses/CourseDetailPage';
 import CourseForm from './courses/CourseForm';
 import ScheduleManagement from './ScheduleManagement';
 import Messaging from './Messaging';
@@ -470,6 +471,7 @@ function Admin() {
             <Route path="/groups" element={<UserGroupsManagement />} />
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
             <Route path="/builder" element={<CertificateBuilderMain />} />
+            <Route path="/course-details/:id" element={<CourseDetailPage />} />
           </Routes>
         </Box>
       </Box>

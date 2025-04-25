@@ -68,7 +68,7 @@ const StudentDashboard = () => {
       case 'overview':
         return <StudentOverview student={dummyData.student} metrics={dummyData.metrics} activities={dummyData.activities} analytics={dummyData.analytics} />;
       case 'courses':
-        return <StudentCourseList courses={dummyData.enrolledCourses} onFeedback={handleFeedbackClick} />;
+        return <StudentCourseList onFeedback={handleFeedbackClick} />;
       case 'assignments':
         return <StudentAssignments assignments={dummyData.assignments} />;
       case 'messages':

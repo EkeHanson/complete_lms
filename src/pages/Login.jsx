@@ -102,9 +102,9 @@ const Login = () => {
       localStorage.setItem('refresh_token', response.refresh);
       localStorage.setItem('user', JSON.stringify(response.user));
 
-      console.log("response.user.role")
-      console.log(response.user.role)
-      console.log("response.user.role")
+      // console.log("response.user.role")
+      // console.log(response.user.role)
+      // console.log("response.user.role")
       
       // Redirect based on role
       switch(response.user.role) {
@@ -115,7 +115,8 @@ const Login = () => {
           navigate('/instructor-dashboard');
           break;
         case 'learner':
-          navigate('/learner-dashboard');
+          navigate('/student-dashboard'); 
+          // navigate('/learner-dashboard'); 
           break;
         case 'super_admin':
           navigate('/admin');

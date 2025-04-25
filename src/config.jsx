@@ -4,7 +4,6 @@ import axios from 'axios';
 // export const CMVP_SITE_URL = 'http://localhost:3000';
 // export const CMVP_API_URL = 'http://localhost:9091';
 
-
 export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
 export const CMVP_SITE_URL = 'https://cmvp.net';
 export const CMVP_API_URL =  'https://test.api.cmvp.net';
@@ -277,6 +276,11 @@ export const coursesAPI = {
   deleteCourse: (id) => api.delete(`/courses/courses/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
+
+  getMostPopularCourse: () => api.get('/courses/courses/most_popular/'),
+
+  getLeastPopularCourse: () => api.get('/courses/courses/least_popular/'),
+
   getModules: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/modules/`, { params }),
   getModule: (courseId, moduleId) => api.get(`/courses/courses/${courseId}/modules/${moduleId}/`),
   createModule: (courseId, data) => api.post(`/courses/courses/${courseId}/modules/`, data, {
@@ -328,7 +332,7 @@ export const coursesAPI = {
    * @param {object} data - Should contain { user_id: number }
    * @returns {Promise} Axios response
    */
-  adminSingleEnroll: (courseId, data) => api.post(`/enrollments/course/${courseId}/`, data, {
+  adminSingleEnroll: (courseId, data) => api.post(`/courses/enrollments/course/${courseId}/`, data, {
     headers: { 
       'X-CSRFToken': getCSRFToken(), 
       'Content-Type': 'application/json' 
@@ -341,7 +345,9 @@ export const coursesAPI = {
    * @param {Array} userIds - Array of user IDs to enroll
    * @returns {Promise} Axios response
    */
-  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
+  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/courses/enrollments/course/${courseId}/bulk/`, { 
+    user_ids: userIds 
+  }, {
     headers: { 
       'X-CSRFToken': getCSRFToken(), 
       'Content-Type': 'application/json' 
@@ -353,12 +359,18 @@ export const coursesAPI = {
    * @param {Array} enrollmentsData - Array of { course_id: number, user_id: number } objects
    * @returns {Promise} Axios response
    */
-  adminBulkEnroll: (enrollmentsData) => api.post('/enrollments/admin_bulk_enroll/', enrollmentsData, {
+  adminBulkEnroll: (enrollmentsData) => api.post('/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
     headers: { 
       'X-CSRFToken': getCSRFToken(), 
       'Content-Type': 'application/json' 
     }
   }),
+    /**
+   * Admin-only: Get all enrollments in the system
+   * @returns {Promise} Axios response
+   */
+    getAllEnrollments: () => api.get('/courses/enrollments/all_enrollments/'),
+  
 
   // 2. USER SELF-ENROLLMENT METHOD
   
@@ -367,7 +379,7 @@ export const coursesAPI = {
    * @param {number} courseId - ID of the course to enroll in
    * @returns {Promise} Axios response
    */
-  selfEnroll: (courseId) => api.post(`/enrollments/self-enroll/${courseId}/`, {}, {
+  selfEnroll: (courseId) => api.post(`/courses/enrollments/self-enroll/${courseId}/`, {}, {
     headers: { 
       'X-CSRFToken': getCSRFToken(), 
       'Content-Type': 'application/json' 
@@ -375,14 +387,13 @@ export const coursesAPI = {
   }),
 
   // 3. ENROLLMENT QUERY METHODS
-  
   /**
    * Get enrollments - all or filtered by course
    * @param {number|null} courseId - Optional course ID to filter by
    * @returns {Promise} Axios response
    */
   getEnrollments: (courseId = null) => {
-    const url = courseId ? `/enrollments/course/${courseId}/` : '/enrollments/';
+    const url = courseId ? `/courses/enrollments/course/${courseId}/` : '/enrollments/';
     return api.get(url);
   },
   
@@ -391,22 +402,23 @@ export const coursesAPI = {
    * @param {number} userId - ID of the user
    * @returns {Promise} Axios response
    */
-  getUserEnrollments: (userId) => api.get(`/enrollments/user-enrollments/${userId}/`),
+  // getUserEnrollments: (userId) => api.get(`/courses/enrollments/user_enrollments/${userId}/`),
+
+  getUserEnrollments: (userId = null) => {
+    // If no user ID is provided, it will fetch the current user's enrollments
+    const url = userId ? `/courses/enrollments/user_enrollments/${userId}/` : '/courses/enrollments/user_enrollments/';
+    return api.get(url);
+  },
   
   /**
    * Admin-only: Get all enrollments for a specific course
    * @param {number} courseId - ID of the course
    * @returns {Promise} Axios response
    */
-  getCourseEnrollmentsAdmin: (courseId) => api.get(`/enrollments/course-enrollments/${courseId}/`),
+  getCourseEnrollmentsAdmin: (courseId) => api.get(`/courses/enrollments/course-enrollments/${courseId}/`),
   
-  /**
-   * Admin-only: Get all enrollments in the system
-   * @returns {Promise} Axios response
-   */
-  getAllEnrollments: () => api.get('/enrollments/all-enrollments/'),
-  
-  deleteEnrollment: (id) => api.delete(`/enrollments/${id}/`, {
+
+  deleteEnrollment: (id) => api.delete(`/courses/enrollments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
 

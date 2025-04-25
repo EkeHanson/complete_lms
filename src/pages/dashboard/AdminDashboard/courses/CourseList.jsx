@@ -62,11 +62,15 @@ const CourseList = () => {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
     },
     maxFiles: 1,
+    maxSize: 5 * 1024 * 1024, // 5MB
     onDrop: acceptedFiles => {
       setFileError(null);
       if (acceptedFiles.length > 0) {
         parseFile(acceptedFiles[0]);
       }
+    },
+    onDropRejected: (rejectedFiles) => {
+      setFileError('File too large. Maximum size is 5MB');
     }
   });
 
@@ -104,7 +108,7 @@ const CourseList = () => {
     };
   
     fetchCourses();
-  }, []);
+  }, [searchTerm, filters.category, filters.level]);
 
   // Fetch users when enrollment dialogs open
   useEffect(() => {
@@ -166,6 +170,14 @@ const CourseList = () => {
             setFileError('CSV file is empty or improperly formatted');
             return;
           }
+          
+          // Validate required columns
+          const firstRow = results.data[0];
+          if (!('email' in firstRow || 'Email' in firstRow || 'EMAIL' in firstRow)) {
+            setFileError('CSV must contain an "email" column');
+            return;
+          }
+          
           setFileData(results.data);
         },
         error: (error) => {
@@ -186,6 +198,14 @@ const CourseList = () => {
             setFileError('Excel file is empty or improperly formatted');
             return;
           }
+          
+          // Validate required columns
+          const firstRow = jsonData[0];
+          if (!('email' in firstRow || 'Email' in firstRow || 'EMAIL' in firstRow)) {
+            setFileError('Excel file must contain an "email" column');
+            return;
+          }
+          
           setFileData(jsonData);
         } catch (error) {
           setFileError('Error parsing Excel file');
@@ -198,15 +218,20 @@ const CourseList = () => {
   // Enrollment functions
   const handleEnrollClick = (course) => {
     setSelectedCourse(course);
+    setSelectedUser(null);
+    setEnrollmentError(null);
     setEnrollDialogOpen(true);
   };
 
   const handleBulkEnrollClick = (course) => {
     setSelectedCourse(course);
-    setBulkEnrollDialogOpen(true);
+    setSelectedUsers([]);
     setActiveTab('manual');
     setFile(null);
     setFileData([]);
+    setFileError(null);
+    setEnrollmentError(null);
+    setBulkEnrollDialogOpen(true);
   };
 
   const handleEnrollSubmit = async () => {
@@ -216,7 +241,6 @@ const CourseList = () => {
       setEnrollmentLoading(true);
       setEnrollmentError(null);
       
-      // Send the user_id in the request body
       const response = await coursesAPI.adminSingleEnroll(selectedCourse.id, { 
         user_id: selectedUser.id 
       });
@@ -229,15 +253,12 @@ const CourseList = () => {
       let errorMessage = 'Failed to enroll user';
       
       if (err.response) {
-        // Handle 400 Bad Request with detailed error
         if (err.response.status === 400) {
           errorMessage = err.response.data.error || errorMessage;
           if (err.response.data.details) {
             errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
           }
-        } 
-        // Handle 500 Internal Server Error
-        else if (err.response.status === 500) {
+        } else if (err.response.status === 500) {
           errorMessage = err.response.data.error || errorMessage;
           if (err.response.data.details) {
             console.error('Server error details:', err.response.data.details);
@@ -253,6 +274,7 @@ const CourseList = () => {
       setEnrollmentLoading(false);
     }
   };
+
   const handleBulkEnrollSubmit = async () => {
     if (activeTab === 'manual' && selectedUsers.length === 0) return;
     if (activeTab === 'file' && fileData.length === 0) return;
@@ -266,13 +288,11 @@ const CourseList = () => {
       if (activeTab === 'manual') {
         userIds = selectedUsers.map(user => user.id);
       } else {
-        // Extract emails from file data
         const emails = fileData.map(row => row.email || row.Email || row.EMAIL).filter(Boolean);
         if (emails.length === 0) {
           throw new Error('No valid email addresses found in the file');
         }
         
-        // Match emails with existing users
         const matchingUsers = users.filter(user => emails.includes(user.email));
         if (matchingUsers.length === 0) {
           throw new Error('No matching users found for the provided emails');
@@ -280,12 +300,11 @@ const CourseList = () => {
         userIds = matchingUsers.map(user => user.id);
       }
   
-      const response = await coursesAPI.adminBulkEnroll(selectedCourse.id, { user_ids: userIds });
+      const response = await coursesAPI.adminBulkEnrollCourse(selectedCourse.id, userIds);
       
-      // Handle success response
       let successMsg = `Successfully enrolled ${response.data.created || userIds.length} users`;
-      if (response.data.warning) {
-        successMsg += ` (${response.data.warning})`;
+      if (response.data.already_enrolled > 0) {
+        successMsg += ` (${response.data.already_enrolled} were already enrolled)`;
       }
       
       setSuccessMessage(successMsg);
@@ -298,24 +317,9 @@ const CourseList = () => {
       let errorMessage = 'Failed to bulk enroll users';
       
       if (err.response) {
-        // Handle validation errors (400)
-        if (err.response.status === 400) {
-          errorMessage = err.response.data.error || errorMessage;
-          
-          // Add details about invalid data if available
-          if (err.response.data.details) {
-            errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
-          }
-          if (err.response.data.invalid_data) {
-            console.error('Invalid data:', err.response.data.invalid_data);
-          }
-        }
-        // Handle other error responses
-        else {
-          errorMessage = err.response.data.error || errorMessage;
-          if (err.response.data.details) {
-            console.error('Error details:', err.response.data.details);
-          }
+        errorMessage = err.response.data.error || errorMessage;
+        if (err.response.data.details) {
+          errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
         }
       } else if (err.message) {
         errorMessage = err.message;
@@ -327,6 +331,7 @@ const CourseList = () => {
       setEnrollmentLoading(false);
     }
   };
+
   const toggleUserSelection = (user) => {
     setSelectedUsers(prev => {
       const isSelected = prev.some(u => u.id === user.id);
@@ -334,6 +339,14 @@ const CourseList = () => {
         ? prev.filter(u => u.id !== user.id)
         : [...prev, user];
     });
+  };
+
+  const toggleSelectAllUsers = (selectAll) => {
+    if (selectAll) {
+      setSelectedUsers([...users]);
+    } else {
+      setSelectedUsers([]);
+    }
   };
 
   // Course actions
@@ -512,11 +525,11 @@ const CourseList = () => {
                 size="small"
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                {Array.from(new Set(allCourses.map(c => c.category?.name).filter(Boolean)).map(categoryName => (
+                {Array.from(new Set(allCourses.map(c => c.category?.name).filter(Boolean))).map(categoryName => (
                   <MenuItem key={categoryName} value={categoryName}>
                     {categoryName}
                   </MenuItem>
-                )))}
+                ))}
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -791,9 +804,17 @@ const CourseList = () => {
           
           {activeTab === 'manual' ? (
             <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Select users to enroll:
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedUsers.length} of {users.length} selected
+                </Typography>
+                <Button 
+                  size="small" 
+                  onClick={() => toggleSelectAllUsers(selectedUsers.length < users.length)}
+                >
+                  {selectedUsers.length === users.length ? 'Deselect all' : 'Select all'}
+                </Button>
+              </Box>
               <List dense sx={{ maxHeight: 250, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                 {users.map((user) => (
                   <ListItem 
@@ -820,16 +841,11 @@ const CourseList = () => {
                   </ListItem>
                 ))}
               </List>
-              {selectedUsers.length > 0 && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Selected: {selectedUsers.length} users
-                </Typography>
-              )}
             </>
           ) : (
             <>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Upload CSV/Excel file with user emails:
+                Upload CSV/Excel file with user emails (max 5MB):
               </Typography>
               
               <Box 
