@@ -2,20 +2,18 @@ import CourseView from './courses/CourseView';
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Box, AppBar, Toolbar,
-  Drawer, List, ListItem, ListItemButton, ListItemIcon,
-  ListItemText, CssBaseline,
-  Typography, IconButton, Avatar, Divider, Badge, useTheme,
-  useMediaQuery, Menu, MenuItem, Tooltip
+  Box, AppBar, Toolbar, Drawer, List, ListItem, ListItemButton, ListItemIcon,
+  ListItemText, CssBaseline, Typography, IconButton, Avatar, Divider, Badge, 
+  useTheme, useMediaQuery, Menu, MenuItem, Tooltip
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon, People as UsersIcon,
-  Security as SecurityIcon, AttachMoney as FinanceIcon,
-  CalendarToday as ScheduleIcon, Campaign as AdvertIcon,
-  Notifications as NotificationsIcon, Settings as SettingsIcon,
-  Logout as LogoutIcon, Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon,
-  Assessment as ReportsIcon, Computer as SystemSettingsIcon, Web as WebsiteIcon, Groups as GroupsIcon,
-  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon, Forum as ForumIcon
+  Dashboard as DashboardIcon, People as UsersIcon, Security as SecurityIcon,
+  AttachMoney as FinanceIcon, CalendarToday as ScheduleIcon, Campaign as AdvertIcon,
+  Notifications as NotificationsIcon, Settings as SettingsIcon, Logout as LogoutIcon,
+  Analytics as AnalyticsIcon, NotificationsActive as AlertsIcon, Assessment as ReportsIcon,
+  Computer as SystemSettingsIcon, Web as WebsiteIcon, Groups as GroupsIcon,
+  Payment as PaymentIcon, Checklist as ChecklistIcon, School as SchoolIcon,
+  Forum as ForumIcon, Menu as MenuIcon, Close as CloseIcon
 } from '@mui/icons-material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
@@ -26,7 +24,7 @@ import AdminUserManagement from './AdminUserManagement';
 import SecurityComplianceDashboard from './SecurityComplianceDashboard';
 import ContentUsageDashboard from './ContentUsageDashboard';
 import NotificationsDashboard from './NotificationsDashboard';
-import CommunicationHub from './CommunicationHub'; // New import
+import CommunicationHub from './CommunicationHub';
 import ReportsDashboard from './ReportsDashboard';
 import AdminProfileSettings from './AdminProfileSettings';
 import PaymentSettings from './PaymentSettings';
@@ -46,18 +44,29 @@ import axios from 'axios';
 import { API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL } from '../../../config';
 
 const drawerWidth = 280;
+const collapsedDrawerWidth = 60;
 
 function Admin() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
+  
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
   const settingsOpen = Boolean(anchorEl);
-
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const handleDrawerToggle = () => {
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
 
   const handleCertificateIconClick = () => {
     setModalOpen(true);
@@ -115,6 +124,11 @@ function Admin() {
     setAnchorEl(null);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    navigate('/login');
+  };
+
   const menuItems = [
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },
     { path: '/admin/courses', name: 'Course Management', icon: <SchoolIcon /> }, 
@@ -124,7 +138,7 @@ function Admin() {
     { path: '/admin/security-info', name: 'Security & Compliance', icon: <SecurityIcon /> },   
     { path: '/admin/analytics', name: 'Content & Analytics', icon: <AnalyticsIcon /> },
     { path: '/admin/alerts', name: 'Notifications & Alerts', icon: <AlertsIcon /> },
-    { path: '/admin/communication', name: 'Communication Hub', icon: <ForumIcon /> }, // Updated name and icon
+    { path: '/admin/communication', name: 'Communication Hub', icon: <ForumIcon /> },
     { path: '/admin/reports', name: 'Custom Reports', icon: <ReportsIcon /> },
     { path: '/admin/groups', name: 'User Groups', icon: <GroupsIcon /> },
   ];
@@ -139,7 +153,7 @@ function Admin() {
       name: 'Website Settings', 
       icon: <WebsiteIcon sx={{ mr: 2 }} />, 
       onClick: () => {
-        window.location.href = '/admin/website-Settings';
+        navigate('/admin/website-settings');
         handleSettingsClose();
       }
     },
@@ -147,16 +161,142 @@ function Admin() {
       name: 'Website Notification', 
       icon: <NotificationsIcon sx={{ mr: 2 }} />, 
       onClick: () => {
-        window.location.href = '/admin/website-notifications';
+        navigate('/admin/website-notifications');
         handleSettingsClose();
       }
     },
     { 
       name: 'Setup Payment Information', 
       icon: <PaymentIcon sx={{ mr: 2 }} />, 
-      onClick: () => navigate('/admin/payment-settings')
+      onClick: () => {
+        navigate('/admin/payment-settings');
+        handleSettingsClose();
+      }
+    },
+    { 
+      name: 'Logout', 
+      icon: <LogoutIcon sx={{ mr: 2 }} />, 
+      onClick: () => {
+        handleLogout();
+        handleSettingsClose();
+      }
     }
   ];
+
+  const drawerContent = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: isCollapsed && !isMobile ? 'center' : 'space-between',
+        p: theme.spacing(2),
+        height: '64px'
+      }}>
+        {!isCollapsed && (
+          <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>
+            Admin Console
+          </Typography>
+        )}
+        {!isMobile && (
+          <IconButton onClick={handleDrawerToggle}>
+            {isCollapsed ? <MenuIcon /> : <CloseIcon />}
+          </IconButton>
+        )}
+      </Box>
+      
+      <Divider />
+      
+      <List sx={{ px: isCollapsed && !isMobile ? 0 : 0.5, flexGrow: 1 }}>
+        {menuItems.map((item) => (
+          <Tooltip title={isCollapsed && !isMobile ? item.name : ''} placement="right" key={item.path}>
+            <ListItem 
+              disablePadding
+              sx={{
+                backgroundColor: location.pathname === item.path ? 
+                  theme.palette.action.selected : 'transparent',
+                mb: 0.5
+              }}
+            >
+              <ListItemButton 
+                component={Link} 
+                to={item.path}
+                sx={{
+                  py: 1.5,
+                  px: isCollapsed && !isMobile ? 1.5 : 2,
+                  justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover
+                  },
+                  minHeight: '48px'
+                }}
+                onClick={() => isMobile && setMobileOpen(false)}
+              >
+                <ListItemIcon sx={{ 
+                  minWidth: isCollapsed && !isMobile ? 'auto' : 40,
+                  mr: isCollapsed && !isMobile ? 0 : 2,
+                  justifyContent: 'center',
+                  color: 'inherit'
+                }}>
+                  {item.icon}
+                </ListItemIcon>
+                {(!isCollapsed || isMobile) && (
+                  <ListItemText 
+                    primary={item.name} 
+                    primaryTypographyProps={{ 
+                      fontWeight: 500,
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+        ))}
+      </List>
+
+      <Divider sx={{ my: 1 }} />
+      
+      <List sx={{ px: isCollapsed && !isMobile ? 0 : 0.5 }}>
+        <Tooltip title={isCollapsed && !isMobile ? 'Logout' : ''} placement="right">
+          <ListItem disablePadding>
+            <ListItemButton
+              sx={{
+                py: 1.5,
+                px: isCollapsed && !isMobile ? 1.5 : 2,
+                justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+                '&:hover': {
+                    backgroundColor: theme.palette.action.hover
+                },
+                minHeight: '48px'
+              }}
+              onClick={() => {
+                handleLogout();
+                isMobile && setMobileOpen(false);
+              }}
+            >
+              <ListItemIcon sx={{ 
+                minWidth: isCollapsed && !isMobile ? 'auto' : 40,
+                mr: isCollapsed && !isMobile ? 0 : 2,
+                justifyContent: 'center',
+                color: 'inherit'
+              }}>
+                <LogoutIcon />
+              </ListItemIcon>
+              {(!isCollapsed || isMobile) && (
+                <ListItemText 
+                  primary="Logout" 
+                  primaryTypographyProps={{ 
+                    fontWeight: 500,
+                    fontSize: '0.9rem'
+                  }}
+                />
+              )}
+            </ListItemButton>
+          </ListItem>
+        </Tooltip>
+      </List>
+    </Box>
+  );
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
@@ -171,20 +311,36 @@ function Admin() {
           color: theme.palette.text.primary,
           boxShadow: 'none',
           borderBottom: `1px solid ${theme.palette.divider}`,
-          width: `calc(100% - ${drawerWidth}px)`,
-          left: drawerWidth,
+          width: isMobile ? '100%' : `calc(100% - ${isCollapsed ? collapsedDrawerWidth : drawerWidth}px)`,
+          left: isMobile ? 0 : (isCollapsed ? collapsedDrawerWidth : drawerWidth),
         }}
       > 
         <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Typography 
+            variant={isMobile ? 'h6' : 'h6'} 
+            noWrap 
+            component="div" 
+            sx={{ flexGrow: 1, fontWeight: 700, fontSize: isMobile ? '1.1rem' : '1.25rem' }}
+          >
             Admin Portal
           </Typography>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
             <Tooltip title="Certificate Options">
               <IconButton 
                 onClick={handleCertificateIconClick}
-                size="large" 
+                size="small"
                 color="inherit"
                 aria-label="certificate-options"
                 sx={{
@@ -192,14 +348,14 @@ function Admin() {
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                <EmojiEventsIcon />
+                <EmojiEventsIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>    
             </Tooltip>
             <Tooltip title="Advert Management">
               <IconButton 
                 component={Link}
                 to="/admin/advertorial"
-                size="large" 
+                size="small"
                 color="inherit"
                 aria-label="advert-management"
                 sx={{
@@ -207,14 +363,14 @@ function Admin() {
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                <AdvertIcon />
+                <AdvertIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Schedule Management">
               <IconButton 
                 component={Link}
                 to="/admin/schedule"
-                size="large" 
+                size="small"
                 color="inherit"
                 aria-label="schedule"
                 sx={{
@@ -222,14 +378,14 @@ function Admin() {
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                <ScheduleIcon />
+                <ScheduleIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Communication Hub">
               <IconButton 
                 component={Link}
                 to="/admin/communication"
-                size="large" 
+                size="small"
                 color="inherit"
                 aria-label="communication"
                 sx={{
@@ -237,19 +393,19 @@ function Admin() {
                     theme.palette.primary.main : 'inherit'
                 }}
               >
-                <ForumIcon />
+                <ForumIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             </Tooltip>
             
             <IconButton 
-              size="large" 
+              size="small"
               color="inherit"
               onClick={handleSettingsClick}
               aria-controls={settingsOpen ? 'settings-menu' : undefined}
               aria-haspopup="true"
               aria-expanded={settingsOpen ? 'true' : undefined}
             >
-              <SettingsIcon />
+              <SettingsIcon fontSize={isMobile ? 'small' : 'medium'} />
             </IconButton>
 
             <Menu
@@ -264,13 +420,13 @@ function Admin() {
                 elevation: 2,
                 sx: {
                   mt: 1.5,
-                  minWidth: 250,
+                  minWidth: isMobile ? 200 : 250,
                   borderRadius: 2,
                   bgcolor: 'background.paper',
                   '& .MuiMenuItem-root': {
-                    py: 1.5,
+                    py: isMobile ? 1 : 1.5,
                     px: 2,
-                    fontSize: '0.95rem',
+                    fontSize: isMobile ? '0.85rem' : '0.95rem',
                     transition: 'all 0.2s ease-in-out',
                     '&:hover': {
                       bgcolor: 'action.hover',
@@ -299,13 +455,13 @@ function Admin() {
             <IconButton 
               component={Link} 
               to="/admin/profile" 
-              size="large" 
+              size="small"
               color="inherit"
             >
               <Avatar 
                 alt="Admin User" 
                 src="/path-to-avatar.jpg" 
-                sx={{ width: 32, height: 32 }}
+                sx={{ width: isMobile ? 28 : 32, height: isMobile ? 28 : 32 }}
               />
             </IconButton>
           </Box>
@@ -314,114 +470,29 @@ function Admin() {
 
       {/* Sidebar */}
       <Drawer
-        variant="persistent"
-        open={true}
+        variant={isMobile ? 'temporary' : 'persistent'}
+        open={isMobile ? mobileOpen : true}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true,
+        }}
         sx={{
-          width: drawerWidth,
+          width: isMobile ? drawerWidth : isCollapsed ? collapsedDrawerWidth : drawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
+            width: isMobile ? drawerWidth : isCollapsed ? collapsedDrawerWidth : drawerWidth,
             boxSizing: 'border-box',
             backgroundColor: theme.palette.background.default,
             borderRight: `1px solid ${theme.palette.divider}`,
             overflowX: 'hidden',
+            transition: theme.transitions.create(['width'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           },
         }}
       >
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          p: theme.spacing(2),
-          height: '64px'
-        }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, ml: 1 }}>
-            Admin Console
-          </Typography>
-        </Box>
-        
-        <Divider />
-        
-        <List sx={{ px: 0.5 }}>
-          {menuItems.map((item) => (
-            <Tooltip title={item.name} placement="right" key={item.path}>
-              <ListItem 
-                disablePadding
-                sx={{
-                  backgroundColor: location.pathname === item.path ? 
-                    theme.palette.action.selected : 'transparent',
-                  mb: 0.5
-                }}
-              >
-                <ListItemButton 
-                  component={Link} 
-                  to={item.path}
-                  sx={{
-                    py: 1.5,
-                    px: 2,
-                    justifyContent: 'flex-start',
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover
-                    },
-                    minHeight: '48px'
-                  }}
-                >
-                  <ListItemIcon sx={{ 
-                    minWidth: 'auto',
-                    mr: 2,
-                    justifyContent: 'center',
-                    color: 'inherit'
-                  }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={item.name} 
-                    primaryTypographyProps={{ 
-                      fontWeight: 500,
-                      fontSize: '0.9rem'
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            </Tooltip>
-          ))}
-        </List>
-
-        <Divider sx={{ my: 1 }} />
-        
-        <List sx={{ px: 0.5 }}>
-          <Tooltip title="Logout" placement="right">
-            <ListItem disablePadding>
-              <ListItemButton
-                sx={{
-                  py: 1.5,
-                  px: 2,
-                  justifyContent: 'flex-start',
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover
-                  },
-                  minHeight: '48px'
-                }}
-              >
-                <ListItemIcon sx={{ 
-                  minWidth: 'auto',
-                  mr: 2,
-                  justifyContent: 'center',
-                  color: 'inherit'
-                }}>
-                  <LogoutIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Logout" 
-                  primaryTypographyProps={{ 
-                    fontWeight: 500,
-                    fontSize: '0.9rem'
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          </Tooltip>
-        </List>
+        {drawerContent}
       </Drawer>
 
       {/* Main Content */}
@@ -429,12 +500,15 @@ function Admin() {
         component="main"
         sx={{
           flexGrow: 1,
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: '0px',
+          width: isMobile ? '100%' : `calc(100% - ${isCollapsed ? collapsedDrawerWidth : drawerWidth}px)`,
           overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          height: '100vh'
+          height: '100vh',
+          transition: theme.transitions.create(['width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         }}
       >
         <Toolbar />
@@ -442,7 +516,7 @@ function Admin() {
           sx={{
             flex: 1,
             backgroundColor: theme.palette.background.paper,
-            p: 1,
+            p: isMobile ? 1 : 2,
             overflowY: 'auto',
             width: '100%'
           }}
@@ -454,7 +528,7 @@ function Admin() {
             <Route path="/security-info" element={<SecurityComplianceDashboard />} />
             <Route path="/analytics" element={<ContentUsageDashboard />} />
             <Route path="/alerts" element={<NotificationsDashboard />} />
-            <Route path="/communication" element={<CommunicationHub />} /> {/* Updated to CommunicationHub */}
+            <Route path="/communication" element={<CommunicationHub />} />
             <Route path="/reports" element={<ReportsDashboard />} />
             <Route path="/profile" element={<AdminProfileSettings />} />
             <Route path="/payment-settings" element={<PaymentSettings />} />
