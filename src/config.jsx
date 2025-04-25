@@ -443,7 +443,15 @@ export const coursesAPI = {
   getCertificates: (courseId = null) => {
     const url = courseId ? `/courses/certificates/course/${courseId}/` : '/courses/certificates/';
     return api.get(url);
-  }
+  },
+  // FAQ endpoints
+getFAQs: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/faqs/`, { params }),
+createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data),
+updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data),
+deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`),
+reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data),
+
+  
 };
 
 export const paymentAPI = {
