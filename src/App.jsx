@@ -134,7 +134,7 @@ function AppContent() {
           }
         />
         <Route
-          path="/iqa-dashboard"
+          path="/iqa"
           element={           
               <IQADashboard />
            }
