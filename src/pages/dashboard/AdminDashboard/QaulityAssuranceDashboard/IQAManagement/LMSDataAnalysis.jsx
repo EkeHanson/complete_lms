@@ -1,51 +1,25 @@
 import React, { useState, useRef } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardHeader,
-  Divider,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  IconButton,
-  Tooltip,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  LinearProgress,
-  Menu,
-  Snackbar,
-  Alert
+import { Box,  Typography,  Grid,  Card,  CardContent,
+  CardHeader,  Divider,  Select,  MenuItem,  FormControl,  InputLabel,  Button,
+  IconButton,  Tooltip,  Paper,  Table,  TableBody,  TableCell,  TableContainer,  TableHead,  TableRow,
+  LinearProgress,  Menu,  Snackbar,  Alert,  Checkbox,Chip ,
+  Dialog,  DialogTitle,  DialogContent,  DialogActions,  TextField,
+  Avatar,  List,  ListItem,  ListItemText,  ListItemAvatar,  Badge,InputAdornment 
 } from '@mui/material';
-import {
-  BarChart as BarChartIcon,
-  PieChart as PieChartIcon,
-  Timeline as TimelineIcon,
-  Warning as WarningIcon,
-  CheckCircle as CheckCircleIcon,
-  Refresh as RefreshIcon,
-  FileDownload as FileDownloadIcon,
-  FilterList as FilterListIcon
+import {BarChart as BarChartIcon,  PieChart as PieChartIcon,
+  Timeline as TimelineIcon,  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,  Refresh as RefreshIcon,
+  FileDownload as FileDownloadIcon,  FilterList as FilterListIcon,
+  Search as SearchIcon,  Close as CloseIcon,
+  Visibility as ViewIcon,  Comment as CommentIcon, 
+  Assignment as AssignmentIcon,  Person as PersonIcon, 
 } from '@mui/icons-material';
+
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-  ArcElement
-} from 'chart.js';
+  Chart as ChartJS,  CategoryScale,
+  LinearScale,  BarElement ,
+  Title,  Tooltip as ChartTooltip,
+  Legend,  ArcElement} from 'chart.js';
 import { Bar, Pie, getElementAtEvent } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -70,86 +44,132 @@ const courses = [
   'Food Hygiene'
 ];
 
-const completionData = {
-  labels: courses,
-  datasets: [
-    {
-      label: 'Completion Rate (%)',
-      data: [92, 85, 78, 88, 95],
-      backgroundColor: 'rgba(54, 162, 235, 0.5)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 1,
-    },
-  ],
-};
-
-const passRateData = {
-  labels: ['Pass', 'Fail', 'Incomplete'],
-  datasets: [
-    {
-      data: [75, 15, 10],
-      backgroundColor: [
-        'rgba(75, 192, 192, 0.5)',
-        'rgba(255, 99, 132, 0.5)',
-        'rgba(255, 206, 86, 0.5)'
-      ],
-      borderColor: [
-        'rgba(75, 192, 192, 1)',
-        'rgba(255, 99, 132, 1)',
-        'rgba(255, 206, 86, 1)'
-      ],
-      borderWidth: 1,
-    },
-  ],
-};
-
-const activityData = [
-  {
-    course: 'Health and Safety Level 2',
-    learners: 124,
-    completionRate: 92,
-    avgScore: 85,
-    lastUpdated: '2023-06-18'
-  },
-  {
-    course: 'First Aid at Work',
-    learners: 98,
-    completionRate: 85,
-    avgScore: 78,
-    lastUpdated: '2023-06-17'
-  },
-  {
-    course: 'Manual Handling',
-    learners: 156,
-    completionRate: 78,
-    avgScore: 82,
-    lastUpdated: '2023-06-16'
-  },
-  {
-    course: 'Fire Safety Awareness',
-    learners: 112,
-    completionRate: 88,
-    avgScore: 91,
-    lastUpdated: '2023-06-15'
-  },
-  {
-    course: 'Food Hygiene',
-    learners: 87,
-    completionRate: 95,
-    avgScore: 89,
-    lastUpdated: '2023-06-14'
-  },
+const assessors = [
+  { id: 1, name: 'John Smith', avatar: '/avatars/1.jpg' },
+  { id: 2, name: 'Sarah Johnson', avatar: '/avatars/2.jpg' },
+  { id: 3, name: 'Michael Brown', avatar: '/avatars/3.jpg' }
 ];
 
-export default function LMSDataAnalysis() {
+const assessmentData = [
+  {
+    id: 'A101',
+    course: 'Health and Safety Level 2',
+    assessor: assessors[0],
+    date: '2023-06-18',
+    learners: 24,
+    sampled: 5,
+    passRate: 92,
+    status: 'Verified',
+    flagged: false,
+    details: [
+      { learner: 'Emma Watson', score: 85, passed: true, verified: true },
+      { learner: 'Daniel Radcliffe', score: 72, passed: true, verified: true },
+      { learner: 'Rupert Grint', score: 65, passed: false, verified: true },
+      { learner: 'Tom Felton', score: 88, passed: true, verified: true },
+      { learner: 'Bonnie Wright', score: 91, passed: true, verified: true }
+    ]
+  },
+  {
+    id: 'A102',
+    course: 'First Aid at Work',
+    assessor: assessors[1],
+    date: '2023-06-17',
+    learners: 18,
+    sampled: 4,
+    passRate: 75,
+    status: 'Needs Review',
+    flagged: true,
+    details: [
+      { learner: 'Tom Hanks', score: 80, passed: true, verified: true },
+      { learner: 'Meryl Streep', score: 55, passed: false, verified: true },
+      { learner: 'Leonardo DiCaprio', score: 62, passed: false, verified: false },
+      { learner: 'Jennifer Lawrence', score: 78, passed: true, verified: false }
+    ]
+  },
+  {
+    id: 'A103',
+    course: 'Manual Handling',
+    assessor: assessors[2],
+    date: '2023-06-16',
+    learners: 32,
+    sampled: 6,
+    passRate: 88,
+    status: 'Pending',
+    flagged: false,
+    details: [
+      { learner: 'Robert Downey Jr.', score: 92, passed: true, verified: false },
+      { learner: 'Chris Evans', score: 85, passed: true, verified: false },
+      { learner: 'Scarlett Johansson', score: 78, passed: true, verified: false },
+      { learner: 'Mark Ruffalo', score: 65, passed: false, verified: false },
+      { learner: 'Chris Hemsworth', score: 88, passed: true, verified: false },
+      { learner: 'Jeremy Renner', score: 72, passed: true, verified: false }
+    ]
+  }
+];
+
+export default function IQAAssessmentSampling() {
   const [timeRange, setTimeRange] = useState('30days');
   const [selectedCourse, setSelectedCourse] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [selectedAssessments, setSelectedAssessments] = useState([]);
+  const [viewAssessment, setViewAssessment] = useState(null);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const barChartRef = useRef();
   const pieChartRef = useRef();
-  const tableRef = useRef();
+
+  // Filtered data based on selections
+  const filteredData = assessmentData.filter(assessment => {
+    const matchesCourse = selectedCourse === 'all' || assessment.course === selectedCourse;
+    const matchesStatus = selectedStatus === 'all' || assessment.status === selectedStatus;
+    return matchesCourse && matchesStatus;
+  });
+
+  // Chart data
+  const completionData = {
+    labels: courses,
+    datasets: [
+      {
+        label: 'Sampling Rate (%)',
+        data: courses.map(course => {
+          const courseAssessments = assessmentData.filter(a => a.course === course);
+          if (courseAssessments.length === 0) return 0;
+          return Math.round(courseAssessments.reduce((sum, a) => sum + (a.sampled / a.learners * 100), 0) / courseAssessments.length);
+        }),
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const passRateData = {
+    labels: ['Verified', 'Needs Review', 'Pending'],
+    datasets: [
+      {
+        label: 'Number of Assessments',
+        data: [
+          assessmentData.filter(a => a.status === 'Verified').length,
+          assessmentData.filter(a => a.status === 'Needs Review').length,
+          assessmentData.filter(a => a.status === 'Pending').length
+        ],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.5)',
+          'rgba(255, 206, 86, 0.5)',
+          'rgba(255, 99, 132, 0.5)'
+        ],
+        borderColor: [
+          'rgba(75, 192, 192, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(255, 99, 132, 1)'
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -160,126 +180,83 @@ export default function LMSDataAnalysis() {
     }, 1500);
   };
 
-  const handleExportClick = (event) => {
-    setExportAnchorEl(event.currentTarget);
+  const handleSelectAssessment = (assessmentId) => {
+    setSelectedAssessments(prev => 
+      prev.includes(assessmentId)
+        ? prev.filter(id => id !== assessmentId)
+        : [...prev, assessmentId]
+    );
   };
 
-  const handleExportClose = () => {
-    setExportAnchorEl(null);
+  const handleSelectAll = (event) => {
+    setSelectedAssessments(event.target.checked 
+      ? filteredData.map(a => a.id) 
+      : []);
+  };
+
+  const handleViewDetails = (assessment) => {
+    setViewAssessment(assessment);
+  };
+
+  const handleProvideFeedback = () => {
+    setFeedbackDialogOpen(true);
+  };
+
+  const handleFeedbackSubmit = () => {
+    // In a real app, this would send feedback to the backend
+    setSnackbar({ open: true, message: 'Feedback submitted successfully', severity: 'success' });
+    setFeedbackDialogOpen(false);
+    setFeedback('');
+  };
+
+  const handleVerifyAssessment = () => {
+    // In a real app, this would update the assessment status
+    setSnackbar({ open: true, message: 'Assessment verified successfully', severity: 'success' });
+    setSelectedAssessments([]);
   };
 
   const exportAsPDF = async () => {
     try {
-      const pdf = new jsPDF('landscape');
+      const pdf = new jsPDF();
       
       // Add title
-      pdf.setFontSize(20);
-      pdf.text('LMS Data Analysis Report', 15, 20);
-      pdf.setFontSize(12);
+      pdf.setFontSize(16);
+      pdf.text('IQA Assessment Sampling Report', 15, 20);
+      pdf.setFontSize(10);
       pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 15, 30);
       
-      // Add bar chart
-      const barChartCanvas = await html2canvas(barChartRef.current.canvas);
-      pdf.addImage(barChartCanvas.toDataURL('image/png'), 'PNG', 15, 40, 120, 80);
-      
-      // Add pie chart
-      const pieChartCanvas = await html2canvas(pieChartRef.current.canvas);
-      pdf.addImage(pieChartCanvas.toDataURL('image/png'), 'PNG', 150, 40, 120, 80);
-      
-      // Add table data
-      pdf.text('Course Activity Summary', 15, 140);
+      // Add summary table
       autoTable(pdf, {
-        startY: 145,
-        head: [['Course', 'Learners', 'Completion Rate', 'Average Score', 'Last Updated']],
-        body: activityData.map(row => [
-          row.course,
-          row.learners,
-          `${row.completionRate}%`,
-          `${row.avgScore}%`,
-          row.lastUpdated
+        startY: 40,
+        head: [['Assessment ID', 'Course', 'Assessor', 'Date', 'Sampled', 'Pass Rate', 'Status']],
+        body: filteredData.map(a => [
+          a.id,
+          a.course,
+          a.assessor.name,
+          a.date,
+          `${a.sampled}/${a.learners}`,
+          `${a.passRate}%`,
+          a.status
         ]),
         theme: 'grid',
         headStyles: { fillColor: [25, 118, 210] }
       });
       
-      pdf.save('LMS_Data_Analysis_Report.pdf');
+      pdf.save('IQA_Assessment_Sampling_Report.pdf');
       setSnackbar({ open: true, message: 'PDF exported successfully', severity: 'success' });
     } catch (error) {
       console.error('PDF export error:', error);
       setSnackbar({ open: true, message: 'Failed to export PDF', severity: 'error' });
-    }
-    handleExportClose();
-  };
-
-  const exportAsCSV = () => {
-    try {
-      // Prepare CSV content
-      let csvContent = "data:text/csv;charset=utf-8,";
-      
-      // Add charts summary
-      csvContent += "Chart Data Summary\r\n";
-      csvContent += "Chart,Category,Value\r\n";
-      
-      // Bar chart data
-      completionData.labels.forEach((label, index) => {
-        csvContent += `Completion Rate,${label},${completionData.datasets[0].data[index]}%\r\n`;
-      });
-      
-      // Pie chart data
-      passRateData.labels.forEach((label, index) => {
-        csvContent += `Pass Rate,${label},${passRateData.datasets[0].data[index]}%\r\n`;
-      });
-      
-      // Add table data
-      csvContent += "\r\nCourse Activity Data\r\n";
-      csvContent += "Course,Learners,Completion Rate,Average Score,Last Updated\r\n";
-      activityData.forEach(row => {
-        csvContent += `${row.course},${row.learners},${row.completionRate}%,${row.avgScore}%,${row.lastUpdated}\r\n`;
-      });
-      
-      // Download CSV
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "LMS_Data_Analysis.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      setSnackbar({ open: true, message: 'CSV exported successfully', severity: 'success' });
-    } catch (error) {
-      console.error('CSV export error:', error);
-      setSnackbar({ open: true, message: 'Failed to export CSV', severity: 'error' });
-    }
-    handleExportClose();
-  };
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Course Completion Rates',
-      },
-    },
-    onClick: (event) => {
-      const element = getElementAtEvent(barChartRef.current, event);
-      if (element.length > 0) {
-        const index = element[0].index;
-        setSelectedCourse(completionData.labels[index]);
-      }
     }
   };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-        LMS Data Analysis
+        IQA Assessment Sampling
       </Typography>
       
+      {/* Filters and Actions */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <FormControl size="small" sx={{ width: 150 }}>
@@ -297,11 +274,11 @@ export default function LMSDataAnalysis() {
           </FormControl>
           
           <FormControl size="small" sx={{ width: 200 }}>
-            <InputLabel>Course Filter</InputLabel>
+            <InputLabel>Course</InputLabel>
             <Select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              label="Course Filter"
+              label="Course"
             >
               <MenuItem value="all">All Courses</MenuItem>
               {courses.map((course) => (
@@ -310,59 +287,94 @@ export default function LMSDataAnalysis() {
             </Select>
           </FormControl>
           
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={() => alert('Advanced filters coming soon')}
-          >
-            Filters
-          </Button>
+          <FormControl size="small" sx={{ width: 200 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              label="Status"
+            >
+              <MenuItem value="all">All Statuses</MenuItem>
+              <MenuItem value="Verified">Verified</MenuItem>
+              <MenuItem value="Needs Review">Needs Review</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <TextField
+            size="small"
+            placeholder="Search..."
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
         </Box>
         
-        <Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Refresh Data">
-            <IconButton onClick={handleRefresh} sx={{ mr: 1 }}>
+            <IconButton onClick={handleRefresh}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
+          
           <Button
             variant="contained"
             startIcon={<FileDownloadIcon />}
-            onClick={handleExportClick}
+            onClick={exportAsPDF}
           >
-            Export
+            Export Report
           </Button>
-          <Menu
-            anchorEl={exportAnchorEl}
-            open={Boolean(exportAnchorEl)}
-            onClose={handleExportClose}
-          >
-            <MenuItem onClick={exportAsPDF}>Export as PDF</MenuItem>
-            <MenuItem onClick={exportAsCSV}>Export as CSV</MenuItem>
-          </Menu>
+          
+          {selectedAssessments.length > 0 && (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleVerifyAssessment}
+            >
+              Verify Selected
+            </Button>
+          )}
         </Box>
       </Box>
       
       {isLoading && <LinearProgress sx={{ mb: 2 }} />}
       
+      {/* Charts */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={8}>
           <Card elevation={3}>
             <CardHeader
-              title="Course Completion Rates"
-              action={
-                <IconButton>
-                  <BarChartIcon />
-                </IconButton>
-              }
+              title="Sampling Rates by Course"
+              subheader="Percentage of learners sampled for each course"
             />
             <Divider />
-            <CardContent sx={{ height: 400 }}>
+            <CardContent sx={{ height: 300 }}>
               <Bar 
                 ref={barChartRef}
-                data={completionData} 
-                options={options} 
-                redraw={isLoading}
+                data={completionData}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.parsed.y}% sampled`
+                      }
+                    }
+                  },
+                  scales: {
+                    y: {
+                      min: 0,
+                      max: 100,
+                      title: { display: true, text: 'Percentage Sampled' }
+                    }
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -371,73 +383,127 @@ export default function LMSDataAnalysis() {
         <Grid item xs={12} md={4}>
           <Card elevation={3}>
             <CardHeader
-              title="Overall Pass Rates"
-              action={
-                <IconButton>
-                  <PieChartIcon />
-                </IconButton>
-              }
+              title="Verification Status"
+              subheader="Breakdown of assessment verification status"
             />
             <Divider />
-            <CardContent sx={{ height: 400 }}>
+            <CardContent sx={{ height: 300 }}>
               <Pie 
                 ref={pieChartRef}
-                data={passRateData} 
-                redraw={isLoading}
+                data={passRateData}
+                options={{
+                  plugins: {
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.parsed} assessments`
+                      }
+                    }
+                  }
+                }}
               />
             </CardContent>
           </Card>
         </Grid>
       </Grid>
       
-      <Card elevation={3} sx={{ mb: 3 }}>
+      {/* Assessments Table */}
+      <Card elevation={3}>
         <CardHeader
-          title="Course Activity Summary"
-          action={
-            <IconButton>
-              <TimelineIcon />
-            </IconButton>
-          }
+          title="Assessment Sampling Records"
+          subheader={`Showing ${filteredData.length} assessments`}
         />
         <Divider />
         <CardContent>
-          <TableContainer component={Paper} ref={tableRef}>
+          <TableContainer component={Paper}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: 'primary.light' }}>
+                <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      indeterminate={selectedAssessments.length > 0 && selectedAssessments.length < filteredData.length}
+                      checked={filteredData.length > 0 && selectedAssessments.length === filteredData.length}
+                      onChange={handleSelectAll}
+                    />
+                  </TableCell>
+                  <TableCell>Assessment ID</TableCell>
                   <TableCell>Course</TableCell>
-                  <TableCell align="right">Learners</TableCell>
-                  <TableCell align="right">Completion Rate</TableCell>
-                  <TableCell align="right">Average Score</TableCell>
-                  <TableCell align="right">Last Updated</TableCell>
+                  <TableCell>Assessor</TableCell>
+                  <TableCell align="center">Date</TableCell>
+                  <TableCell align="center">Sample Size</TableCell>
+                  <TableCell align="center">Pass Rate</TableCell>
                   <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {activityData.map((row) => (
-                  <TableRow key={row.course}>
-                    <TableCell>{row.course}</TableCell>
-                    <TableCell align="right">{row.learners}</TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                        {row.completionRate}%
-                        <Box sx={{ width: '60%', ml: 1 }}>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={row.completionRate} 
-                            color={row.completionRate > 90 ? 'success' : row.completionRate > 75 ? 'primary' : 'warning'}
-                          />
-                        </Box>
+                {filteredData.map((assessment) => (
+                  <TableRow 
+                    key={assessment.id}
+                    hover
+                    selected={selectedAssessments.includes(assessment.id)}
+                    sx={assessment.flagged ? { backgroundColor: 'rgba(255, 0, 0, 0.05)' } : {}}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedAssessments.includes(assessment.id)}
+                        onChange={() => handleSelectAssessment(assessment.id)}
+                      />
+                    </TableCell>
+                    <TableCell>{assessment.id}</TableCell>
+                    <TableCell>{assessment.course}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar 
+                          src={assessment.assessor.avatar} 
+                          sx={{ width: 24, height: 24, mr: 1 }}
+                        >
+                          {assessment.assessor.name.charAt(0)}
+                        </Avatar>
+                        {assessment.assessor.name}
                       </Box>
                     </TableCell>
-                    <TableCell align="right">{row.avgScore}%</TableCell>
-                    <TableCell align="right">{row.lastUpdated}</TableCell>
+                    <TableCell align="center">{assessment.date}</TableCell>
                     <TableCell align="center">
-                      {row.completionRate > 90 ? (
-                        <CheckCircleIcon color="success" />
-                      ) : (
-                        <WarningIcon color={row.completionRate > 75 ? 'warning' : 'error'} />
-                      )}
+                      {assessment.sampled}/{assessment.learners}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          color: assessment.passRate >= 80 ? 'success.main' : 
+                                assessment.passRate >= 60 ? 'warning.main' : 'error.main'
+                        }}
+                      >
+                        {assessment.passRate}%
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={assessment.status}
+                        size="small"
+                        color={
+                          assessment.status === 'Verified' ? 'success' :
+                          assessment.status === 'Needs Review' ? 'warning' : 'default'
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="View Details">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleViewDetails(assessment)}
+                        >
+                          <ViewIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Provide Feedback">
+                        <IconButton 
+                          size="small" 
+                          onClick={handleProvideFeedback}
+                        >
+                          <CommentIcon color={assessment.flagged ? 'error' : 'inherit'} />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -446,6 +512,148 @@ export default function LMSDataAnalysis() {
           </TableContainer>
         </CardContent>
       </Card>
+
+      {/* Assessment Detail Dialog */}
+      <Dialog 
+        open={!!viewAssessment} 
+        onClose={() => setViewAssessment(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Assessment Details: {viewAssessment?.id}
+          <IconButton
+            onClick={() => setViewAssessment(null)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {viewAssessment && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Course</Typography>
+                  <Typography>{viewAssessment.course}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Assessor</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar 
+                      src={viewAssessment.assessor.avatar} 
+                      sx={{ width: 24, height: 24, mr: 1 }}
+                    />
+                    <Typography>{viewAssessment.assessor.name}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Assessment Date</Typography>
+                  <Typography>{viewAssessment.date}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Sampling</Typography>
+                  <Typography>
+                    {viewAssessment.sampled} of {viewAssessment.learners} learners sampled
+                    ({Math.round(viewAssessment.sampled / viewAssessment.learners * 100)}%)
+                  </Typography>
+                </Grid>
+              </Grid>
+              
+              <Typography variant="h6" gutterBottom>Sampled Learners</Typography>
+              <TableContainer component={Paper} sx={{ mb: 3 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Learner</TableCell>
+                      <TableCell align="center">Score</TableCell>
+                      <TableCell align="center">Result</TableCell>
+                      <TableCell align="center">Verified</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {viewAssessment.details.map((detail, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{detail.learner}</TableCell>
+                        <TableCell align="center">{detail.score}%</TableCell>
+                        <TableCell align="center">
+                          {detail.passed ? (
+                            <CheckCircleIcon color="success" fontSize="small" />
+                          ) : (
+                            <WarningIcon color="error" fontSize="small" />
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          {detail.verified ? (
+                            <CheckCircleIcon color="success" fontSize="small" />
+                          ) : (
+                            <WarningIcon color="warning" fontSize="small" />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <Typography variant="h6" gutterBottom>Verification Notes</Typography>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography color="text.secondary">
+                  {viewAssessment.status === 'Pending' 
+                    ? 'No verification notes yet' 
+                    : 'Verification notes will appear here once completed'}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewAssessment(null)}>Close</Button>
+          <Button variant="contained" onClick={handleProvideFeedback}>
+            Add Feedback
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Feedback Dialog */}
+      <Dialog 
+        open={feedbackDialogOpen} 
+        onClose={() => setFeedbackDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Provide Feedback to Assessor
+          <IconButton
+            onClick={() => setFeedbackDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            fullWidth
+            multiline
+            rows={6}
+            label="Feedback"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Provide constructive feedback to the assessor about this assessment..."
+            variant="outlined"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFeedbackDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleFeedbackSubmit}
+            disabled={!feedback.trim()}
+          >
+            Submit Feedback
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

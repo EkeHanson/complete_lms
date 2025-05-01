@@ -5,12 +5,14 @@ import {
   Button, LinearProgress, IconButton, Skeleton, Dialog,
   DialogTitle, DialogContent, DialogActions, Tabs, Tab,
   CircularProgress, Alert, Fade, TextField, MenuItem, Select,
-  InputAdornment, Chip, Divider, TextareaAutosize
+  InputAdornment, Chip, Divider, TextareaAutosize, Modal, Slider
 } from '@mui/material';
 import {
   PlayCircle, Bookmark, BookmarkBorder, Search, RateReview,
   VideoLibrary, PictureAsPdf, Description, InsertDriveFile,
-  FilterList, Sort, Star, StarBorder
+  FilterList, Sort, Star, StarBorder, PlayArrow, Pause,
+  VolumeUp, VolumeOff, Fullscreen, FullscreenExit, Speed,
+  Close, ArrowBack, ArrowForward, CheckCircle
 } from '@mui/icons-material';
 import { coursesAPI, API_BASE_URL } from '../../../config';
 
@@ -135,11 +137,529 @@ const EmptyState = () => (
   </Paper>
 );
 
+// Media Player Component
+const MediaPlayer = ({ open, onClose, media }) => {
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(80);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [completed, setCompleted] = useState(false);
+  const videoRef = React.useRef(null);
+
+  const handlePlayPause = () => {
+    if (videoRef.current) {
+      if (playing) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setPlaying(!playing);
+    }
+  };
+
+  const handleVolumeChange = (e, newValue) => {
+    setVolume(newValue);
+    if (videoRef.current) {
+      videoRef.current.volume = newValue / 100;
+      setMuted(newValue === 0);
+    }
+  };
+
+  const handleProgressChange = (e, newValue) => {
+    setProgress(newValue);
+    if (videoRef.current) {
+      videoRef.current.currentTime = (newValue / 100) * duration;
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const currentTime = videoRef.current.currentTime;
+      const newProgress = (currentTime / duration) * 100;
+      setProgress(newProgress);
+      
+      if (duration > 0 && currentTime >= duration - 1 && !completed) {
+        setCompleted(true);
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+      videoRef.current.volume = volume / 100;
+    }
+  };
+
+  const handlePlaybackRateChange = (rate) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate;
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (!fullscreen) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      } else if (videoRef.current.webkitRequestFullscreen) {
+        videoRef.current.webkitRequestFullscreen();
+      } else if (videoRef.current.msRequestFullscreen) {
+        videoRef.current.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+    setFullscreen(!fullscreen);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === ' ') {
+      e.preventDefault();
+      handlePlayPause();
+    } else if (e.key === 'ArrowRight') {
+      if (videoRef.current) {
+        videoRef.current.currentTime += 5;
+      }
+    } else if (e.key === 'ArrowLeft') {
+      if (videoRef.current) {
+        videoRef.current.currentTime -= 5;
+      }
+    } else if (e.key === 'm') {
+      setMuted(!muted);
+    } else if (e.key === 'f') {
+      handleFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    if (open && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      setPlaying(false);
+      setProgress(0);
+      setCompleted(false);
+    }
+  }, [open]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-labelledby="media-player-modal"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        outline: 'none'
+      }}
+    >
+      <Box
+        sx={{
+          width: '90%',
+          maxWidth: '1200px',
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          borderRadius: 2,
+          overflow: 'hidden',
+          outline: 'none'
+        }}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+      >
+        <Box sx={{ position: 'relative', bgcolor: 'black' }}>
+          {media.type === 'video' ? (
+            <video
+              ref={videoRef}
+              src={media.url}
+              style={{ width: '100%', display: 'block', maxHeight: '80vh' }}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={() => {
+                setPlaying(false);
+                setCompleted(true);
+              }}
+              onClick={handlePlayPause}
+              muted={muted}
+            />
+          ) : (
+            <iframe
+              src={media.url}
+              style={{ width: '100%', height: '80vh', border: 'none' }}
+              title={media.title}
+              allowFullScreen
+            />
+          )}
+
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              bgcolor: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              p: 2,
+              transition: 'opacity 0.3s',
+              '&:hover': { opacity: 1 }
+            }}
+          >
+            <Slider
+              value={progress}
+              onChange={handleProgressChange}
+              sx={{
+                color: 'primary.main',
+                height: 4,
+                '& .MuiSlider-thumb': {
+                  width: 12,
+                  height: 12,
+                  transition: '0.3s cubic-bezier(.47,1.64,.41,.8)',
+                  '&:hover, &.Mui-focusVisible': {
+                    boxShadow: '0px 0px 0px 8px rgba(63, 81, 181, 0.16)'
+                  },
+                  '&.Mui-active': {
+                    width: 16,
+                    height: 16
+                  }
+                }
+              }}
+            />
+
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box display="flex" alignItems="center" gap={2}>
+                <IconButton onClick={handlePlayPause} color="inherit">
+                  {playing ? <Pause /> : <PlayArrow />}
+                </IconButton>
+                
+                <IconButton onClick={() => setMuted(!muted)} color="inherit">
+                  {muted ? <VolumeOff /> : <VolumeUp />}
+                </IconButton>
+                
+                <Slider
+                  value={muted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  sx={{
+                    width: 100,
+                    color: 'white',
+                    '& .MuiSlider-track': { border: 'none' },
+                    '& .MuiSlider-thumb': {
+                      width: 12,
+                      height: 12,
+                      '&:hover, &.Mui-focusVisible, &.Mui-active': {
+                        boxShadow: 'none'
+                      }
+                    }
+                  }}
+                />
+                
+                <Typography variant="body2">
+                  {formatTime((progress / 100) * duration)} / {formatTime(duration)}
+                </Typography>
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={2}>
+                {media.type === 'video' && (
+                  <Select
+                    value={playbackRate}
+                    onChange={(e) => handlePlaybackRateChange(e.target.value)}
+                    startAdornment={<Speed sx={{ color: 'white', mr: 1 }} />}
+                    sx={{
+                      color: 'white',
+                      '& .MuiSelect-icon': { color: 'white' },
+                      '&:before, &:after': { borderBottomColor: 'white' }
+                    }}
+                    variant="standard"
+                  >
+                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
+                      <MenuItem key={rate} value={rate}>{rate}x</MenuItem>
+                    ))}
+                  </Select>
+                )}
+                
+                <IconButton onClick={handleFullscreen} color="inherit">
+                  {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+                </IconButton>
+              </Box>
+            </Box>
+          </Box>
+
+          {completed && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                bgcolor: 'rgba(0,0,0,0.7)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white'
+              }}
+            >
+              <CheckCircle sx={{ fontSize: 80, mb: 2, color: 'success.main' }} />
+              <Typography variant="h5" gutterBottom>Lesson Completed</Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = 0;
+                    setPlaying(false);
+                    setProgress(0);
+                    setCompleted(false);
+                  }
+                }}
+                sx={{ mt: 2 }}
+              >
+                Replay
+              </Button>
+            </Box>
+          )}
+        </Box>
+
+        <Box sx={{ p: 3 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">{media.title}</Typography>
+            <IconButton onClick={onClose}>
+              <Close />
+            </IconButton>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {media.description || 'No description available'}
+          </Typography>
+        </Box>
+      </Box>
+    </Modal>
+  );
+};
+
+// Helper function to format time
+const formatTime = (seconds) => {
+  if (isNaN(seconds)) return '0:00';
+  
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+};
+
+// Document Viewer Component
+const DocumentViewer = ({ open, onClose, document }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [fileUrl, setFileUrl] = useState(null);
+
+  useEffect(() => {
+    if (open && document) {
+      setLoading(true);
+      setError(null);
+      
+      if (document.type === 'pdf') {
+        setFileUrl(document.url);
+        setLoading(false);
+      } 
+      else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(document.type)) {
+        setFileUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(document.url)}`);
+        setLoading(false);
+      }
+      else {
+        fetch(document.url)
+          .then(response => {
+            if (!response.ok) throw new Error('Failed to load file');
+            return response.blob();
+          })
+          .then(blob => {
+            const url = URL.createObjectURL(blob);
+            setFileUrl(url);
+            setLoading(false);
+          })
+          .catch(err => {
+            setError(err.message);
+            setLoading(false);
+          });
+      }
+    }
+
+    return () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    };
+  }, [open, document]);
+
+  const renderViewer = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Failed to load document: {error}
+          </Alert>
+          <Typography variant="body1">
+            The document couldn't be displayed. You can try to 
+            <Button 
+              href={document.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              sx={{ ml: 1 }}
+            >
+              download it
+            </Button>
+            instead.
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (document.type === 'pdf') {
+      return (
+        <iframe
+          src={fileUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title={document.title}
+        />
+      );
+    }
+
+    if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(document.type)) {
+      return (
+        <iframe
+          src={fileUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title={document.title}
+        />
+      );
+    }
+
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(document.type)) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <img 
+            src={fileUrl} 
+            alt={document.title} 
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
+          />
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          This file type cannot be displayed in the browser.
+        </Alert>
+        <Typography variant="body1">
+          You can download the file to view it with an appropriate application.
+        </Typography>
+        <Button 
+          variant="contained"
+          href={document.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          sx={{ mt: 2 }}
+        >
+          Download File
+        </Button>
+      </Box>
+    );
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-labelledby="document-viewer-modal"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        outline: 'none'
+      }}
+    >
+      <Box
+        sx={{
+          width: '90%',
+          maxWidth: '1200px',
+          height: '90%',
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          borderRadius: 2,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <Box sx={{ 
+          p: 2, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          borderBottom: '1px solid', 
+          borderColor: 'divider',
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText'
+        }}>
+          <Typography variant="h6">{document?.title}</Typography>
+          <IconButton onClick={onClose} sx={{ color: 'inherit' }}>
+            <Close />
+          </IconButton>
+        </Box>
+        
+        <Box sx={{ 
+          flexGrow: 1, 
+          bgcolor: 'grey.100',
+          position: 'relative'
+        }}>
+          {renderViewer()}
+        </Box>
+        
+        <Box sx={{ 
+          p: 1, 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          borderTop: '1px solid', 
+          borderColor: 'divider'
+        }}>
+          <Button 
+            variant="contained"
+            href={document?.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            startIcon={<InsertDriveFile />}
+          >
+            Download Original File
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+};
+
 // Course Dialog with Feedback Form
 const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedback }) => {
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackError, setFeedbackError] = useState(null);
+  const [selectedMedia, setSelectedMedia] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
 
   const renderFileIcon = (type) => {
     switch (type) {
@@ -147,6 +667,23 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
       case 'pdf': return <PictureAsPdf color="error" />;
       case 'doc': case 'docx': return <Description color="info" />;
       default: return <InsertDriveFile />;
+    }
+  };
+
+  const handleOpenMedia = (item) => {
+    if (item.type === 'video' || item.type === 'audio') {
+      setSelectedMedia({
+        url: item.content_url || item.content_file,
+        title: item.title,
+        description: item.description,
+        type: item.type
+      });
+    } else {
+      setSelectedDocument({
+        url: item.content_url || item.content_file,
+        title: item.title,
+        type: item.type
+      });
     }
   };
 
@@ -167,157 +704,167 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      aria-labelledby="course-dialog-title"
-      TransitionProps={{ unmountOnExit: true }}
-    >
-      <DialogTitle id="course-dialog-title">{course.title}</DialogTitle>
-      <DialogContent dividers>
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          sx={{ mb: 3 }}
-          aria-label="Course navigation tabs"
-        >
-          <Tab label="Modules" />
-          <Tab label="Resources" />
-          <Tab label="Feedback" />
-        </Tabs>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="md"
+        aria-labelledby="course-dialog-title"
+        TransitionProps={{ unmountOnExit: true }}
+      >
+        <DialogTitle id="course-dialog-title">{course.title}</DialogTitle>
+        <DialogContent dividers>
+          <Tabs
+            value={activeTab}
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            sx={{ mb: 3 }}
+            aria-label="Course navigation tabs"
+          >
+            <Tab label="Modules" />
+            <Tab label="Resources" />
+            <Tab label="Feedback" />
+          </Tabs>
 
-        {activeTab === 0 && (
-          <Box>
-            {course.modules.length > 0 ? (
-              course.modules.map(module => (
-                <Box key={module.id} sx={{ mb: 4 }}>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    {module.title}
-                  </Typography>
-                  {module.lessons.map(lesson => (
-                    <Paper
-                      key={lesson.id}
-                      sx={{
-                        p: 2,
-                        mb: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' }
-                      }}
-                      onClick={() => {
-                        if (lesson.content_url || lesson.content_file) {
-                          window.open(lesson.content_url || lesson.content_file, '_blank');
-                        }
-                      }}
+          {activeTab === 0 && (
+            <Box>
+              {course.modules.length > 0 ? (
+                course.modules.map(module => (
+                  <Box key={module.id} sx={{ mb: 4 }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      {module.title}
+                    </Typography>
+                    {module.lessons.map(lesson => (
+                      <Paper
+                        key={lesson.id}
+                        sx={{
+                          p: 2,
+                          mb: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                        onClick={() => handleOpenMedia(lesson)}
+                      >
+                        {renderFileIcon(lesson.type)}
+                        <Box sx={{ ml: 2 }}>
+                          <Typography variant="subtitle1">{lesson.title}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {lesson.duration} • {lesson.type}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body1" color="text.secondary">
+                  No modules available for this course.
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 1 && (
+            <Box>
+              {course.resources.length > 0 ? (
+                course.resources.map(resource => (
+                  <Paper
+                    key={resource.id}
+                    sx={{
+                      p: 2,
+                      mb: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                    onClick={() => handleOpenMedia(resource)}
+                  >
+                    {renderFileIcon(resource.type)}
+                    <Box sx={{ ml: 2 }}>
+                      <Typography variant="subtitle1">{resource.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {resource.type.toUpperCase()}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                ))
+              ) : (
+                <Typography variant="body1" color="text.secondary">
+                  No additional resources available.
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {activeTab === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                Provide Feedback
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" gutterBottom>Rate this course:</Typography>
+                <Box display="flex">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <IconButton
+                      key={star}
+                      onClick={() => setFeedbackRating(star)}
+                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
                     >
-                      {renderFileIcon(lesson.type)}
-                      <Box sx={{ ml: 2 }}>
-                        <Typography variant="subtitle1">{lesson.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {lesson.duration} • {lesson.type}
-                        </Typography>
-                      </Box>
-                    </Paper>
+                      {feedbackRating >= star ? <Star color="primary" /> : <StarBorder />}
+                    </IconButton>
                   ))}
                 </Box>
-              ))
-            ) : (
-              <Typography variant="body1" color="text.secondary">
-                No modules available for this course.
-              </Typography>
-            )}
-          </Box>
-        )}
-
-        {activeTab === 1 && (
-          <Box>
-            {course.resources.length > 0 ? (
-              course.resources.map(resource => (
-                <Paper
-                  key={resource.id}
-                  sx={{
-                    p: 2,
-                    mb: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: 'action.hover' }
-                  }}
-                  onClick={() => {
-                    if (resource.url || resource.file) {
-                      window.open(resource.url || resource.file, '_blank');
-                    }
-                  }}
-                >
-                  {renderFileIcon(resource.type)}
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="subtitle1">{resource.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {resource.type.toUpperCase()}
-                    </Typography>
-                  </Box>
-                </Paper>
-              ))
-            ) : (
-              <Typography variant="body1" color="text.secondary">
-                No additional resources available.
-              </Typography>
-            )}
-          </Box>
-        )}
-
-        {activeTab === 2 && (
-          <Box>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-              Provide Feedback
-            </Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" gutterBottom>Rate this course:</Typography>
-              <Box display="flex">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <IconButton
-                    key={star}
-                    onClick={() => setFeedbackRating(star)}
-                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
-                  >
-                    {feedbackRating >= star ? <Star color="primary" /> : <StarBorder />}
-                  </IconButton>
-                ))}
               </Box>
+              <TextareaAutosize
+                minRows={5}
+                placeholder="Share your feedback about this course..."
+                value={feedbackText}
+                onChange={e => setFeedbackText(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ccc',
+                  resize: 'vertical'
+                }}
+              />
+              {feedbackError && <Alert severity="error" sx={{ mt: 2 }}>{feedbackError}</Alert>}
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleFeedbackSubmit}
+                sx={{ mt: 2 }}
+                disabled={!feedbackText.trim()}
+              >
+                Submit Feedback
+              </Button>
             </Box>
-            <TextareaAutosize
-              minRows={5}
-              placeholder="Share your feedback about this course..."
-              value={feedbackText}
-              onChange={e => setFeedbackText(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                resize: 'vertical'
-              }}
-            />
-            {feedbackError && <Alert severity="error" sx={{ mt: 2 }}>{feedbackError}</Alert>}
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleFeedbackSubmit}
-              sx={{ mt: 2 }}
-              disabled={!feedbackText.trim()}
-            >
-              Submit Feedback
-            </Button>
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {selectedMedia && (
+        <MediaPlayer
+          open={!!selectedMedia}
+          onClose={() => setSelectedMedia(null)}
+          media={selectedMedia}
+        />
+      )}
+
+      {selectedDocument && (
+        <DocumentViewer
+          open={!!selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          document={selectedDocument}
+        />
+      )}
+    </>
   );
 };
 
@@ -334,7 +881,7 @@ const StudentCourseList = ({ onFeedback }) => {
     status: 'all',
     search: '',
     sort: 'title',
-    view: 'all' // all or bookmarked
+    view: 'all'
   });
 
   useEffect(() => {
@@ -397,23 +944,19 @@ const StudentCourseList = ({ onFeedback }) => {
   useEffect(() => {
     let result = [...courses];
 
-    // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter(course => course.title.toLowerCase().includes(searchLower));
     }
 
-    // Apply status filter
     if (filters.status !== 'all') {
       result = result.filter(course => course.status === filters.status);
     }
 
-    // Apply view filter (bookmarked)
     if (filters.view === 'bookmarked') {
       result = result.filter((_, index) => bookmarks[index]);
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       if (filters.sort === 'title') {
         return a.title.localeCompare(b.title);
@@ -458,7 +1001,6 @@ const StudentCourseList = ({ onFeedback }) => {
 
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
-      {/* Header */}
       <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 2, mx: { xs: 2, md: 4 } }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>My Learning</Typography>
@@ -467,7 +1009,6 @@ const StudentCourseList = ({ onFeedback }) => {
           </Button>
         </Box>
 
-        {/* Stats Overview */}
         <Grid container spacing={2} mb={4}>
           {[
             { label: 'Total Courses', value: stats.total },
@@ -484,7 +1025,6 @@ const StudentCourseList = ({ onFeedback }) => {
           ))}
         </Grid>
 
-        {/* Filters */}
         <Box display="flex" flexWrap="wrap" gap={2} mb={3}>
           <TextField
             size="small"
@@ -535,7 +1075,6 @@ const StudentCourseList = ({ onFeedback }) => {
         </Box>
       </Paper>
 
-      {/* Course List */}
       <Box sx={{ mx: { xs: 2, md: 4 } }}>
         {loading ? (
           <LoadingSkeletons />

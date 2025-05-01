@@ -91,77 +91,46 @@ const Login = () => {
     if (!validateForm()) return;
     
     setLoading(true);
-    setRemainingAttempts(null); // Reset remaining attempts on new submission
-    setErrors(prev => ({ ...prev, general: '' })); // Clear previous errors
-    
     try {
       const response = await login(formData.email, formData.password);
       
-      // Store tokens and user data
-      localStorage.setItem('access_token', response.access);
-      localStorage.setItem('refresh_token', response.refresh);
-      localStorage.setItem('user', JSON.stringify(response.user));
-
-      // console.log("response.user.role")
-      // console.log(response.user.role)
-      // console.log("response.user.role")
+      //console.log('Login response:', response);
       
-      // Redirect based on role
-      switch(response.user.role) {
-        case 'admin':
-          navigate('/admin');
-          break;
-        case 'instructor':
-          navigate('/instructor-dashboard');
-          break;
-        case 'learner':
-          navigate('/student-dashboard'); 
-          // navigate('/learner-dashboard'); 
-          break;
-        case 'super_admin':
-          navigate('/admin');
-          break;
-        default:
-          navigate('/');
-      }
-      
-    } catch (error) {
-      let errorMessage = 'Login failed. Please try again.';
-      
-      // Handle specific error cases from backend
-      if (error.response) {
-        const { data } = error.response;
+      if (response.access) {
+        localStorage.setItem('accessToken', response.access);
+        localStorage.setItem('refreshToken', response.refresh);
+        localStorage.setItem('user', JSON.stringify(response.user));
+    
+        // Add a small delay to ensure auth state updates
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Check for account suspension message
-        if (data.detail && data.detail.includes('Account suspended')) {
-          errorMessage = 'Your account has been suspended due to too many failed attempts. Please contact support.';
-        } 
-        // Check for remaining attempts message
-        else if (data.detail && data.detail.includes('attempts remaining')) {
-          const attemptsLeft = parseInt(data.detail.match(/\d+/)[0]);
-          setRemainingAttempts(attemptsLeft);
-          errorMessage = data.detail;
-        }
-        // Check for custom validation errors
-        else if (data.email || data.password) {
-          setErrors(prev => ({
-            ...prev,
-            email: data.email || '',
-            password: data.password || ''
-          }));
-          errorMessage = 'Please fix the errors above';
+        // Use navigate instead of window.location.href
+        switch(response.user.role.toLowerCase()) {
+          case 'admin':
+          case 'super_admin':
+            navigate('/admin');
+            break;
+          case 'instructor':
+          case 'trainer':
+            window.location.href = '/instructor-dashboard';
+            break;
+          case 'learner':
+          case 'student':
+            window.location.href = '/student-dashboard';
+            break;
+          default:
+            window.location.href = '/';
         }
       }
-      
-      setErrors(prev => ({
-        ...prev,
-        general: errorMessage
-      }));
-      
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrors({
+        general: error.response?.data?.detail || 'Login failed. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <Container maxWidth="sm" sx={{ py: isMobile ? 4 : 8 }}>

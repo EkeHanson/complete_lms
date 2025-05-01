@@ -23,7 +23,16 @@ const CourseContentManagement = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [modules, setModules] = useState([]);
+  const [selectedModuleId, setSelectedModuleId] = useState(null);
+
+  // Tab-specific error states
+  const [questionBankError, setQuestionBankError] = useState(null);
+  const [assessmentError, setAssessmentError] = useState(null);
+  const [rubricError, setRubricError] = useState(null);
+  const [submissionError, setSubmissionError] = useState(null);
+  const [faqError, setFaqError] = useState(null);
 
   // State for Question Banks
   const [questionBanks, setQuestionBanks] = useState([]);
@@ -49,7 +58,6 @@ const CourseContentManagement = () => {
   const [faqs, setFaqs] = useState([]);
   const [faqDialog, setFaqDialog] = useState({ open: false, mode: 'create', data: {} });
   const [faqPagination, setFaqPagination] = useState({ count: 0, currentPage: 1, rowsPerPage: 10 });
-  const [selectedCourseId, setSelectedCourseId] = useState(null); // New state for course filter
 
   // Fetch courses for dropdowns
   const fetchCourses = async () => {
@@ -57,8 +65,37 @@ const CourseContentManagement = () => {
     try {
       const response = await coursesAPI.getCourses({ page_size: 100 });
       setCourses(response.data.results || []);
+      if (response.data.results?.length > 0) {
+        setSelectedCourseId(response.data.results[0].id);
+      }
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to fetch courses', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch modules for the selected course
+  const fetchModules = async () => {
+    if (!selectedCourseId) {
+      setModules([]);
+      setSelectedModuleId(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await coursesAPI.getModules(selectedCourseId, {
+        page_size: 100,
+      });
+      setModules(response.data.results || []);
+      if (response.data.results?.length > 0) {
+        setSelectedModuleId(response.data.results[0].id);
+      } else {
+        setSelectedModuleId(null);
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to fetch modules', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -67,6 +104,7 @@ const CourseContentManagement = () => {
   // Fetch question banks
   const fetchQuestionBanks = async () => {
     setLoading(true);
+    setQuestionBankError(null);
     try {
       const response = await coursesAPI.getQuestionBanks({
         params: { page: questionBankPagination.currentPage, page_size: questionBankPagination.rowsPerPage }
@@ -74,7 +112,7 @@ const CourseContentManagement = () => {
       setQuestionBanks(response.data.results || []);
       setQuestionBankPagination(prev => ({ ...prev, count: response.data.count || 0 }));
     } catch (err) {
-      setError('Failed to fetch question banks');
+      setQuestionBankError('Failed to fetch question banks');
     } finally {
       setLoading(false);
     }
@@ -82,9 +120,16 @@ const CourseContentManagement = () => {
 
   // Fetch assessments (quizzes/assignments)
   const fetchAssessments = async () => {
+    if (!selectedCourseId || !selectedModuleId) {
+      setAssessments([]);
+      setAssessmentPagination(prev => ({ ...prev, count: 0 }));
+      return;
+    }
+
     setLoading(true);
+    setAssessmentError(null);
     try {
-      const response = await coursesAPI.getLessons(null, null, {
+      const response = await coursesAPI.getLessons(selectedCourseId, selectedModuleId, {
         page: assessmentPagination.currentPage,
         page_size: assessmentPagination.rowsPerPage,
         lesson_type: 'quiz,assignment'
@@ -92,7 +137,8 @@ const CourseContentManagement = () => {
       setAssessments(response.data.results || []);
       setAssessmentPagination(prev => ({ ...prev, count: response.data.count || 0 }));
     } catch (err) {
-      setError('Failed to fetch assessments');
+      setAssessmentError('Failed to fetch assessments');
+      setSnackbar({ open: true, message: 'Failed to fetch assessments', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -101,6 +147,7 @@ const CourseContentManagement = () => {
   // Fetch grading rubrics
   const fetchRubrics = async () => {
     setLoading(true);
+    setRubricError(null);
     try {
       const response = await coursesAPI.getRubrics({
         params: { page: rubricPagination.currentPage, page_size: rubricPagination.rowsPerPage }
@@ -108,7 +155,7 @@ const CourseContentManagement = () => {
       setRubrics(response.data.results || []);
       setRubricPagination(prev => ({ ...prev, count: response.data.count || 0 }));
     } catch (err) {
-      setError('Failed to fetch rubrics');
+      setRubricError('Failed to fetch rubrics');
     } finally {
       setLoading(false);
     }
@@ -117,6 +164,7 @@ const CourseContentManagement = () => {
   // Fetch submissions for moderation
   const fetchSubmissions = async () => {
     setLoading(true);
+    setSubmissionError(null);
     try {
       const response = await coursesAPI.getSubmissions({
         params: { page: submissionPagination.currentPage, page_size: submissionPagination.rowsPerPage }
@@ -124,40 +172,40 @@ const CourseContentManagement = () => {
       setSubmissions(response.data.results || []);
       setSubmissionPagination(prev => ({ ...prev, count: response.data.count || 0 }));
     } catch (err) {
-      setError('Failed to fetch submissions');
+      setSubmissionError('Failed to fetch submissions');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch FAQs
+  // Fetch FAQs for the selected course
   const fetchFAQs = async () => {
+    if (!selectedCourseId) {
+      setFaqs([]);
+      setFaqError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setFaqError(null);
     try {
-      if (!selectedCourseId) {
-        // Fetch all FAQs if no course is selected
-        const response = await Promise.all(
-          courses.map(course =>
-            coursesAPI.getFAQs(course.id, {
-              page: faqPagination.currentPage,
-              page_size: faqPagination.rowsPerPage
-            }).then(res => res.data.results || [])
-          )
-        );
-        const allFaqs = response.flat();
-        setFaqs(allFaqs);
-        setFaqPagination(prev => ({ ...prev, count: allFaqs.length }));
-      } else {
-        // Fetch FAQs for the selected course
-        const response = await coursesAPI.getFAQs(selectedCourseId, {
-          page: faqPagination.currentPage,
-          page_size: faqPagination.rowsPerPage
-        });
-        setFaqs(response.data.results || []);
-        setFaqPagination(prev => ({ ...prev, count: response.data.count || 0 }));
-      }
+      const response = await coursesAPI.getFAQs(selectedCourseId, {
+        page: faqPagination.currentPage,
+        page_size: faqPagination.rowsPerPage
+      });
+      //console.log('Fetched FAQs:', response.data);
+      const results = response.data.results || [];
+      setFaqs(results);
+      setFaqPagination(prev => ({
+        ...prev,
+        count: response.data.count || 0
+      }));
     } catch (err) {
-      setError(`Failed to fetch FAQs${selectedCourseId ? ' for the selected course' : ''}`);
+      console.error('Failed to fetch FAQs:', err);
+      setFaqError('Failed to fetch FAQs');
+      setFaqs([]);
+      setSnackbar({ open: true, message: 'Failed to fetch FAQs', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -262,15 +310,20 @@ const CourseContentManagement = () => {
     }
   };
 
-  // Handle FAQ CRUD
+  // Handle FAQ CRUD operations
   const handleFaqSave = async () => {
     const { mode, data } = faqDialog;
+    if (!selectedCourseId) {
+      setSnackbar({ open: true, message: 'Please select a course first', severity: 'error' });
+      return;
+    }
+
     try {
       if (mode === 'create') {
-        await coursesAPI.createFAQ(data.course_id, data);
+        await coursesAPI.createFAQ(selectedCourseId, { ...data, course_id: selectedCourseId });
         setSnackbar({ open: true, message: 'FAQ created', severity: 'success' });
       } else {
-        await coursesAPI.updateFAQ(data.course_id, data.id, data);
+        await coursesAPI.updateFAQ(selectedCourseId, data.id, data);
         setSnackbar({ open: true, message: 'FAQ updated', severity: 'success' });
       }
       fetchFAQs();
@@ -280,9 +333,11 @@ const CourseContentManagement = () => {
     }
   };
 
-  const handleFaqDelete = async (faq) => {
+  const handleFaqDelete = async (id) => {
+    if (!selectedCourseId) return;
+
     try {
-      await coursesAPI.deleteFAQ(faq.course_id, faq.id);
+      await coursesAPI.deleteFAQ(selectedCourseId, id);
       fetchFAQs();
       setSnackbar({ open: true, message: 'FAQ deleted', severity: 'success' });
     } catch (err) {
@@ -291,12 +346,14 @@ const CourseContentManagement = () => {
   };
 
   const handleFaqReorder = async () => {
+    if (!selectedCourseId) return;
+
     try {
       const currentOrder = faqs.map(faq => ({ id: faq.id, order: faq.order }));
       const newOrder = [...currentOrder]
         .sort((a, b) => a.order - b.order)
         .map((faq, index) => ({ id: faq.id, order: index + 1 }));
-      await coursesAPI.reorderFAQs(selectedCourseId || faqs[0]?.course_id, { faqs: newOrder });
+      await coursesAPI.reorderFAQs(selectedCourseId, { faqs: newOrder });
       fetchFAQs();
       setSnackbar({ open: true, message: 'FAQs reordered successfully', severity: 'success' });
     } catch (err) {
@@ -339,8 +396,8 @@ const CourseContentManagement = () => {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{error}</Typography></TableCell></TableRow>
+            ) : questionBankError ? (
+              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{questionBankError}</Typography></TableCell></TableRow>
             ) : questionBanks.length === 0 ? (
               <TableRow><TableCell colSpan={4} align="center">No question banks found</TableCell></TableRow>
             ) : (
@@ -379,33 +436,81 @@ const CourseContentManagement = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6">Quizzes & Assignments</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAssessmentDialog({ open: true, mode: 'create', data: {} })}>
-          Add Assessment
-        </Button>
+        <Box>
+          <Autocomplete
+            options={courses}
+            getOptionLabel={(option) => option.title}
+            value={courses.find((c) => c.id === selectedCourseId) || null}
+            onChange={(event, newValue) => {
+              setSelectedCourseId(newValue?.id || null);
+              setSelectedModuleId(null);
+            }}
+            sx={{ width: 300, mr: 2, display: 'inline-flex' }}
+            renderInput={(params) => (
+              <TextField {...params} label="Select Course" variant="outlined" />
+            )}
+          />
+          <Autocomplete
+            options={modules}
+            getOptionLabel={(option) => option.title}
+            value={modules.find((m) => m.id === selectedModuleId) || null}
+            onChange={(event, newValue) => {
+              setSelectedModuleId(newValue?.id || null);
+            }}
+            sx={{ width: 300, mr: 2, display: 'inline-flex' }}
+            renderInput={(params) => (
+              <TextField {...params} label="Select Module" variant="outlined" />
+            )}
+          />
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() =>
+              setAssessmentDialog({ open: true, mode: 'create', data: { course_id: selectedCourseId, module_id: selectedModuleId } })
+            }
+            disabled={!selectedCourseId || !selectedModuleId}
+          >
+            Add Assessment
+          </Button>
+        </Box>
       </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Title</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Course</TableCell>
-              <TableCell>Module</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={5} align="center"><Typography color="error">{error}</Typography></TableCell></TableRow>
-            ) : assessments.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">No assessments found</TableCell></TableRow>
-            ) : (
-              assessments.map(assessment => (
+      {!selectedCourseId || !selectedModuleId ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body1" color="textSecondary">
+            Please select a course and module to view assessments
+          </Typography>
+        </Box>
+      ) : loading ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <CircularProgress />
+        </Box>
+      ) : assessmentError ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color="error">{assessmentError}</Typography>
+        </Box>
+      ) : assessments.length === 0 ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography>No assessments found for this module</Typography>
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Course</TableCell>
+                <TableCell>Module</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {assessments.map((assessment) => (
                 <TableRow key={assessment.id}>
                   <TableCell>{assessment.title}</TableCell>
-                  <TableCell><Chip label={assessment.lesson_type} color={assessment.lesson_type === 'quiz' ? 'primary' : 'secondary'} /></TableCell>
+                  <TableCell>
+                    <Chip label={assessment.lesson_type} color={assessment.lesson_type === 'quiz' ? 'primary' : 'secondary'} />
+                  </TableCell>
                   <TableCell>{assessment.module?.course?.title || 'N/A'}</TableCell>
                   <TableCell>{assessment.module?.title || 'N/A'}</TableCell>
                   <TableCell>
@@ -417,20 +522,20 @@ const CourseContentManagement = () => {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={assessmentPagination.count}
-          rowsPerPage={assessmentPagination.rowsPerPage}
-          page={assessmentPagination.currentPage - 1}
-          onPageChange={handlePageChange(assessmentPagination, setAssessmentPagination)}
-          onRowsPerPageChange={handleRowsPerPageChange(assessmentPagination, setAssessmentPagination)}
-        />
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={assessmentPagination.count}
+            rowsPerPage={assessmentPagination.rowsPerPage}
+            page={assessmentPagination.currentPage - 1}
+            onPageChange={handlePageChange(assessmentPagination, setAssessmentPagination)}
+            onRowsPerPageChange={handleRowsPerPageChange(assessmentPagination, setAssessmentPagination)}
+          />
+        </TableContainer>
+      )}
     </Box>
   );
 
@@ -455,8 +560,8 @@ const CourseContentManagement = () => {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{error}</Typography></TableCell></TableRow>
+            ) : rubricError ? (
+              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{rubricError}</Typography></TableCell></TableRow>
             ) : rubrics.length === 0 ? (
               <TableRow><TableCell colSpan={4} align="center">No rubrics found</TableCell></TableRow>
             ) : (
@@ -510,8 +615,8 @@ const CourseContentManagement = () => {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={5} align="center"><Typography color="error">{error}</Typography></TableCell></TableRow>
+            ) : submissionError ? (
+              <TableRow><TableCell colSpan={5} align="center"><Typography color="error">{submissionError}</Typography></TableCell></TableRow>
             ) : submissions.length === 0 ? (
               <TableRow><TableCell colSpan={5} align="center">No submissions found</TableCell></TableRow>
             ) : (
@@ -550,63 +655,85 @@ const CourseContentManagement = () => {
 
   const renderFAQs = () => (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6">Frequently Asked Questions</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box>
           <Autocomplete
-            options={[{ id: null, title: 'All Courses' }, ...courses]}
-            getOptionLabel={option => option.title}
-            value={courses.find(c => c.id === selectedCourseId) || { id: null, title: 'All Courses' }}
-            onChange={(e, newValue) => {
+            options={courses}
+            getOptionLabel={(option) => option.title}
+            value={courses.find(c => c.id === selectedCourseId) || null}
+            onChange={(event, newValue) => {
               setSelectedCourseId(newValue?.id || null);
               setFaqPagination(prev => ({ ...prev, currentPage: 1 }));
             }}
-            renderInput={params => <TextField {...params} label="Filter by Course" sx={{ minWidth: 200 }} />}
-            sx={{ maxWidth: 300 }}
+            sx={{ width: 300, mr: 2 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Select Course" variant="outlined" />
+            )}
           />
-          <Box>
-            <Button
-              variant="outlined"
-              startIcon={<ReorderIcon />}
-              onClick={handleFaqReorder}
-              sx={{ mr: 2 }}
-              disabled={faqs.length === 0}
-            >
-              Reorder
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setFaqDialog({ open: true, mode: 'create', data: { course_id: selectedCourseId } })}
-            >
-              Add FAQ
-            </Button>
-          </Box>
+          <Button
+            variant="outlined"
+            startIcon={<ReorderIcon />}
+            onClick={handleFaqReorder}
+            sx={{ mr: 2 }}
+            disabled={!selectedCourseId || faqs.length === 0}
+          >
+            Reorder
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setFaqDialog({ 
+              open: true, 
+              mode: 'create', 
+              data: { 
+                course_id: selectedCourseId,
+                is_active: true,
+                order: faqs.length > 0 ? Math.max(...faqs.map(f => f.order)) + 1 : 1
+              } 
+            })}
+            disabled={!selectedCourseId}
+          >
+            Add FAQ
+          </Button>
         </Box>
       </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Question</TableCell>
-              <TableCell>Course</TableCell>
-              <TableCell>Order</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={5} align="center"><Typography color="error">{error}</Typography></TableCell></TableRow>
-            ) : faqs.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">No FAQs found</TableCell></TableRow>
-            ) : (
-              faqs.map(faq => (
+      
+      {!selectedCourseId ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body1" color="textSecondary">
+            Please select a course to view its FAQs
+          </Typography>
+        </Box>
+      ) : loading ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <CircularProgress />
+        </Box>
+      ) : faqError ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color="error">{faqError}</Typography>
+        </Box>
+      ) : faqs.length === 0 ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography>No FAQs found for this course</Typography>
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Question</TableCell>
+                <TableCell>Answer</TableCell>
+                <TableCell>Order</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {faqs.map(faq => (
                 <TableRow key={faq.id}>
                   <TableCell>{faq.question}</TableCell>
-                  <TableCell>{faq.course?.title || 'General'}</TableCell>
+                  <TableCell>{faq.answer}</TableCell>
                   <TableCell>{faq.order}</TableCell>
                   <TableCell>
                     <Chip
@@ -618,44 +745,69 @@ const CourseContentManagement = () => {
                     <IconButton onClick={() => setFaqDialog({ open: true, mode: 'edit', data: faq })}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => handleFaqDelete(faq)}>
+                    <IconButton onClick={() => handleFaqDelete(faq.id)}>
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={faqPagination.count}
-          rowsPerPage={faqPagination.rowsPerPage}
-          page={faqPagination.currentPage - 1}
-          onPageChange={handlePageChange(faqPagination, setFaqPagination)}
-          onRowsPerPageChange={handleRowsPerPageChange(faqPagination, setFaqPagination)}
-        />
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={faqPagination.count}
+            rowsPerPage={faqPagination.rowsPerPage}
+            page={faqPagination.currentPage - 1}
+            onPageChange={(e, newPage) => setFaqPagination(prev => ({ ...prev, currentPage: newPage + 1 }))}
+            onRowsPerPageChange={(e) => setFaqPagination(prev => ({ 
+              ...prev, 
+              rowsPerPage: parseInt(e.target.value, 10), 
+              currentPage: 1 
+            }))}
+          />
+        </TableContainer>
+      )}
     </Box>
   );
 
   useEffect(() => {
     fetchCourses();
+    fetchModules();
+    // Clear all error states when switching tabs
+    setQuestionBankError(null);
+    setAssessmentError(null);
+    setRubricError(null);
+    setSubmissionError(null);
+    setFaqError(null);
     if (activeTab === 0) fetchQuestionBanks();
     else if (activeTab === 1) fetchAssessments();
     else if (activeTab === 2) fetchRubrics();
     else if (activeTab === 3) fetchSubmissions();
-    else if (activeTab === 4) fetchFAQs();
   }, [
     activeTab,
+    selectedCourseId,
     questionBankPagination.currentPage, questionBankPagination.rowsPerPage,
     assessmentPagination.currentPage, assessmentPagination.rowsPerPage,
     rubricPagination.currentPage, rubricPagination.rowsPerPage,
     submissionPagination.currentPage, submissionPagination.rowsPerPage,
-    faqPagination.currentPage, faqPagination.rowsPerPage,
-    selectedCourseId // Add selectedCourseId to trigger FAQ fetch when course changes
+    faqPagination.currentPage, faqPagination.rowsPerPage
   ]);
+
+  useEffect(() => {
+    if (activeTab === 4 && selectedCourseId) {
+      fetchFAQs();
+    } else if (activeTab === 4 && !selectedCourseId) {
+      setFaqs([]);
+      setFaqError(null);
+    }
+  }, [activeTab, selectedCourseId, faqPagination.currentPage, faqPagination.rowsPerPage]);
+
+  useEffect(() => {
+    if (activeTab === 1) {
+      fetchAssessments();
+    }
+  }, [activeTab, selectedCourseId, selectedModuleId, assessmentPagination.currentPage, assessmentPagination.rowsPerPage]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -890,16 +1042,6 @@ const CourseContentManagement = () => {
             }))}
             sx={{ mt: 2 }}
           />
-          <Autocomplete
-            options={courses}
-            getOptionLabel={option => option.title}
-            value={courses.find(c => c.id === faqDialog.data.course_id) || null}
-            onChange={(e, newValue) => setFaqDialog(prev => ({
-              ...prev,
-              data: { ...prev.data, course_id: newValue?.id }
-            }))}
-            renderInput={params => <TextField {...params} label="Course (required)" sx={{ mt: 2 }} />}
-          />
           <TextField
             fullWidth
             type="number"
@@ -930,11 +1072,7 @@ const CourseContentManagement = () => {
           <Button onClick={() => setFaqDialog({ open: false, mode: 'create', data: {} })}>
             Cancel
           </Button>
-          <Button
-            onClick={handleFaqSave}
-            variant="contained"
-            disabled={!faqDialog.data.course_id} // Disable save if no course is selected
-          >
+          <Button onClick={handleFaqSave} variant="contained">
             Save
           </Button>
         </DialogActions>

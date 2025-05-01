@@ -1,55 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,  Typography,  Table,  TableBody,  TableCell,  TableContainer,  TableHead,
-  TableRow,  Paper,  Snackbar,  Alert,
-  TextField,  Button,  Select,  MenuItem,  FormControl,  InputLabel,  Chip,
-  Avatar,  IconButton,  Tooltip,  useTheme,  Divider,  Pagination,  Grid,
-  Dialog,  DialogTitle,  DialogContent,  DialogActions,  FormGroup,  FormControlLabel,  Checkbox,
+  Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead,
+  TableRow, Paper, Snackbar, Alert, TextField, Button, Select, MenuItem,
+  FormControl, InputLabel, Chip, Avatar, IconButton, Tooltip, Divider,
+  Pagination, Grid, Dialog, DialogTitle, DialogContent, DialogActions,ListItemSecondaryAction ,
+  FormGroup, FormControlLabel, Checkbox, Card, CardContent, Badge,List,ListItem,ListItemText
 } from '@mui/material';
 import {
-  Search as SearchIcon,  FilterList as FilterIcon,
-  Check as CheckIcon,  Close as CloseIcon,
-  Edit as EditIcon,  Delete as DeleteIcon,  Refresh as RefreshIcon,
-  Assignment as AssignmentIcon,  Person as PersonIcon,  Download as DownloadIcon,
-  Feedback as FeedbackIcon,  ArrowBack as ArrowBackIcon
+  Search as SearchIcon, FilterList as FilterIcon, Check as CheckIcon,
+  Close as CloseIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Refresh as RefreshIcon, Assignment as AssignmentIcon, Person as PersonIcon,
+  Download as DownloadIcon, Feedback as FeedbackIcon, ArrowBack as ArrowBackIcon,
+  Visibility as VisibilityIcon, Comment as CommentIcon, Task as TaskIcon
 } from '@mui/icons-material';
 import FeedbackForm from './FeedbackForm';
 
 const FeedbackManagement = () => {
-  const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [feedbackData, setFeedbackData] = useState([]);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState([]);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [viewFeedback, setViewFeedback] = useState(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionNote, setActionNote] = useState('');
   const rowsPerPage = 5;
 
   // Sample data for trainers and courses
   const trainers = [
-    { id: '1', name: 'John Smith', avatar: '' },
-    { id: '2', name: 'Sarah Johnson', avatar: '' },
-    { id: '3', name: 'Michael Brown', avatar: '' },
-    { id: '4', name: 'Emily Davis', avatar: '' },
-    { id: '5', name: 'Robert Wilson', avatar: '' },
-    { id: '6', name: 'Lisa Thompson', avatar: '' }
+    { id: '1', name: 'John Smith', avatar: '', role: 'Assessor' },
+    { id: '2', name: 'Sarah Johnson', avatar: '', role: 'Trainer' },
+    { id: '3', name: 'Michael Brown', avatar: '', role: 'Assessor' },
+    { id: '4', name: 'Emily Davis', avatar: '', role: 'Trainer' },
+    { id: '5', name: 'Robert Wilson', avatar: '', role: 'Assessor' },
+    { id: '6', name: 'Lisa Thompson', avatar: '', role: 'Trainer' }
   ];
 
   const courses = [
-    { id: '1', name: 'Advanced React' },
-    { id: '2', name: 'Node.js Fundamentals' },
-    { id: '3', name: 'Database Design' },
-    { id: '4', name: 'UI/UX Principles' },
-    { id: '5', name: 'JavaScript Advanced' },
-    { id: '6', name: 'Python Basics' }
+    { id: '1', name: 'Health and Safety Level 2' },
+    { id: '2', name: 'First Aid at Work' },
+    { id: '3', name: 'Manual Handling' },
+    { id: '4', name: 'Fire Safety Awareness' },
+    { id: '5', name: 'Food Hygiene' },
+    { id: '6', name: 'COSHH Awareness' }
   ];
 
   // Feedback types for advanced filtering
-  const feedbackTypes = ['Assessment', 'Observation', 'Learner Feedback', 'Trainer Self-Review'];
+  const feedbackTypes = [
+    'Assessment Feedback', 
+    'Observation Feedback', 
+    'Learner Feedback', 
+    'Standardization Issue',
+    'Compliance Concern'
+  ];
 
   // Initialize with sample data
   useEffect(() => {
@@ -58,71 +64,84 @@ const FeedbackManagement = () => {
 
   const refreshData = () => {
     // Simulate API call
-    setSnackbarMessage('Data refreshed successfully');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
+    setSnackbar({ open: true, message: 'Data refreshed successfully', severity: 'success' });
     
-    // Sample data
+    // Sample data with IQA-specific fields
     const sampleData = [
       {
         id: 1,
-        trainer: 'John Smith',
-        course: 'Advanced React',
-        date: '2023-05-15',
-        type: 'Assessment',
-        status: 'Pending',
-        comments: 'Assessment criteria needs clarification',
-        iqaAction: 'Review required'
+        trainer: trainers[0],
+        course: courses[0],
+        date: '2023-06-15',
+        type: 'Assessment Feedback',
+        status: 'Pending Review',
+        priority: 'High',
+        comments: 'Assessment criteria needs clarification - not aligned with awarding body requirements',
+        attachments: ['assessment_sample.pdf'],
+        iqaAction: 'Review required',
+        iqaNotes: '',
+        learnerWorkSamples: ['A101', 'A102', 'A103'],
+        standardisationMeeting: false
       },
       {
         id: 2,
-        trainer: 'Sarah Johnson',
-        course: 'Node.js Fundamentals',
-        date: '2023-05-10',
-        type: 'Observation',
-        status: 'Resolved',
-        comments: 'Excellent session delivery observed',
-        iqaAction: 'No action needed'
+        trainer: trainers[1],
+        course: courses[1],
+        date: '2023-06-14',
+        type: 'Observation Feedback',
+        status: 'Action Required',
+        priority: 'Medium',
+        comments: 'Excellent session delivery observed, but assessment decisions need standardization',
+        attachments: ['observation_notes.docx'],
+        iqaAction: 'Standardization session needed',
+        iqaNotes: 'Scheduled for 25th June',
+        learnerWorkSamples: [],
+        standardisationMeeting: true
       },
       {
         id: 3,
-        trainer: 'Michael Brown',
-        course: 'Database Design',
-        date: '2023-05-08',
-        type: 'Learner Feedback',
-        status: 'In Progress',
-        comments: 'Learners requested more practical examples',
-        iqaAction: 'Content update scheduled'
+        trainer: trainers[2],
+        course: courses[2],
+        date: '2023-06-12',
+        type: 'Standardization Issue',
+        status: 'Resolved',
+        priority: 'Low',
+        comments: 'Minor inconsistencies in grading between assessors',
+        attachments: ['grading_samples.zip'],
+        iqaAction: 'Standardization completed',
+        iqaNotes: 'All assessors now using updated grading criteria',
+        learnerWorkSamples: ['B201', 'B202'],
+        standardisationMeeting: true
       },
       {
         id: 4,
-        trainer: 'Emily Davis',
-        course: 'UI/UX Principles',
-        date: '2023-05-05',
-        type: 'Assessment',
-        status: 'Pending',
-        comments: 'Inconsistent grading across assessments',
-        iqaAction: 'Standardization needed'
+        trainer: trainers[3],
+        course: courses[3],
+        date: '2023-06-10',
+        type: 'Compliance Concern',
+        status: 'Pending Review',
+        priority: 'High',
+        comments: 'Potential compliance issue with practical assessment recording',
+        attachments: ['compliance_issue.pdf'],
+        iqaAction: 'Urgent review required',
+        iqaNotes: '',
+        learnerWorkSamples: ['C301', 'C302'],
+        standardisationMeeting: false
       },
       {
         id: 5,
-        trainer: 'Robert Wilson',
-        course: 'JavaScript Advanced',
-        date: '2023-05-01',
-        type: 'Observation',
-        status: 'Resolved',
-        comments: 'Technical issues during demo',
-        iqaAction: 'Tech check completed'
-      },
-      {
-        id: 6,
-        trainer: 'Lisa Thompson',
-        course: 'Python Basics',
-        date: '2023-04-28',
+        trainer: trainers[4],
+        course: courses[4],
+        date: '2023-06-08',
         type: 'Learner Feedback',
         status: 'In Progress',
-        comments: 'Pace too fast for beginners',
-        iqaAction: 'Pacing adjustment in progress'
+        priority: 'Medium',
+        comments: 'Learners reported unclear feedback on their assessments',
+        attachments: ['learner_feedback.xlsx'],
+        iqaAction: 'Feedback template review',
+        iqaNotes: 'New template being developed',
+        learnerWorkSamples: [],
+        standardisationMeeting: false
       }
     ];
     
@@ -130,54 +149,25 @@ const FeedbackManagement = () => {
   };
 
   const handleFeedbackSubmit = (newFeedback) => {
-    // Format the new feedback
     const newFeedbackWithId = {
       ...newFeedback,
       id: Math.max(...feedbackData.map(f => f.id)) + 1,
-      trainer: trainers.find(t => t.id === newFeedback.trainerId)?.name || 'N/A',
-      course: courses.find(c => c.id === newFeedback.courseId)?.name || 'N/A',
-      type: newFeedback.type.charAt(0).toUpperCase() + newFeedback.type.slice(1) + ' Feedback',
-      status: 'Pending',
+      trainer: trainers.find(t => t.id === newFeedback.trainerId) || { name: 'N/A' },
+      course: courses.find(c => c.id === newFeedback.courseId) || { name: 'N/A' },
+      type: newFeedback.type,
+      status: 'Pending Review',
+      priority: 'Medium',
+      attachments: newFeedback.attachments.map(a => a.name),
       iqaAction: 'Review required',
+      iqaNotes: '',
+      learnerWorkSamples: [],
+      standardisationMeeting: false,
       date: new Date().toISOString().split('T')[0]
     };
 
     setFeedbackData(prev => [newFeedbackWithId, ...prev]);
     setShowFeedbackForm(false);
-    setSnackbarMessage('Feedback submitted successfully!');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-  };
-
-  const generateReport = () => {
-    setSnackbarMessage('Feedback report generated successfully');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-    
-    // Create a CSV file
-    const headers = ['Trainer', 'Course', 'Date', 'Type', 'Status', 'Comments', 'IQA Action'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredData.map(item => [
-        `"${item.trainer}"`,
-        `"${item.course}"`,
-        `"${item.date}"`,
-        `"${item.type}"`,
-        `"${item.status}"`,
-        `"${item.comments}"`,
-        `"${item.iqaAction}"`
-      ].join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `feedback-report-${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    setSnackbar({ open: true, message: 'Feedback submitted successfully!', severity: 'success' });
   };
 
   const handleStatusChange = (id, newStatus) => {
@@ -186,41 +176,70 @@ const FeedbackManagement = () => {
         item.id === id ? { ...item, status: newStatus } : item
       )
     );
-    setSnackbarMessage(`Feedback status updated to ${newStatus}`);
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
+    setSnackbar({ open: true, message: `Feedback status updated to ${newStatus}`, severity: 'success' });
+  };
+
+  const handleAddActionNote = (id) => {
+    if (!actionNote.trim()) return;
+    
+    setFeedbackData(prevData =>
+      prevData.map(item =>
+        item.id === id ? { ...item, iqaNotes: actionNote } : item
+      )
+    );
+    setActionDialogOpen(false);
+    setActionNote('');
+    setSnackbar({ open: true, message: 'Action note added successfully', severity: 'success' });
+  };
+
+  const handleViewDetails = (feedback) => {
+    setViewFeedback(feedback);
+  };
+
+  const handleCloseDetails = () => {
+    setViewFeedback(null);
+  };
+
+  const handleGenerateReport = () => {
+    setSnackbar({ open: true, message: 'Feedback report generated successfully', severity: 'success' });
+    
+    // Create CSV content
+    const headers = ['ID', 'Trainer', 'Course', 'Date', 'Type', 'Status', 'Priority', 'Comments', 'IQA Action'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredData.map(item => [
+        item.id,
+        `"${item.trainer.name}"`,
+        `"${item.course.name}"`,
+        `"${item.date}"`,
+        `"${item.type}"`,
+        `"${item.status}"`,
+        `"${item.priority}"`,
+        `"${item.comments}"`,
+        `"${item.iqaAction}"`
+      ].join(','))
+    ].join('\n');
+    
+    // Trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `iqa-feedback-report-${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDelete = (id) => {
     setFeedbackData(prevData => prevData.filter(item => item.id !== id));
-    setSnackbarMessage('Feedback deleted successfully');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-  };
-
-  const handleTypeFilterChange = (type) => {
-    setSelectedTypes(prev =>
-      prev.includes(type)
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
-  };
-
-  const applyAdvancedFilters = () => {
-    setFilterDialogOpen(false);
-    setPage(1);
-  };
-
-  const resetFilters = () => {
-    setSelectedTypes([]);
-    setStatusFilter('all');
-    setSearchTerm('');
+    setSnackbar({ open: true, message: 'Feedback deleted successfully', severity: 'success' });
   };
 
   const filteredData = feedbackData.filter(item => {
     const matchesSearch = 
-      item.trainer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.comments.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = 
@@ -232,10 +251,6 @@ const FeedbackManagement = () => {
     return matchesSearch && matchesStatus && matchesTypes;
   });
 
-  const handlePageChange = (event, newPage) => {
-    setPage(newPage);
-  };
-
   const paginatedData = filteredData.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
@@ -243,14 +258,20 @@ const FeedbackManagement = () => {
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'warning';
-      case 'in progress':
-        return 'info';
-      case 'resolved':
-        return 'success';
-      default:
-        return 'default';
+      case 'pending review': return 'warning';
+      case 'action required': return 'error';
+      case 'in progress': return 'info';
+      case 'resolved': return 'success';
+      default: return 'default';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority.toLowerCase()) {
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'default';
     }
   };
 
@@ -268,9 +289,51 @@ const FeedbackManagement = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Feedback Management
+        IQA Feedback Management
       </Typography>
       
+      {/* Summary Cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Total Feedback Items</Typography>
+              <Typography variant="h4">{feedbackData.length}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Pending Review</Typography>
+              <Typography variant="h4" color="warning.main">
+                {feedbackData.filter(f => f.status === 'Pending Review').length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Action Required</Typography>
+              <Typography variant="h4" color="error.main">
+                {feedbackData.filter(f => f.status === 'Action Required').length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Standardization Needed</Typography>
+              <Typography variant="h4">
+                {feedbackData.filter(f => f.standardisationMeeting).length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
       {/* Filters and Search */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={6}>
@@ -281,7 +344,7 @@ const FeedbackManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
-              startAdornment: <SearchIcon sx={{ color: theme.palette.text.secondary, mr: 1 }} />
+              startAdornment: <SearchIcon sx={{ mr: 1 }} />
             }}
           />
         </Grid>
@@ -294,7 +357,8 @@ const FeedbackManagement = () => {
               label="Status"
             >
               <MenuItem value="all">All Statuses</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="pending review">Pending Review</MenuItem>
+              <MenuItem value="action required">Action Required</MenuItem>
               <MenuItem value="in progress">In Progress</MenuItem>
               <MenuItem value="resolved">Resolved</MenuItem>
             </Select>
@@ -305,7 +369,6 @@ const FeedbackManagement = () => {
             fullWidth
             variant="outlined"
             startIcon={<FilterIcon />}
-            sx={{ height: '56px' }}
             onClick={() => setFilterDialogOpen(true)}
           >
             Advanced Filters
@@ -316,30 +379,35 @@ const FeedbackManagement = () => {
       {/* Feedback Table */}
       <TableContainer component={Paper} sx={{ mb: 3 }}>
         <Table>
-          <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Trainer</TableCell>
+          <TableHead>
+            <TableRow sx={{ bgcolor: 'background.default' }}>
+              <TableCell sx={{ fontWeight: 600 }}>Trainer/Assessor</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Course</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Comments</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Priority</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>IQA Action</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+              <TableCell sx={{ fontWeight: 600 }} align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedData.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow key={row.id} hover>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: theme.palette.primary.main }}>
-                      <PersonIcon fontSize="small" />
+                    <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'primary.main' }}>
+                      {row.trainer.name.charAt(0)}
                     </Avatar>
-                    {row.trainer}
+                    <Box>
+                      <Typography>{row.trainer.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.trainer.role}
+                      </Typography>
+                    </Box>
                   </Box>
                 </TableCell>
-                <TableCell>{row.course}</TableCell>
+                <TableCell>{row.course.name}</TableCell>
                 <TableCell>{row.date}</TableCell>
                 <TableCell>{row.type}</TableCell>
                 <TableCell>
@@ -349,25 +417,49 @@ const FeedbackManagement = () => {
                     size="small"
                   />
                 </TableCell>
-                <TableCell sx={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {row.comments}
-                </TableCell>
-                <TableCell>{row.iqaAction}</TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="Mark as Resolved">
-                      <IconButton size="small" onClick={() => handleStatusChange(row.id, 'Resolved')}>
-                        <CheckIcon color="success" fontSize="small" />
+                  <Chip
+                    label={row.priority}
+                    color={getPriorityColor(row.priority)}
+                    size="small"
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {row.iqaAction}
+                    {row.standardisationMeeting && (
+                      <Tooltip title="Standardization meeting scheduled">
+                        <TaskIcon color="info" sx={{ ml: 1, fontSize: '1rem' }} />
+                      </Tooltip>
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell align="center">
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                    <Tooltip title="View details">
+                      <IconButton size="small" onClick={() => handleViewDetails(row)}>
+                        <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton size="small">
-                        <EditIcon color="info" fontSize="small" />
+                    <Tooltip title="Add action note">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => {
+                          setViewFeedback(row);
+                          setActionDialogOpen(true);
+                        }}
+                      >
+                        <CommentIcon fontSize="small" color="info" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => handleDelete(row.id)}>
-                        <DeleteIcon color="error" fontSize="small" />
+                    <Tooltip title="Mark as resolved">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleStatusChange(row.id, 'Resolved')}
+                        disabled={row.status === 'Resolved'}
+                      >
+                        <CheckIcon fontSize="small" color="success" />
                       </IconButton>
                     </Tooltip>
                   </Box>
@@ -386,23 +478,20 @@ const FeedbackManagement = () => {
         <Pagination
           count={Math.ceil(filteredData.length / rowsPerPage)}
           page={page}
-          onChange={handlePageChange}
+          onChange={(e, newPage) => setPage(newPage)}
           color="primary"
         />
       </Box>
 
       {/* Quick Actions */}
       <Divider sx={{ my: 3 }} />
-      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-        Quick Actions
-      </Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <Button 
           variant="contained" 
           startIcon={<DownloadIcon />}
-          onClick={generateReport}
+          onClick={handleGenerateReport}
         >
-          Generate Feedback Report
+          Export Feedback Report
         </Button>
         <Button 
           variant="outlined" 
@@ -417,7 +506,7 @@ const FeedbackManagement = () => {
           onClick={() => setShowFeedbackForm(true)}
           sx={{ ml: 'auto' }}
         >
-          Give New Feedback
+          New IQA Feedback
         </Button>
       </Box>
 
@@ -435,7 +524,11 @@ const FeedbackManagement = () => {
                 control={
                   <Checkbox
                     checked={selectedTypes.includes(type)}
-                    onChange={() => handleTypeFilterChange(type)}
+                    onChange={() => setSelectedTypes(prev =>
+                      prev.includes(type)
+                        ? prev.filter(t => t !== type)
+                        : [...prev, type]
+                    )}
                   />
                 }
                 label={type}
@@ -444,23 +537,352 @@ const FeedbackManagement = () => {
           </FormGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={resetFilters}>Reset All</Button>
+          <Button onClick={() => {
+            setSelectedTypes([]);
+            setStatusFilter('all');
+            setSearchTerm('');
+          }}>Reset All</Button>
           <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={applyAdvancedFilters}>
+          <Button variant="contained" onClick={() => setFilterDialogOpen(false)}>
             Apply Filters
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      {/* Feedback Details Dialog */}
+      {viewFeedback && (
+        <Dialog 
+          open={!!viewFeedback} 
+          onClose={handleCloseDetails} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              minHeight: '60vh'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Box>
+              <Typography variant="h6">Feedback Details</Typography>
+              <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+                ID: {viewFeedback.id}
+              </Typography>
+            </Box>
+            <IconButton onClick={handleCloseDetails} sx={{ color: 'inherit' }}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent dividers sx={{ p: 3 }}>
+            <Grid container spacing={3}>
+              {/* Basic Information */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Trainer/Assessor
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Avatar sx={{ width: 40, height: 40 }}>
+                    {viewFeedback.trainer.name.charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Typography>{viewFeedback.trainer.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {viewFeedback.trainer.role}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Course
+                </Typography>
+                <Typography>{viewFeedback.course.name}</Typography>
+              </Grid>
+              
+              <Grid item xs={6} md={3}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Date
+                </Typography>
+                <Typography>{viewFeedback.date}</Typography>
+              </Grid>
+              
+              <Grid item xs={6} md={3}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Type
+                </Typography>
+                <Typography>{viewFeedback.type}</Typography>
+              </Grid>
+              
+              <Grid item xs={6} md={3}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Status
+                </Typography>
+                <Chip 
+                  label={viewFeedback.status} 
+                  color={getStatusColor(viewFeedback.status)} 
+                  size="small"
+                />
+              </Grid>
+              
+              <Grid item xs={6} md={3}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Priority
+                </Typography>
+                <Chip 
+                  label={viewFeedback.priority} 
+                  color={getPriorityColor(viewFeedback.priority)} 
+                  size="small"
+                  variant="outlined"
+                />
+              </Grid>
+              
+              {/* Divider */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+              </Grid>
+              
+              {/* Feedback Content */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Feedback Comments
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                  <Typography whiteSpace="pre-wrap">{viewFeedback.comments}</Typography>
+                </Paper>
+              </Grid>
+              
+              {/* IQA Actions */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  IQA Action
+                </Typography>
+                <Typography>{viewFeedback.iqaAction}</Typography>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  IQA Notes
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                  {viewFeedback.iqaNotes || (
+                    <Typography color="text.secondary">No notes added yet</Typography>
+                  )}
+                </Paper>
+              </Grid>
+              
+              {/* Learner Work Samples */}
+              {viewFeedback.learnerWorkSamples.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Learner Work Samples ({viewFeedback.learnerWorkSamples.length})
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    mt: 1
+                  }}>
+                    {viewFeedback.learnerWorkSamples.map(sample => (
+                      <Chip 
+                        key={sample} 
+                        label={sample} 
+                        variant="outlined"
+                        onClick={() => {
+                          // Implement sample viewing functionality
+                          setSnackbar({
+                            open: true,
+                            message: `Opening learner work sample ${sample}`,
+                            severity: 'info'
+                          });
+                        }}
+                        sx={{ cursor: 'pointer' }}
+                      />
+                    ))}
+                  </Box>
+                </Grid>
+              )}
+              
+              {/* Attachments */}
+              {viewFeedback.attachments.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Attachments ({viewFeedback.attachments.length})
+                  </Typography>
+                  <List dense sx={{ 
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1
+                  }}>
+                    {viewFeedback.attachments.map((file, index) => (
+                      <ListItem 
+                        key={index}
+                        secondaryAction={
+                          <Tooltip title="Download attachment">
+                            <IconButton
+                              edge="end"
+                              aria-label="download"
+                              onClick={() => {
+                                // Simulate download functionality
+                                const link = document.createElement('a');
+                                link.href = `#${file}`; // Replace with actual file URL
+                                link.download = file;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                
+                                setSnackbar({
+                                  open: true,
+                                  message: `Downloading ${file}`,
+                                  severity: 'success'
+                                });
+                              }}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        }
+                        sx={{
+                          borderBottom: index < viewFeedback.attachments.length - 1 ? 
+                            '1px solid' : 'none',
+                          borderColor: 'divider'
+                        }}
+                      >
+                        <ListItemText 
+                          primary={file}
+                          primaryTypographyProps={{
+                            noWrap: true,
+                            sx: { 
+                              maxWidth: 'calc(100% - 40px)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }
+                          }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              )}
+            </Grid>
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 2 }}>
+            <Button 
+              onClick={handleCloseDetails}
+              variant="contained"
+              sx={{ minWidth: 120 }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Add Action Note Dialog */}
+      <Dialog 
+        open={actionDialogOpen} 
+        onClose={() => setActionDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          }
+        }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity}>
-          {snackbarMessage}
+        <DialogTitle sx={{
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          py: 2
+        }}>
+          <Typography variant="h6">Add IQA Action Note</Typography>
+          <IconButton 
+            onClick={() => setActionDialogOpen(false)} 
+            sx={{ color: 'inherit' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Feedback Reference: {viewFeedback?.id}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Trainer: {viewFeedback?.trainer.name} | Course: {viewFeedback?.course.name}
+            </Typography>
+          </Box>
+          
+          <TextField
+            fullWidth
+            multiline
+            minRows={4}
+            maxRows={8}
+            value={actionNote}
+            onChange={(e) => setActionNote(e.target.value)}
+            placeholder="Enter detailed action notes, follow-up instructions, or standardization requirements..."
+            variant="outlined"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 1,
+              }
+            }}
+          />
+          
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Note: This will be visible to the trainer/assessor and recorded in the IQA audit trail.
+          </Typography>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Button 
+            onClick={() => setActionDialogOpen(false)}
+            variant="outlined"
+            sx={{ minWidth: 100 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              handleAddActionNote(viewFeedback?.id);
+              setActionDialogOpen(false);
+            }}
+            disabled={!actionNote.trim()}
+            sx={{ minWidth: 100 }}
+            startIcon={<CheckIcon />}
+          >
+            Save Note
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>

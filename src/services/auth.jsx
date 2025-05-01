@@ -5,10 +5,14 @@ import axios from 'axios';
 export const login = async (email, password) => {
   try {
     const response = await authAPI.login({ email, password });
+
+    console.log("response")
+    console.log(response)
+    console.log("response")
     
     if (response.data.access) {
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
+      localStorage.setItem('accessToken', response.data.access);
+      localStorage.setItem('refreshToken', response.data.refresh);
       
       // Get and store user profile
       const profileResponse = await getProfile();
@@ -23,8 +27,8 @@ export const login = async (email, password) => {
 
 export const logout = () => {
   authAPI.logout().then(() => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
   });
 };
@@ -35,12 +39,12 @@ export const getCurrentUser = () => {
 
 export const refreshToken = async () => {
   try {
-    const response = await axios.post(`${authAPI.baseURL}token/refresh/`, {
-      refresh: localStorage.getItem('refresh_token')
+    const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
+      refresh: localStorage.getItem('refreshToken')
     });
     
     if (response.data.access) {
-      localStorage.setItem('access_token', response.data.access);
+      localStorage.setItem('accessToken', response.data.access);
     }
     
     return response.data;

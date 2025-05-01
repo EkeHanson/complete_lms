@@ -1,118 +1,32 @@
-// import React, { createContext, useContext, useState, useEffect } from 'react';
-// import { authAPI } from '../config';
-
-// const AuthContext = createContext();
-
-// export const AuthProvider = ({ children }) => {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     // Fetch current user on mount
-//     const fetchUser = async () => {
-//       try {
-//         const response = await authAPI.getCurrentUser();
-//         setUser(response.data);
-//       } catch (error) {
-//         console.error('Failed to fetch user:', error);
-//         setUser(null);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchUser();
-//   }, []);
-
-//   const login = async (credentials) => {
-//     try {
-//       const response = await authAPI.login(credentials);
-//       const { access, refresh } = response.data;
-//       authAPI.setAuthTokens(access, refresh);
-//       const userResponse = await authAPI.getCurrentUser();
-//       setUser(userResponse.data);
-//       return userResponse.data;
-//     } catch (error) {
-//       throw error;
-//     }
-//   };
-
-//   const logout = async () => {
-//     try {
-//       await authAPI.logout();
-//       authAPI.clearAuthTokens();
-//       setUser(null);
-//     } catch (error) {
-//       console.error('Logout failed:', error);
-//     }
-//   };
-
-//   const updateUser = (updatedUser) => {
-//     setUser(updatedUser);
-//   };
-
-//   return (
-//     <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-// export const useAuth = () => {
-//   const context = useContext(AuthContext);
-//   if (!context) {
-//     throw new Error('useAuth must be used within an AuthProvider');
-//   }
-//   return context;
-// };
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { authAPI } from '../services/auth';
-import { useQuality } from './QualityContext';
+import { QA_ROLES } from '../constants/qaRoles';
 
-// Define all QA roles and permissions
-const QA_ROLES = {
-  IQA_LEAD: {
-    permissions: [
-      'view_assessments', 
-      'sample_work', 
-      'conduct_observations',
-      'manage_feedback'
-    ],
-    dashboard: '/dashboard/iqa'
-  },
-  EQA_AUDITOR: {
-    permissions: [
-      'view_reports',
-      'manage_evidence',
-      'schedule_audits',
-      'submit_compliance'
-    ],
-    dashboard: '/dashboard/eqa'
-  },
-  TRAINER: {
-    permissions: [
-      'submit_work',
-      'view_feedback',
-      'request_verification'
-    ],
-    dashboard: '/dashboard/trainer'
-  },
-  ADMIN: {
-    permissions: ['*'],
-    dashboard: '/dashboard/admin'
-  }
-};
-
+// Create context
 const AuthContext = createContext();
 
+// Main provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { updateRiskThresholds } = useQuality();
 
-  // Fetch user with extended QA data
+  // Enhanced user data transformation
+  const transformUserData = (userData) => {
+    return {
+      ...userData,
+      role: userData.role || 'TRAINER',
+      qaStats: {
+        lastSampled: userData.lastSampled || null,
+        complianceScore: userData.complianceScore || 0,
+        completedTrainings: userData.completedTrainings || []
+      },
+      permissions: QA_ROLES[userData.role]?.permissions || []
+    };
+  };
+
+  // Fetch user data
   const fetchUser = useCallback(async () => {
     setLoading(true);
     try {
@@ -122,25 +36,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error('No user data returned');
       }
 
-      // Enhance user object with QA-specific data
-      const userWithQA = {
-        ...response.data,
-        role: response.data.role || 'TRAINER', // Default role
-        qaStats: {
-          lastSampled: response.data.lastSampled || null,
-          complianceScore: response.data.complianceScore || 0,
-          completedTrainings: response.data.completedTrainings || []
-        },
-        permissions: QA_ROLES[response.data.role]?.permissions || []
-      };
-
-      setUser(userWithQA);
+      setUser(transformUserData(response.data));
       setError(null);
-
-      // Set risk thresholds based on organization settings
-      if (response.data.organization) {
-        updateRiskThresholds(response.data.organization.qaSettings?.riskThresholds);
-      }
     } catch (err) {
       console.error('Auth error:', err);
       setError(err.message);
@@ -148,9 +45,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [updateRiskThresholds]);
+  }, []);
 
-  // Initialize auth
+  // Initialize auth on mount
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -170,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [fetchUser]);
 
-  // Login handler with QA role detection
+  // Login handler
   const login = async (credentials) => {
     try {
       setLoading(true);
@@ -182,7 +79,6 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('accessToken', response.data.access);
       localStorage.setItem('refreshToken', response.data.refresh || '');
-
       await fetchUser();
       return user;
     } catch (err) {
@@ -206,18 +102,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Check permission for QA features
+  // Permission check
   const hasPermission = (permission) => {
     if (!user) return false;
     return user.permissions.includes('*') || user.permissions.includes(permission);
   };
 
-  // Get user's dashboard route based on role
+  // Get dashboard route based on role
   const getDashboardRoute = () => {
     return QA_ROLES[user?.role]?.dashboard || '/dashboard';
   };
 
-  // Update user profile (including QA-specific fields)
+  // Update user profile
   const updateUser = async (updates) => {
     try {
       const response = await authAPI.updateUser({
@@ -263,6 +159,7 @@ AuthProvider.propTypes = {
   children: PropTypes.node.isRequired
 };
 
+// Base auth hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -271,7 +168,7 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper hook for QA-specific auth checks
+// Add this export at the bottom:
 export const useQAAuth = () => {
   const auth = useAuth();
   

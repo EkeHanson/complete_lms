@@ -31,6 +31,8 @@ import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
+//import QualityAssuranceDashboard from './QaulityAssuranceDashboard/QualityAssuranceDashboard';
+// import QualityAssurance from './QaulityAssuranceDashboard/QualityAssurance';
 import CourseManagement from './courses/CourseManagement';
 import CourseDetailPage from './courses/CourseDetailPage';
 import CourseForm from './courses/CourseForm';
@@ -534,7 +536,9 @@ function Admin() {
             <Route path="/payment-settings" element={<PaymentSettings />} />
             <Route path="/website-notifications" element={<WebsiteNotificationSettings />} />
             <Route path="/website-settings" element={<WebsiteSettings />} />
+            {/* <Route path="/quality-assurance" element={<QualityDashbaord />} /> */}
             <Route path="/quality-assurance" element={<QualityDashbaord />} />
+            {/* <Route path="/quality-assurance" element={<QualityAssurance />} /> */}
             <Route path="/courses" element={<CourseManagement />} />
             <Route path="/courses/new" element={<CourseForm />} />
             <Route path="/courses/edit/:id" element={<CourseForm />} />

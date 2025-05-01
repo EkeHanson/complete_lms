@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   Chip,
   TextField,
@@ -26,59 +26,175 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Rating,
-  TextareaAutosize,
+  Badge,
+  LinearProgress,
+  Divider,
   Snackbar,
-  Alert
+  Alert,
 } from '@mui/material';
-import { 
-  Search, 
-  Visibility, 
-  Edit, 
-  CheckCircle, 
-  Warning, 
+import {
+  Search,
+  Visibility,
+  Feedback,
+  CheckCircle,
+  Warning,
   Close,
-  Save
+  Assessment,
+  FileDownload,
+  BarChart,
 } from '@mui/icons-material';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+} from 'recharts';
 
-// Sample data with observations
-const trainerData = [
+// Sample data focused on assessment quality
+const assessorData = [
   {
     id: 1,
     name: 'John Smith',
     avatar: '/avatars/1.jpg',
-    sessionsCompleted: 24,
+    assessmentsCompleted: 24,
+    sampledAssessments: 5,
     complianceScore: 92,
-    lastObservation: '2023-06-15',
+    lastSampled: '2023-06-15',
     status: 'compliant',
-    qualifications: ['Level 5', 'First Aid'],
-    observations: [
+    qualifications: ['Level 5 Assessor', 'IQA Certified'],
+    samples: [
       {
         date: '2023-06-15',
-        rating: 4.5,
-        notes: 'Excellent session delivery with strong learner engagement',
-        observer: 'QA Officer James'
-      }
-    ]
+        course: 'Health & Safety L2',
+        passRate: 85,
+        notes: 'Minor inconsistencies in grading criteria application',
+        action: 'Standardization session scheduled',
+      },
+    ],
   },
   {
     id: 2,
     name: 'Sarah Johnson',
     avatar: '/avatars/2.jpg',
-    sessionsCompleted: 18,
-    complianceScore: 85,
-    lastObservation: '2023-06-10',
+    assessmentsCompleted: 18,
+    sampledAssessments: 4,
+    complianceScore: 78,
+    lastSampled: '2023-06-10',
     status: 'needs_improvement',
-    qualifications: ['Level 3', 'Safeguarding'],
-    observations: [
+    qualifications: ['Level 3 Assessor'],
+    samples: [
       {
         date: '2023-06-10',
-        rating: 3,
+        course: 'First Aid at Work',
+        passRate: 65,
         notes: 'Needs to improve assessment feedback quality',
-        observer: 'QA Officer James'
-      }
-    ]
-  }
+        action: 'Feedback template provided',
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: 'David Lee',
+    avatar: '/avatars/3.jpg',
+    assessmentsCompleted: 30,
+    sampledAssessments: 6,
+    complianceScore: 88,
+    lastSampled: '2023-07-01',
+    status: 'compliant',
+    qualifications: ['Level 4 Assessor'],
+    samples: [
+      {
+        date: '2023-07-01',
+        course: 'Manual Handling',
+        passRate: 82,
+        notes: 'Overall good, minor delays in marking',
+        action: 'Time management workshop recommended',
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Emily Davis',
+    avatar: '/avatars/4.jpg',
+    assessmentsCompleted: 22,
+    sampledAssessments: 5,
+    complianceScore: 95,
+    lastSampled: '2023-06-20',
+    status: 'compliant',
+    qualifications: ['Level 5 Assessor', 'IQA Certified', 'Internal Verifier'],
+    samples: [
+      {
+        date: '2023-06-20',
+        course: 'Customer Service Skills',
+        passRate: 90,
+        notes: 'Excellent documentation and clear feedback',
+        action: 'Used as a model example',
+      },
+    ],
+  },
+  {
+    id: 5,
+    name: 'Michael Brown',
+    avatar: '/avatars/5.jpg',
+    assessmentsCompleted: 15,
+    sampledAssessments: 3,
+    complianceScore: 70,
+    lastSampled: '2023-06-18',
+    status: 'needs_improvement',
+    qualifications: ['Level 3 Assessor'],
+    samples: [
+      {
+        date: '2023-06-18',
+        course: 'Food Safety L2',
+        passRate: 60,
+        notes: 'Insufficient evidence provided in assessments',
+        action: 'Additional training assigned',
+      },
+    ],
+  },
+  {
+    id: 6,
+    name: 'Jessica White',
+    avatar: '/avatars/6.jpg',
+    assessmentsCompleted: 28,
+    sampledAssessments: 7,
+    complianceScore: 89,
+    lastSampled: '2023-07-03',
+    status: 'compliant',
+    qualifications: ['Level 4 Assessor', 'IQA Certified'],
+    samples: [
+      {
+        date: '2023-07-03',
+        course: 'Workplace Safety',
+        passRate: 87,
+        notes: 'Accurate and timely assessments',
+        action: 'Commendation issued',
+      },
+    ],
+  },
+  {
+    id: 7,
+    name: 'Daniel Green',
+    avatar: '/avatars/7.jpg',
+    assessmentsCompleted: 12,
+    sampledAssessments: 2,
+    complianceScore: 75,
+    lastSampled: '2023-06-25',
+    status: 'needs_improvement',
+    qualifications: ['Level 3 Assessor'],
+    samples: [
+      {
+        date: '2023-06-25',
+        course: 'Fire Safety Awareness',
+        passRate: 70,
+        notes: 'Needs improvement in providing learner support',
+        action: 'Mentorship program enrollment',
+      },
+    ],
+  },
 ];
 
 const statusMap = {
@@ -88,81 +204,60 @@ const statusMap = {
   action_required: { label: 'Action Required', color: 'error', icon: <Warning fontSize="small" /> },
 };
 
-export default function TrainerMonitoring() {
+export default function AssessorMonitoring() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const [selectedTrainer, setSelectedTrainer] = useState(null);
+  const [selectedAssessor, setSelectedAssessor] = useState(null);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
-  const [feedbackRating, setFeedbackRating] = useState(3);
   const [feedbackNotes, setFeedbackNotes] = useState('');
-  const [projectedStatus, setProjectedStatus] = useState('compliant');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [trainers, setTrainers] = useState(trainerData);
+  const [assessors, setAssessors] = useState(assessorData);
+  const [trendsDialogOpen, setTrendsDialogOpen] = useState(false);
   const rowsPerPage = 5;
 
-  // Helper functions
-  const getStatusDescription = (status) => {
-    const descriptions = {
-      exemplary: "Trainer will be flagged as top performer",
-      compliant: "No action needed - meets all standards",
-      needs_improvement: "Will trigger improvement plan",
-      action_required: "Immediate supervisor notification"
-    };
-    return descriptions[status];
-  };
-
-  const determineStatus = (rating, notes = "") => {
-    let status;
-    if (rating >= 4.5) status = 'exemplary';
-    else if (rating >= 3.5) status = 'compliant';
-    else if (rating >= 2.5) status = 'needs_improvement';
-    else status = 'action_required';
-
-    const urgentKeywords = ['safeguarding', 'violation', 'emergency', 'immediate'];
-    const hasUrgentNote = urgentKeywords.some(keyword => 
-      notes.toLowerCase().includes(keyword)
-    );
-
-    return hasUrgentNote ? 'action_required' : status;
+  // Determine status based on compliance score
+  const determineStatus = (score) => {
+    if (score >= 90) return 'exemplary';
+    if (score >= 80) return 'compliant';
+    if (score >= 70) return 'needs_improvement';
+    return 'action_required';
   };
 
   // Event handlers
   const handleSubmitFeedback = () => {
-    const finalStatus = determineStatus(feedbackRating, feedbackNotes);
-    const newObservation = {
-      date: new Date().toISOString().split('T')[0],
-      rating: feedbackRating,
-      notes: feedbackNotes,
-      observer: 'Current User'
-    };
-
-    const updatedTrainers = trainers.map(trainer => 
-      trainer.id === selectedTrainer.id 
-        ? { 
-            ...trainer, 
-            status: finalStatus,
-            observations: [...trainer.observations, newObservation],
-            lastObservation: new Date().toISOString().split('T')[0],
-            complianceScore: Math.min(100, Math.max(0, feedbackRating * 20)) // Simple score calculation
+    const updatedAssessors = assessors.map(assessor =>
+      assessor.id === selectedAssessor.id
+        ? {
+            ...assessor,
+            samples: [
+              ...assessor.samples,
+              {
+                date: new Date().toISOString().split('T')[0],
+                course: 'Multiple',
+                passRate: null,
+                notes: feedbackNotes,
+                action: 'Pending review',
+              },
+            ],
+            lastSampled: new Date().toISOString().split('T')[0],
           }
-        : trainer
+        : assessor
     );
 
-    setTrainers(updatedTrainers);
-    setSnackbarMessage(
-      `Feedback submitted! Status updated to: ${statusMap[finalStatus].label}`
-    );
+    setAssessors(updatedAssessors);
+    setSnackbarMessage('Feedback submitted to assessor!');
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
     setFeedbackDialogOpen(false);
+    setFeedbackNotes('');
   };
 
-  const filteredData = trainers.filter(trainer => {
-    const matchesSearch = trainer.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || trainer.status === statusFilter;
+  const filteredData = assessors.filter(assessor => {
+    const matchesSearch = assessor.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || assessor.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -175,13 +270,13 @@ export default function TrainerMonitoring() {
     <Box sx={{ p: 3 }}>
       {/* Header and Filters */}
       <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-        Trainer Monitoring
+        Assessor Quality Monitoring
       </Typography>
-      
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <TextField
           size="small"
-          placeholder="Search trainers..."
+          placeholder="Search assessors..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -189,7 +284,7 @@ export default function TrainerMonitoring() {
           }}
           sx={{ width: 300 }}
         />
-        
+
         <FormControl size="small" sx={{ width: 200 }}>
           <InputLabel>Filter by Status</InputLabel>
           <Select
@@ -206,62 +301,92 @@ export default function TrainerMonitoring() {
           </Select>
         </FormControl>
       </Box>
-      
+
       {/* Main Table */}
       <TableContainer component={Paper} elevation={3}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: 'primary.light' }}>
-              <TableCell>Trainer</TableCell>
-              <TableCell align="center">Sessions</TableCell>
-              <TableCell align="center">Compliance Score</TableCell>
-              <TableCell align="center">Last Observed</TableCell>
+              <TableCell>Assessor</TableCell>
+              <TableCell align="center">Assessments</TableCell>
+              <TableCell align="center">Sampled</TableCell>
+              <TableCell align="center">Compliance</TableCell>
+              <TableCell align="center">Last Sampled</TableCell>
               <TableCell align="center">Status</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedData.map((trainer) => (
-              <TableRow key={trainer.id}>
+            {paginatedData.map((assessor) => (
+              <TableRow key={assessor.id}>
                 <TableCell>
                   <Stack direction="row" alignItems="center" spacing={2}>
-                    <Avatar src={trainer.avatar} alt={trainer.name} />
-                    <Typography>{trainer.name}</Typography>
+                    <Avatar src={assessor.avatar} alt={assessor.name} />
+                    <Box>
+                      <Typography>{assessor.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {assessor.qualifications[0]}
+                      </Typography>
+                    </Box>
                   </Stack>
                 </TableCell>
-                <TableCell align="center">{trainer.sessionsCompleted}</TableCell>
-                <TableCell align="center">{trainer.complianceScore}%</TableCell>
-                <TableCell align="center">{trainer.lastObservation}</TableCell>
+                <TableCell align="center">
+                  {assessor.assessmentsCompleted}
+                </TableCell>
+                <TableCell align="center">
+                  <Badge
+                    badgeContent={assessor.sampledAssessments}
+                    color="primary"
+                    anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  >
+                    <Assessment color="action" />
+                  </Badge>
+                </TableCell>
+                <TableCell align="center">
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ width: '100%', mr: 1 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={assessor.complianceScore}
+                        color={
+                          assessor.complianceScore >= 90 ? 'success' :
+                          assessor.complianceScore >= 80 ? 'info' :
+                          assessor.complianceScore >= 70 ? 'warning' : 'error'
+                        }
+                      />
+                    </Box>
+                    {assessor.complianceScore}%
+                  </Box>
+                </TableCell>
+                <TableCell align="center">{assessor.lastSampled}</TableCell>
                 <TableCell align="center">
                   <Chip
-                    icon={statusMap[trainer.status].icon}
-                    label={statusMap[trainer.status].label}
-                    color={statusMap[trainer.status].color}
+                    icon={statusMap[assessor.status].icon}
+                    label={statusMap[assessor.status].label}
+                    color={statusMap[assessor.status].color}
                     variant="outlined"
                     size="small"
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <Tooltip title="View Details">
-                    <IconButton 
+                  <Tooltip title="View Sampling Details">
+                    <IconButton
                       color="primary"
-                      onClick={() => setSelectedTrainer(trainer)}
+                      onClick={() => setSelectedAssessor(assessor)}
                     >
                       <Visibility />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Provide Feedback">
-                    <IconButton 
+                  <Tooltip title="Provide IQA Feedback">
+                    <IconButton
                       color="secondary"
                       onClick={() => {
-                        setSelectedTrainer(trainer);
-                        setFeedbackRating(3);
+                        setSelectedAssessor(assessor);
                         setFeedbackNotes('');
-                        setProjectedStatus(determineStatus(3));
                         setFeedbackDialogOpen(true);
                       }}
                     >
-                      <Edit />
+                      <Feedback />
                     </IconButton>
                   </Tooltip>
                 </TableCell>
@@ -270,7 +395,7 @@ export default function TrainerMonitoring() {
           </TableBody>
         </Table>
       </TableContainer>
-      
+
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
         <Pagination
           count={Math.ceil(filteredData.length / rowsPerPage)}
@@ -280,62 +405,113 @@ export default function TrainerMonitoring() {
         />
       </Box>
 
-      {/* Trainer Details Dialog */}
-      <Dialog 
-        open={Boolean(selectedTrainer)} 
-        onClose={() => setSelectedTrainer(null)}
+      {/* Assessor Sampling Details Dialog */}
+      <Dialog
+        open={Boolean(selectedAssessor)}
+        onClose={() => setSelectedAssessor(null)}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          {selectedTrainer?.name}'s Details
-          <IconButton onClick={() => setSelectedTrainer(null)} sx={{ position: 'absolute', right: 8, top: 8 }}>
+          {selectedAssessor?.name}'s Assessment Sampling
+          <IconButton onClick={() => setSelectedAssessor(null)} sx={{ position: 'absolute', right: 8, top: 8 }}>
             <Close />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          {selectedTrainer && (
+          {selectedAssessor && (
             <Box>
               <Stack direction="row" spacing={4} alignItems="center" mb={3}>
-                <Avatar src={selectedTrainer.avatar} sx={{ width: 80, height: 80 }} />
+                <Avatar src={selectedAssessor.avatar} sx={{ width: 80, height: 80 }} />
                 <Box>
-                  <Typography variant="h6">{selectedTrainer.name}</Typography>
+                  <Typography variant="h6">{selectedAssessor.name}</Typography>
                   <Typography color="text.secondary">
-                    {selectedTrainer.qualifications.join(', ')}
+                    {selectedAssessor.qualifications.join(', ')}
                   </Typography>
-                  <Chip
-                    icon={statusMap[selectedTrainer.status].icon}
-                    label={statusMap[selectedTrainer.status].label}
-                    color={statusMap[selectedTrainer.status].color}
-                    sx={{ mt: 1 }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    <Chip
+                      icon={statusMap[selectedAssessor.status].icon}
+                      label={statusMap[selectedAssessor.status].label}
+                      color={statusMap[selectedAssessor.status].color}
+                    />
+                    <Typography variant="body2" sx={{ ml: 2 }}>
+                      {selectedAssessor.assessmentsCompleted} assessments completed
+                    </Typography>
+                  </Box>
                 </Box>
                 <Box>
-                  <Typography>Compliance: {selectedTrainer.complianceScore}%</Typography>
-                  <Typography>Sessions: {selectedTrainer.sessionsCompleted}</Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<BarChart />}
+                    onClick={() => setTrendsDialogOpen(true)}
+                  >
+                    View Trends
+                  </Button>
                 </Box>
               </Stack>
 
-              <Typography variant="h6" gutterBottom>Observation History</Typography>
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom>Sampling History</Typography>
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>Date</TableCell>
-                      <TableCell>Rating</TableCell>
-                      <TableCell>Observer</TableCell>
-                      <TableCell>Notes</TableCell>
+                      <TableCell>Course</TableCell>
+                      <TableCell align="right">Pass Rate</TableCell>
+                      <TableCell>IQA Notes</TableCell>
+                      <TableCell>Actions Taken</TableCell>
+                      <TableCell>Download</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {selectedTrainer.observations.map((obs, index) => (
+                    {selectedAssessor.samples.map((sample, index) => (
                       <TableRow key={index}>
-                        <TableCell>{obs.date}</TableCell>
-                        <TableCell>
-                          <Rating value={obs.rating} precision={0.5} readOnly />
+                        <TableCell>{sample.date}</TableCell>
+                        <TableCell>{sample.course}</TableCell>
+                        <TableCell align="right">
+                          {sample.passRate ? `${sample.passRate}%` : 'N/A'}
                         </TableCell>
-                        <TableCell>{obs.observer}</TableCell>
-                        <TableCell>{obs.notes}</TableCell>
+                        <TableCell>{sample.notes}</TableCell>
+                        <TableCell>{sample.action}</TableCell>
+                        <TableCell>
+                          <Tooltip title="Download Sample Report">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const csvContent = [
+                                  ['Date', 'Course', 'Pass Rate', 'IQA Notes', 'Actions Taken'],
+                                  [
+                                    sample.date,
+                                    sample.course,
+                                    sample.passRate ? `${sample.passRate}%` : 'N/A',
+                                    sample.notes,
+                                    sample.action,
+                                  ],
+                                ]
+                                  .map(row => row.join(','))
+                                  .join('\n');
+
+                                const blob = new Blob([csvContent], { type: 'text/csv' });
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `${selectedAssessor.name}_sample_${sample.date}.csv`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+
+                                setSnackbarMessage('Sample report downloaded successfully!');
+                                setSnackbarSeverity('success');
+                                setSnackbarOpen(true);
+                              }}
+                            >
+                              <FileDownload fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -345,74 +521,108 @@ export default function TrainerMonitoring() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSelectedTrainer(null)}>Close</Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setSelectedAssessor(null);
+              setFeedbackDialogOpen(true);
+            }}
+          >
+            Add Feedback
+          </Button>
+          <Button onClick={() => setSelectedAssessor(null)}>Close</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Feedback Dialog */}
-      <Dialog 
-        open={feedbackDialogOpen} 
+      {/* Trends Dialog */}
+      <Dialog
+        open={trendsDialogOpen}
+        onClose={() => setTrendsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Assessment Trends for {selectedAssessor?.name}
+          <IconButton
+            onClick={() => setTrendsDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedAssessor && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Pass Rate Trends
+              </Typography>
+              <LineChart
+                width={700}
+                height={400}
+                data={selectedAssessor.samples.filter(sample => sample.passRate !== null)}
+                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis
+                  label={{ value: 'Pass Rate (%)', angle: -90, position: 'insideLeft' }}
+                />
+                <RechartsTooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="passRate"
+                  stroke="#8884d8"
+                  activeDot={{ r: 8 }}
+                  name="Pass Rate"
+                />
+              </LineChart>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTrendsDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* IQA Feedback Dialog */}
+      <Dialog
+        open={feedbackDialogOpen}
         onClose={() => setFeedbackDialogOpen(false)}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>
-          Feedback for {selectedTrainer?.name}
+          IQA Feedback for {selectedAssessor?.name}
           <IconButton onClick={() => setFeedbackDialogOpen(false)} sx={{ position: 'absolute', right: 8, top: 8 }}>
             <Close />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
           <Box sx={{ mb: 3 }}>
-            <Typography gutterBottom>Rating (1-5)</Typography>
-            <Rating
-              value={feedbackRating}
-              onChange={(event, newValue) => {
-                setFeedbackRating(newValue);
-                setProjectedStatus(determineStatus(newValue, feedbackNotes));
-              }}
-              precision={0.5}
-              size="large"
-            />
-            
-            {feedbackRating && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: `${statusMap[projectedStatus].color}.light`, borderRadius: 1 }}>
-                <Typography variant="body2"><strong>Status Impact:</strong></Typography>
-                <Chip
-                  label={statusMap[projectedStatus].label}
-                  color={statusMap[projectedStatus].color}
-                  sx={{ mt: 1 }}
-                />
-                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {getStatusDescription(projectedStatus)}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          
-          <Box>
-            <Typography gutterBottom>Observation Notes</Typography>
-            <TextareaAutosize
-              minRows={4}
-              style={{ width: '100%', padding: '8px', fontFamily: 'inherit' }}
-              placeholder="Detailed feedback... (mention any urgent issues)"
+            <Typography gutterBottom>Assessment Quality Feedback</Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={6}
+              placeholder="Provide detailed feedback on assessment quality, consistency, and compliance..."
               value={feedbackNotes}
-              onChange={(e) => {
-                setFeedbackNotes(e.target.value);
-                setProjectedStatus(determineStatus(feedbackRating, e.target.value));
-              }}
+              onChange={(e) => setFeedbackNotes(e.target.value)}
             />
           </Box>
+
+          <Typography variant="body2" color="text.secondary">
+            This feedback will be recorded in the assessor's quality record and sent to them for review.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFeedbackDialogOpen(false)}>Cancel</Button>
-          <Button 
+          <Button
             onClick={handleSubmitFeedback}
             variant="contained"
-            color="primary"
-            startIcon={<Save />}
+            disabled={!feedbackNotes.trim()}
           >
-            Submit Feedback
+            Submit IQA Feedback
           </Button>
         </DialogActions>
       </Dialog>
@@ -424,8 +634,8 @@ export default function TrainerMonitoring() {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setSnackbarOpen(false)} 
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >

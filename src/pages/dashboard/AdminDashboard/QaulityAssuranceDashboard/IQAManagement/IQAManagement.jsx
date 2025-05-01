@@ -20,7 +20,9 @@ import AssessmentSampling from './AssessmentSampling';
 import LMSDataAnalysis from './LMSDataAnalysis';
 import FeedbackManagement from './FeedbackManagement';
 import FeedbackDialog from './FeedbackDialog';
-// TabPanel component (unchanged)
+import IQAReports from './IQAReports';
+
+// TabPanel component
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
 
@@ -223,19 +225,19 @@ function IQAManagement() {
               <Divider />
               <TabPanel value={tabValue} index={0}>
                 <TrainerMonitoring />
-                </TabPanel>
-                <TabPanel value={tabValue} index={1}>
+              </TabPanel>
+              <TabPanel value={tabValue} index={1}>
                 <AssessmentSampling />
-                </TabPanel>
-                <TabPanel value={tabValue} index={2}>
+              </TabPanel>
+              <TabPanel value={tabValue} index={2}>
                 <LMSDataAnalysis />
-                </TabPanel>
-                <TabPanel value={tabValue} index={3}>
+              </TabPanel>
+              <TabPanel value={tabValue} index={3}>
                 <FeedbackManagement />
-                </TabPanel>
-                <TabPanel value={tabValue} index={4}>
-                <Typography>IQA Reports will be displayed here</Typography>
-                </TabPanel>
+              </TabPanel>
+              <TabPanel value={tabValue} index={4}>
+                <IQAReports searchQuery={searchQuery} />
+              </TabPanel>
             </Card>
           </Grid>
           
@@ -562,16 +564,14 @@ function IQAManagement() {
         </Snackbar>
 
         <FeedbackDialog 
-        open={feedbackDialogOpen}
-        onClose={() => setFeedbackDialogOpen(false)}
-        trainers={trainers}
-        courses={courses}
+          open={feedbackDialogOpen}
+          onClose={() => setFeedbackDialogOpen(false)}
+          trainers={trainers}
+          courses={courses}
         />
       </Box>
-
     </LocalizationProvider>
   );
 }
-
 
 export default IQAManagement;

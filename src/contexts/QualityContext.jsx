@@ -1,71 +1,40 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { qualityAPI } from '../services/qualityAPI'; // Mock API
 
+import React, { createContext, useContext, useState } from 'react';
+import PropTypes from 'prop-types';
+
+// Define QualityContext
 const QualityContext = createContext();
 
+// QualityProvider component
 export const QualityProvider = ({ children }) => {
-  // Risk thresholds for sampling
   const [riskThresholds, setRiskThresholds] = useState({
-    newAssessor: 0.5,  // 50% sampling
-    highRisk: 0.7,     // 70% sampling
-    default: 0.2       // 20% sampling
+    samplingRate: 0.1, // Default: 10% of assessments sampled
+    complianceThreshold: 0.9, // Default: 90% compliance required
+    trainerPerformanceThreshold: 0.8, // Default: 80% trainer performance score
   });
 
-  // Active quality actions
-  const [actionItems, setActionItems] = useState([]);
-  
-  // Standardization meetings
-  const [meetings, setMeetings] = useState([]);
-
-  // Fetch initial data
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [actions, upcomingMeetings] = await Promise.all([
-          qualityAPI.getActionItems(),
-          qualityAPI.getStandardizationMeetings()
-        ]);
-        setActionItems(actions);
-        setMeetings(upcomingMeetings);
-      } catch (error) {
-        console.error('Failed to load QA data:', error);
-      }
-    };
-    fetchInitialData();
-  }, []);
-
-  // Calculate risk score for an assessor (dummy algorithm)
-  const calculateRiskScore = (assessor) => {
-    const baseScore = assessor.isNew ? 0.8 : 0.2;
-    const errorScore = Math.min(assessor.recentErrors / 10, 0.5);
-    return baseScore + errorScore; // Score 0-1
+  // Update risk thresholds
+  const updateRiskThresholds = (newThresholds) => {
+    setRiskThresholds((prev) => ({
+      ...prev,
+      ...newThresholds,
+    }));
   };
 
-  // Add a new action item
-  const addActionItem = (item) => {
-    setActionItems([...actionItems, { 
-      ...item, 
-      id: Date.now(), 
-      status: 'open' 
-    }]);
+  // Context value
+  const value = {
+    riskThresholds,
+    updateRiskThresholds,
   };
 
-  return (
-    <QualityContext.Provider
-      value={{
-        riskThresholds,
-        actionItems,
-        meetings,
-        calculateRiskScore,
-        addActionItem,
-        updateRiskThresholds: setRiskThresholds
-      }}
-    >
-      {children}
-    </QualityContext.Provider>
-  );
+  return <QualityContext.Provider value={value}>{children}</QualityContext.Provider>;
 };
 
+QualityProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+// Hook to use QualityContext
 export const useQuality = () => {
   const context = useContext(QualityContext);
   if (!context) {

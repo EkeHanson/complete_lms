@@ -15,6 +15,7 @@ import IQAManagement from './IQAManagement/IQAManagement';
 import EQAManagement from './EQAManagement/EQAManagement';
 import QualityMetrics from './shared/QualityMetrics';
 import AuditTrail from './AuditTrail';
+import QualityStandards from './QualityStandards';
 import { Checklist, GppGood, Assignment, School, History} from '@mui/icons-material';
 
 function TabPanel(props) {
@@ -97,12 +98,13 @@ function QualityAssuranceDashboard() {
           <EQAManagement />
         </TabPanel>
         <TabPanel value={value} index={2}>
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Quality Standards Configuration
           </Typography>
           <Typography>
             This section will contain the standards management interface
-          </Typography>
+          </Typography> */}
+           <QualityStandards />
         </TabPanel>
         <TabPanel value={value} index={3}>
           <AuditTrail />

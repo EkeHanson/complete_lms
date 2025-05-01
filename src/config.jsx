@@ -1,13 +1,8 @@
 import axios from 'axios';
 
-// export const API_BASE_URL = 'http://localhost:9090';
-// export const CMVP_SITE_URL = 'http://localhost:3000';
-// export const CMVP_API_URL = 'http://localhost:9091';
-
-export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
-export const CMVP_SITE_URL = 'https://cmvp.net';
-export const CMVP_API_URL =  'https://test.api.cmvp.net';
-
+export const API_BASE_URL = 'http://localhost:9090';
+export const CMVP_SITE_URL = 'http://localhost:3000';
+export const CMVP_API_URL = 'http://localhost:9091';
 
 // Payment Methods Configuration
 export const paymentMethods = [
@@ -58,11 +53,10 @@ const api = axios.create({
 
 export const isSuperAdmin = () => {
   try {
-    // Get user data from local storage or API
     const userData = localStorage.getItem('user_data');
     if (userData) {
       const user = JSON.parse(userData);
-      return user.role === 'super_admin'; // Adjust this based on your role system
+      return user.role === 'super_admin';
     }
     return false;
   } catch (error) {
@@ -71,55 +65,78 @@ export const isSuperAdmin = () => {
   }
 };
 
+// Prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    //console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`, config.data);
+    const token = localStorage.getItem('accessToken');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url !== '/users/api/token/refresh/'
+    ) {
       originalRequest._retry = true;
-      
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) throw error;
-        
-        const response = await axios.post(`${API_BASE_URL}/users/api/token/refresh/`, {
-          refresh: refreshToken
-        });
-        
-        const { access } = response.data;
-        localStorage.setItem('access_token', access);
-        originalRequest.headers.Authorization = `Bearer ${access}`;
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        const response = await api.post('/users/api/token/refresh/', { refresh: refreshToken });
+        const newAccessToken = response.data.access;
+        localStorage.setItem('accessToken', newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
-      } catch (err) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError.response?.data || refreshError.message);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         window.location.href = '/login';
-        return Promise.reject(err);
+        return Promise.reject(refreshError);
       }
     }
-    
+    console.error(`API Error: ${error.response?.status} ${error.response?.data?.detail || error.message}`);
     return Promise.reject(error);
   }
 );
 
+
 const getCSRFToken = () => {
   const cookieValue = document.cookie
     .split('; ')
-    .find(row => row.startsWith('csrftoken='))
+    .find((row) => row.startsWith('csrftoken='))
     ?.split('=')[1];
   return cookieValue || '';
 };
@@ -144,19 +161,19 @@ export const userAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
-  }
+  },
 };
 
 export const authAPI = {
   login: (credentials) => api.post('/users/api/token/', credentials),
-  logout: () => api.post('/users/api/logout/', { refresh: localStorage.getItem('refresh_token') }),
+  logout: () => api.post('/users/api/logout/', { refresh: localStorage.getItem('refreshToken') }),
   refreshToken: (refreshToken) => api.post('/users/api/token/refresh/', { refresh: refreshToken }),
   getCurrentUser: () => api.get('/users/api/profile/'),
   register: (userData) => api.post('/users/api/register/', userData),
   verifyToken: (token) => api.post('/users/api/token/verify/', { token }),
   changePassword: (data) => api.post('/users/api/change-password/', data),
   resetPassword: (email) => api.post('/users/api/reset-password/', { email }),
-  confirmResetPassword: (data) => api.post('/users/api/reset-password/confirm/', data)
+  confirmResetPassword: (data) => api.post('/users/api/reset-password/confirm/', data),
 };
 
 export const rolesAPI = {
@@ -445,11 +462,12 @@ export const coursesAPI = {
     return api.get(url);
   },
   // FAQ endpoints
-getFAQs: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/faqs/`, { params }),
-createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data),
-updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data),
-deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`),
-reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data),
+  getFAQStats: () => api.get('/courses/faqs/stats/'),
+  getFAQs: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/faqs/`, { params }),
+  createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data),
+  updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data),
+  deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`),
+  reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data),
 
   
 };
@@ -474,21 +492,6 @@ export const paymentAPI = {
   })
 };
 
-// Utility functions
-export const setAuthTokens = (access, refresh) => {
-  localStorage.setItem('access_token', access);
-  localStorage.setItem('refresh_token', refresh);
-};
-
-export const clearAuthTokens = () => {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-};
-
-export const getAuthHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem('access_token')}`
-});
-
 
 export const forumAPI = {
   getForums: (params) => api.get('/forums/api/forums/', { params }),
@@ -503,14 +506,110 @@ export const moderationAPI = {
   moderateItem: (id, data) => api.patch(`/forums/api/queue/${id}/`, data),
   getPendingCount: () => api.get('/forums/api/queue/pending_count/')
 };
+
+// Add to your api.js file
+export const qualityAPI = {
+  // Qualifications
+  getQualifications: (params = {}) => api.get('/quality/api/qualifications/', { params }),
+  createQualification: (data) => api.post('/quality/api/qualifications/', data),
+  updateQualification: (id, data) => api.patch(`/quality/api/qualifications/${id}/`, data),
+  deleteQualification: (id) => api.delete(`/quality/api/qualifications/${id}/`),
+
+  // Assessors
+  getAssessors: (params = {}) => api.get('/quality/api/assessors/', { params }),
+  createAssessor: (data) => api.post('/quality/api/assessors/', data),
+  updateAssessor: (id, data) => api.patch(`/quality/api/assessors/${id}/`, data),
+  deleteAssessor: (id) => api.delete(`/quality/api/assessors/${id}/`),
+
+  // IQAs
+  getIQAs: (params = {}) => api.get('/quality/api/iqas/', { params }),
+  createIQA: (data) => api.post('/quality/api/iqas/', data),
+  updateIQA: (id, data) => api.patch(`/quality/api/iqas/${id}/`, data),
+  deleteIQA: (id) => api.delete(`/quality/api/iqas/${id}/`),
+
+  // EQAs
+  getEQAs: (params = {}) => api.get('/quality/api/eqas/', { params }),
+  createEQA: (data) => api.post('/quality/api/eqas/', data),
+  updateEQA: (id, data) => api.patch(`/quality/api/eqas/${id}/`, data),
+  deleteEQA: (id) => api.delete(`/quality/api/eqas/${id}/`),
+
+  // Learners
+  getLearners: (params = {}) => api.get('/quality/api/learners/', { params }),
+  createLearner: (data) => api.post('/quality/api/learners/', data),
+  updateLearner: (id, data) => api.patch(`/quality/api/learners/${id}/`, data),
+  deleteLearner: (id) => api.delete(`/quality/api/learners/${id}/`),
+
+  // Assessments
+  getAssessments: (params = {}) => api.get('/quality/api/assessments/', { params }),
+  getAssessment: (id) => api.get(`/quality/api/assessments/${id}/`),
+  createAssessment: (data) => api.post('/quality/api/assessments/', data),
+  updateAssessment: (id, data) => api.patch(`/quality/api/assessments/${id}/`, data),
+  deleteAssessment: (id) => api.delete(`/quality/api/assessments/${id}/`),
+
+  // IQA Samples
+  getIQASamples: (params = {}) => api.get('/quality/api/iqasamples/', { params }),
+  createIQASample: (data) => api.post('/quality/api/iqasamples/', data),
+  updateIQASample: (id, data) => api.patch(`/quality/api/iqasamples/${id}/`, data),
+  deleteIQASample: (id) => api.delete(`/quality/api/iqasamples/${id}/`),
+
+  // IQA Sampling Plans
+  getIQASamplingPlans: (params = {}) => api.get('/quality/api/iqasamplingplans/', { params }),
+  createIQASamplingPlan: (data) => api.post('/quality/api/iqasamplingplans/', data),
+  updateIQASamplingPlan: (id, data) => api.patch(`/quality/api/iqasamplingplans/${id}/`, data),
+  deleteIQASamplingPlan: (id) => api.delete(`/quality/api/iqasamplingplans/${id}/`),
+
+  // EQA Visits
+  getEQAVisits: (params = {}) => api.get('/quality/api/eqavisits/', { params }),
+  createEQAVisit: (data) => api.post('/quality/api/eqavisits/', data),
+  updateEQAVisit: (id, data) => api.patch(`/quality/api/eqavisits/${id}/`, data),
+  deleteEQAVisit: (id) => api.delete(`/quality/api/eqavisits/${id}/`),
+
+  // EQA Samples
+  getEQASamples: (params = {}) => api.get('/quality/api/eqasamples/', { params }),
+  createEQASample: (data) => api.post('/quality/api/eqasamples/', data),
+  updateEQASample: (id, data) => api.patch(`/quality/api/eqasamples/${id}/`, data),
+  deleteEQASample: (id) => api.delete(`/quality/api/eqasamples/${id}/`),
+
+  // Dashboard
+  getQualityDashboard: () => api.get('/quality/api/dashboard/'),
+};
+
+// Utility functions
+export const setAuthTokens = (access, refresh) => {
+  localStorage.setItem('accessToken', access);
+  localStorage.setItem('refreshToken', refresh);
+};
+
+export const clearAuthTokens = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+};
+
+export const getAuthHeader = () => ({
+  Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+});
+
 export default {
-  API_BASE_URL,moderationAPI, forumAPI,
-  CMVP_SITE_URL,  CMVP_API_URL,
-  paymentMethods,  currencies,
-  api,  userAPI,  authAPI,
-  rolesAPI,  groupsAPI,  activityAPI,
-  messagingAPI,  scheduleAPI,
-  advertAPI,  coursesAPI,
-  paymentAPI,  setAuthTokens,
-  clearAuthTokens,  getAuthHeader,
+  API_BASE_URL,
+  CMVP_SITE_URL,
+  CMVP_API_URL,
+  paymentMethods,
+  currencies,
+  api,
+  userAPI,
+  authAPI,
+  rolesAPI,
+  groupsAPI,
+  activityAPI,
+  messagingAPI,
+  scheduleAPI,
+  advertAPI,
+  coursesAPI,
+  paymentAPI,
+  forumAPI,
+  moderationAPI,
+  qualityAPI,
+  setAuthTokens,
+  clearAuthTokens,
+  getAuthHeader,
 };

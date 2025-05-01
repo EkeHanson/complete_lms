@@ -10,7 +10,7 @@ import {
 import {
   Refresh as RefreshIcon, People as UsersIcon, School as CoursesIcon,
   CreditCard as PaymentsIcon, Assessment as AnalyticsIcon,
-  EventNote as ScheduleIcon, Email as MessagesIcon,
+  EventNote as ScheduleIcon, Email as MessagesIcon,Feedback as FeedbackIcon,FactCheck as IQAIcon,
   Notifications as AlertsIcon, Storage as DatabaseIcon,
   BarChart as StatsIcon, LibraryBooks as ContentIcon,
   GroupWork as GroupsIcon, VerifiedUser as CertificatesIcon,
@@ -115,6 +115,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
+  const [faqStats, setFAQStats] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -171,7 +172,6 @@ const AdminDashboard = () => {
 
   // Fetch dashboard data
 // Update the fetchDashboardData function in your AdminDashboard component:
-
 const fetchDashboardData = async () => {
   setLoading(true);
   setError(null);
@@ -189,7 +189,8 @@ const fetchDashboardData = async () => {
       certificatesRes,
       advertsRes,
       totalMessagesRes,
-      totalSchedulesRes
+      totalSchedulesRes,
+      faqStatsRes  // Add this
     ] = await Promise.all([
       userAPI.getUserStats(),
       coursesAPI.getCourses(),
@@ -203,7 +204,8 @@ const fetchDashboardData = async () => {
       coursesAPI.getCertificates(),
       advertAPI.getAdverts(),
       messagingAPI.getTotalMessages(),
-      scheduleAPI.getTotalSchedules()
+      scheduleAPI.getTotalSchedules(),
+      coursesAPI.getFAQStats()  // Add this
     ]);
 
     setStats({
@@ -220,6 +222,7 @@ const fetchDashboardData = async () => {
     setGroupStats(groupsRes.data);
     setCertificateStats(certificatesRes.data);
     setAdvertStats(advertsRes.data);
+    setFAQStats(faqStatsRes.data);  // Add this
   } catch (err) {
     console.error('Failed to fetch dashboard data:', err);
     setError('Failed to load dashboard data. Please try again.');
@@ -799,7 +802,79 @@ const fetchDashboardData = async () => {
             </Box>
           </Paper>
         </Grid>
+
+        {/* FAQ Card */}
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">FAQs</Typography>
+              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
+                <ContentIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
+              </Avatar>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {faqStats?.total_faqs || 0}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.active_faqs || 0} active
+              </Typography>
+              <Divider orientation="vertical" flexItem />
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.inactive_faqs || 0} inactive
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        {/* Feedback Card */}
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">Feedback</Typography>
+              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
+                <FeedbackIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
+              </Avatar>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {faqStats?.total_faqs || 0}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.active_faqs || 0} active
+              </Typography>
+              <Divider orientation="vertical" flexItem />
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.inactive_faqs || 0} inactive
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        {/* IQA Card */}
+        <Grid item xs={12} sm={6} md={2.4}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="body2" color="text.secondary">IQA</Typography>
+              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
+                <IQAIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
+              </Avatar>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {faqStats?.total_faqs || 0}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.active_faqs || 0} active
+              </Typography>
+              <Divider orientation="vertical" flexItem />
+              <Typography variant="caption" color="text.secondary">
+                {faqStats?.inactive_faqs || 0} inactive
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
       </Grid>
+
+
 
       {/* Main Content */}
       <Paper sx={{ mb: 4 }}>
