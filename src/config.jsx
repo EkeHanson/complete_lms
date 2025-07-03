@@ -1,8 +1,10 @@
+// config.js
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:9090';
-export const CMVP_SITE_URL = 'http://localhost:3000';
-export const CMVP_API_URL = 'http://localhost:9091';
+// Environment variables for URLs (fallback to localhost for development)
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:9090';
+export const CMVP_SITE_URL = process.env.REACT_APP_CMVP_SITE_URL || 'http://localhost:3000';
+export const CMVP_API_URL = process.env.REACT_APP_CMVP_API_URL || 'http://localhost:9091';
 
 // Payment Methods Configuration
 export const paymentMethods = [
@@ -49,45 +51,25 @@ export const currencies = ['USD', 'NGN', 'EUR', 'GBP', 'KES', 'GHS'];
 // Create base axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Enable sending cookies with requests
 });
 
-export const isSuperAdmin = () => {
+export const isSuperAdmin = async () => {
   try {
-    const userData = localStorage.getItem('user_data');
-    if (userData) {
-      const user = JSON.parse(userData);
-      return user.role === 'super_admin';
-    }
-    return false;
+    const response = await api.get('/api/token/validate/');
+    return response.data.user.role === 'super_admin';
   } catch (error) {
     console.error('Error checking super admin status:', error);
     return false;
   }
 };
 
-// Prevent multiple simultaneous refresh attempts
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
-// Request interceptor
+// Request interceptor to add CSRF token
 api.interceptors.request.use(
   (config) => {
-    //console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`, config.data);
-    const token = localStorage.getItem('accessToken');
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      config.headers['X-CSRFToken'] = csrfToken;
     }
     return config;
   },
@@ -97,7 +79,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor for handling 401 errors
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -105,24 +87,15 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== '/users/api/token/refresh/'
+      originalRequest.url !== '/api/token/refresh/'
     ) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-        const response = await api.post('/users/api/token/refresh/', { refresh: refreshToken });
-        const newAccessToken = response.data.access;
-        localStorage.setItem('accessToken', newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        await api.post('/api/token/refresh/');
         return api(originalRequest);
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError.response?.data || refreshError.message);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        sessionStorage.setItem('loginError', refreshError.response?.data?.detail || 'Session expired. Please log in again.');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -132,7 +105,6 @@ api.interceptors.response.use(
   }
 );
 
-
 const getCSRFToken = () => {
   const cookieValue = document.cookie
     .split('; ')
@@ -141,14 +113,43 @@ const getCSRFToken = () => {
   return cookieValue || '';
 };
 
-// API endpoints configuration
+// Auth API
+export const authAPI = {
+  login: (credentials) => api.post('/api/token/', credentials),
+  logout: () => api.post('/api/logout/'),
+  refreshToken: () => api.post('/api/token/refresh/'),
+  getCurrentUser: () => api.get('/api/token/validate/'),
+  register: (userData) => api.post('/users/api/register/', userData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  verifyToken: () => api.get('/api/token/validate/'),
+  changePassword: (data) => api.post('/users/api/change-password/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  resetPassword: (email) => api.post('/users/api/reset-password/', { email }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  confirmResetPassword: (data) => api.post('/users/api/reset-password/confirm/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+};
+
+// User API
 export const userAPI = {
-  impersonateUser: (id) => api.post(`/users/api/users/${id}/impersonate/`),
+  impersonateUser: (id) => api.post(`/users/api/users/${id}/impersonate/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
   getUsers: (params = {}) => api.get('/users/api/users/', { params }),
   getUser: (id) => api.get(`/users/api/users/${id}/`),
-  createUser: (userData) => api.post('/users/api/register/', userData),
-  updateUser: (id, userData) => api.patch(`/users/api/users/${id}/`, userData),
-  deleteUser: (id) => api.delete(`/users/api/users/${id}/`),
+  createUser: (userData) => api.post('/users/api/register/', userData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateUser: (id, userData) => api.patch(`/users/api/users/${id}/`, userData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteUser: (id) => api.delete(`/users/api/users/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   fetchRoleStats: (params = {}) => api.get('/users/api/users/role_stats/', { params }),
   getUserActivities: (params = {}) => api.get('/users/api/user-activities/', { params }),
   getUserStats: () => api.get('/users/api/users/stats/'),
@@ -164,112 +165,168 @@ export const userAPI = {
   },
 };
 
-export const authAPI = {
-  login: (credentials) => api.post('/users/api/token/', credentials),
-  logout: () => api.post('/users/api/logout/', { refresh: localStorage.getItem('refreshToken') }),
-  refreshToken: (refreshToken) => api.post('/users/api/token/refresh/', { refresh: refreshToken }),
-  getCurrentUser: () => api.get('/users/api/profile/'),
-  register: (userData) => api.post('/users/api/register/', userData),
-  verifyToken: (token) => api.post('/users/api/token/verify/', { token }),
-  changePassword: (data) => api.post('/users/api/change-password/', data),
-  resetPassword: (email) => api.post('/users/api/reset-password/', { email }),
-  confirmResetPassword: (data) => api.post('/users/api/reset-password/confirm/', data),
-};
-
+// Roles API
 export const rolesAPI = {
   getRoles: (params = {}) => api.get('/groups/api/roles/', { params }),
   getRole: (id) => api.get(`/groups/api/roles/${id}/`),
-  createRole: (data) => api.post('/groups/api/roles/', data),
-  updateRole: (id, data) => api.patch(`/groups/api/roles/${id}/`, data),
-  deleteRole: (id) => api.delete(`/groups/api/roles/${id}/`),
-  setDefaultRole: (id) => api.post(`/groups/api/roles/${id}/set_default/`, {}),
+  createRole: (data) => api.post('/groups/api/roles/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateRole: (id, data) => api.patch(`/groups/api/roles/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteRole: (id) => api.delete(`/groups/api/roles/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  setDefaultRole: (id) => api.post(`/groups/api/roles/${id}/set_default/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
   getRolePermissions: (id) => api.get(`/groups/api/roles/${id}/permissions/`),
-  updateRolePermissions: (id, permissions) => api.put(`/groups/api/roles/${id}/permissions/`, { permissions }),
-  validateRole: (data) => api.post('/groups/api/roles/validate/', data)
+  updateRolePermissions: (id, permissions) => api.put(`/groups/api/roles/${id}/permissions/`, { permissions }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  validateRole: (data) => api.post('/groups/api/roles/validate/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
 };
 
+// Groups API
 export const groupsAPI = {
   getGroups: (params = {}) => api.get('/groups/api/groups/', { params }),
   getGroup: (id) => api.get(`/groups/api/groups/${id}/`),
-  createGroup: (data) => api.post('/groups/api/groups/', data),
-  updateGroup: (id, data) => api.patch(`/groups/api/groups/${id}/`, data),
-  deleteGroup: (id) => api.delete(`/groups/api/groups/${id}/`),
+  createGroup: (data) => api.post('/groups/api/groups/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateGroup: (id, data) => api.patch(`/groups/api/groups/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteGroup: (id) => api.delete(`/groups/api/groups/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   getGroupMembers: (groupId) => api.get(`/groups/api/groups/${groupId}/members/`),
   getGroupMembersByName: (name) => api.get(`/groups/api/groups/by-name/${name}/members/`),
-  addGroupMember: (groupId, userId) => api.post(`/groups/api/groups/${groupId}/members/`, { user_id: userId }),
-  removeGroupMember: (groupId, userId) => api.delete(`/groups/api/groups/${groupId}/members/${userId}/`),
+  addGroupMember: (groupId, userId) => api.post(`/groups/api/groups/${groupId}/members/`, { user_id: userId }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  removeGroupMember: (groupId, userId) => api.delete(`/groups/api/groups/${groupId}/members/${userId}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   updateGroupMembers: (groupId, data) => {
     const numericMemberIds = (data.members || []).map(id => Number(id));
     return api.post(`/groups/api/groups/${groupId}/update_members/`, { members: numericMemberIds }, {
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
     });
-  }
+  },
 };
 
+// Activity API
 export const activityAPI = {
   getActivities: (params = {}) => api.get('/activitylog/api/activities/', { params }),
   getActivity: (id) => api.get(`/activitylog/api/activities/${id}/`),
-  getUserActivities: (userId) => api.get(`/activitylog/api/user-activities/${userId}/`)
+  getUserActivities: (userId) => api.get(`/activitylog/api/user-activities/${userId}/`),
 };
 
+// Messaging API
 export const messagingAPI = {
   getMessages: (params = {}) => api.get('/messaging/api/messages/', { params }),
   getMessage: (id) => api.get(`/messaging/api/messages/${id}/`),
-  createMessage: (data) => api.post('/messaging/api/messages/', data),
-  updateMessage: (id, data) => api.patch(`/messaging/api/messages/${id}/`, data),
-  deleteMessage: (id) => api.delete(`/messaging/api/messages/${id}/`),
-  markAsRead: (id) => api.patch(`/messaging/api/messages/${id}/mark_as_read/`),
-  forwardMessage: (id, data) => api.post(`/messaging/api/messages/${id}/forward/`, data),
-  replyToMessage: (id, data) => api.post(`/messaging/api/messages/${id}/reply/`, data),
-  getMessageTypes: () => api.get('/messaging/api/message-types'),
-  createMessageType: (data) => api.post('/messaging/api/message-types/', data),
-  updateMessageType: (id, data) => api.patch(`/messaging/api/message-types/${id}/`, data),
-  deleteMessageType: (id) => api.delete(`/messaging/api/message-types/${id}/`),
-  setDefaultMessageType: (id) => api.post(`/message-types/${id}/set_default/`),
+  createMessage: (data) => api.post('/messaging/api/messages/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateMessage: (id, data) => api.patch(`/messaging/api/messages/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteMessage: (id) => api.delete(`/messaging/api/messages/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  markAsRead: (id) => api.patch(`/messaging/api/messages/${id}/mark_as_read/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  forwardMessage: (id, data) => api.post(`/messaging/api/messages/${id}/forward/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  replyToMessage: (id, data) => api.post(`/messaging/api/messages/${id}/reply/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  getMessageTypes: () => api.get('/messaging/api/message-types/'),
+  createMessageType: (data) => api.post('/messaging/api/message-types/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateMessageType: (id, data) => api.patch(`/messaging/api/message-types/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteMessageType: (id) => api.delete(`/messaging/api/message-types/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  setDefaultMessageType: (id) => api.post(`/messaging/api/message-types/${id}/set_default/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
   getTotalMessages: () => api.get('/messaging/api/messages/stats/'),
   getUnreadCount: () => api.get('/messaging/api/messages/unread_count/'),
   uploadAttachment: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/attachments/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/attachments/', formData, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' }
+    });
   },
-  deleteAttachment: (id) => api.delete(`/attachments/${id}/`)
+  deleteAttachment: (id) => api.delete(`/attachments/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
 };
 
+// Schedule API
 export const scheduleAPI = {
   getSchedules: (params) => api.get('/schedule/api/schedules/', { params }),
   getSchedule: (id) => api.get(`/schedule/api/schedules/${id}/`),
-  createSchedule: (data) => api.post('/schedule/api/schedules/', data),
-  updateSchedule: (id, data) => api.put(`/schedule/api/schedules/${id}/`, data),
-  deleteSchedule: (id) => api.delete(`/schedule/api/schedules/${id}/`),
-  respondToSchedule: (id, response) => api.post(`/schedule/api/schedules/${id}/respond/`, { response_status: response }),
+  createSchedule: (data) => api.post('/schedule/api/schedules/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateSchedule: (id, data) => api.put(`/schedule/api/schedules/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteSchedule: (id) => api.delete(`/schedule/api/schedules/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  respondToSchedule: (id, response) => api.post(`/schedule/api/schedules/${id}/respond/`, { response_status: response }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
   getTotalSchedules: () => api.get('/schedule/api/schedules/stats/'),
   getUpcomingSchedules: () => api.get('/schedule/api/schedules/upcoming/'),
 };
 
+// Advert API
 export const advertAPI = {
   createAdvertWithImage: (formData) => {
     return api.post('/adverts/api/adverts/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data', 'X-CSRFToken': getCSRFToken() }
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' }
     });
   },
   createAdvert: (advertData) => {
     return api.post('/adverts/api/adverts/', advertData, {
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
     });
   },
   updateAdvert: (id, advertData, isFormData = false) => {
     return api.put(`/adverts/api/adverts/${id}/`, advertData, {
-      headers: { 'Content-Type': isFormData ? 'multipart/form-data' : 'application/json', 'X-CSRFToken': getCSRFToken() }
+      headers: { 
+        'X-CSRFToken': getCSRFToken(), 
+        'Content-Type': isFormData ? 'multipart/form-data' : 'application/json' 
+      }
     });
   },
-  deleteAdvert: (id) => api.delete(`/adverts/api/adverts/${id}/`),
-  toggleAdvertStatus: (id, status) => api.patch(`/adverts/api/adverts/${id}/`, { status }),
+  deleteAdvert: (id) => api.delete(`/adverts/api/adverts/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  toggleAdvertStatus: (id, status) => api.patch(`/adverts/api/adverts/${id}/`, { status }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
   getAdvertStats: () => api.get('/adverts/api/adverts/stats/'),
   getAdverts: () => api.get('/adverts/api/adverts/'),
   getTargetStats: () => api.get('/adverts/api/adverts/target_stats/'),
 };
 
+// Courses API
 export const coursesAPI = {
   getCategories: (params = {}) => api.get('/courses/categories/', { params }),
   getCategory: (id) => api.get(`/courses/categories/${id}/`),
@@ -288,16 +345,13 @@ export const coursesAPI = {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' }
   }),
   updateCourse: (id, formData) => api.patch(`/courses/courses/${id}/`, formData, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' }
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
   }),
   deleteCourse: (id) => api.delete(`/courses/courses/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
-
   getMostPopularCourse: () => api.get('/courses/courses/most_popular/'),
-
   getLeastPopularCourse: () => api.get('/courses/courses/least_popular/'),
-
   getModules: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/modules/`, { params }),
   getModule: (courseId, moduleId) => api.get(`/courses/courses/${courseId}/modules/${moduleId}/`),
   createModule: (courseId, data) => api.post(`/courses/courses/${courseId}/modules/`, data, {
@@ -330,115 +384,47 @@ export const coursesAPI = {
   deleteResource: (courseId, resourceId) => api.delete(`/courses/courses/${courseId}/resources/${resourceId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
-
-    getBadges: () => axios.get('/courses/api/badges/'),
-    createBadge: data => axios.post('/courses/api/badges/', data),
-    updateBadge: (id, data) => axios.put(`/courses/api/badges/${id}/`, data),
-    deleteBadge: id => axios.delete(`/courses/api/badges/${id}/`),
-    getLeaderboard: courseId =>
-      axios.get(`/courses/api/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
-    updatePointsConfig: (courseId, config) => axios.post(`/courses/api/courses/${courseId}/points-config/`, config),
-
-/* ENROLLMENT METHODS */
-  
-  // 1. ADMIN ENROLLMENT METHODS
-  
-  /**
-   * Admin enrolls a single user in a course
-   * @param {number} courseId - ID of the course to enroll in
-   * @param {object} data - Should contain { user_id: number }
-   * @returns {Promise} Axios response
-   */
+  getBadges: () => api.get('/courses/api/badges/'),
+  createBadge: (data) => api.post('/courses/api/badges/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateBadge: (id, data) => api.put(`/courses/api/badges/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteBadge: (id) => api.delete(`/courses/api/badges/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  getLeaderboard: (courseId) =>
+    api.get(`/courses/api/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
+  updatePointsConfig: (courseId, config) => api.post(`/courses/api/courses/${courseId}/points-config/`, config, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  // Enrollment Methods
   adminSingleEnroll: (courseId, data) => api.post(`/courses/enrollments/course/${courseId}/`, data, {
-    headers: { 
-      'X-CSRFToken': getCSRFToken(), 
-      'Content-Type': 'application/json' 
-    }
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
   }),
-  
-  /**
-   * Admin bulk enrolls users in a specific course
-   * @param {number} courseId - ID of the course
-   * @param {Array} userIds - Array of user IDs to enroll
-   * @returns {Promise} Axios response
-   */
-  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/courses/enrollments/course/${courseId}/bulk/`, { 
-    user_ids: userIds 
-  }, {
-    headers: { 
-      'X-CSRFToken': getCSRFToken(), 
-      'Content-Type': 'application/json' 
-    }
+  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/courses/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
   }),
-  
-  /**
-   * Admin bulk enrolls users across multiple courses
-   * @param {Array} enrollmentsData - Array of { course_id: number, user_id: number } objects
-   * @returns {Promise} Axios response
-   */
   adminBulkEnroll: (enrollmentsData) => api.post('/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
-    headers: { 
-      'X-CSRFToken': getCSRFToken(), 
-      'Content-Type': 'application/json' 
-    }
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
   }),
-    /**
-   * Admin-only: Get all enrollments in the system
-   * @returns {Promise} Axios response
-   */
-    getAllEnrollments: () => api.get('/courses/enrollments/all_enrollments/'),
-  
-
-  // 2. USER SELF-ENROLLMENT METHOD
-  
-  /**
-   * User enrolls themselves in a course
-   * @param {number} courseId - ID of the course to enroll in
-   * @returns {Promise} Axios response
-   */
+  getAllEnrollments: () => api.get('/courses/enrollments/all_enrollments/'),
   selfEnroll: (courseId) => api.post(`/courses/enrollments/self-enroll/${courseId}/`, {}, {
-    headers: { 
-      'X-CSRFToken': getCSRFToken(), 
-      'Content-Type': 'application/json' 
-    }
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
   }),
-
-  // 3. ENROLLMENT QUERY METHODS
-  /**
-   * Get enrollments - all or filtered by course
-   * @param {number|null} courseId - Optional course ID to filter by
-   * @returns {Promise} Axios response
-   */
   getEnrollments: (courseId = null) => {
     const url = courseId ? `/courses/enrollments/course/${courseId}/` : '/enrollments/';
     return api.get(url);
   },
-  
-  /**
-   * Get all enrollments for a specific user
-   * @param {number} userId - ID of the user
-   * @returns {Promise} Axios response
-   */
-  // getUserEnrollments: (userId) => api.get(`/courses/enrollments/user_enrollments/${userId}/`),
-
   getUserEnrollments: (userId = null) => {
-    // If no user ID is provided, it will fetch the current user's enrollments
     const url = userId ? `/courses/enrollments/user_enrollments/${userId}/` : '/courses/enrollments/user_enrollments/';
     return api.get(url);
   },
-  
-  /**
-   * Admin-only: Get all enrollments for a specific course
-   * @param {number} courseId - ID of the course
-   * @returns {Promise} Axios response
-   */
   getCourseEnrollmentsAdmin: (courseId) => api.get(`/courses/enrollments/course-enrollments/${courseId}/`),
-  
-
   deleteEnrollment: (id) => api.delete(`/courses/enrollments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() }
   }),
-
   getRatings: (courseId = null) => {
     const url = courseId ? `/courses/ratings/course/${courseId}/` : '/courses/ratings/';
     return api.get(url);
@@ -461,17 +447,23 @@ export const coursesAPI = {
     const url = courseId ? `/courses/certificates/course/${courseId}/` : '/courses/certificates/';
     return api.get(url);
   },
-  // FAQ endpoints
   getFAQStats: () => api.get('/courses/faqs/stats/'),
   getFAQs: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/faqs/`, { params }),
-  createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data),
-  updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data),
-  deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`),
-  reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data),
-
-  
+  createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
 };
 
+// Payment API
 export const paymentAPI = {
   getPaymentConfig: () => api.get('/payments/payment-config'),
   createPaymentConfig: (data) => api.post('/payments/payment-config', data, {
@@ -489,104 +481,161 @@ export const paymentAPI = {
   }),
   updateSiteConfig: (data) => api.patch('/payments/site-config/update', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
-  })
+  }),
 };
 
-
+// Forum API
 export const forumAPI = {
   getForums: (params) => api.get('/forums/api/forums/', { params }),
-  createForum: (data) => api.post('/forums/api/forums/', data),
-  updateForum: (id, data) => api.patch(`/forums/api/forums/${id}/`, data),
-  deleteForum: (id) => api.delete(`/forums/api/forums/${id}/`),
-  getForumStats: () => api.get('/forums/api/forums/stats/')
+  createForum: (data) => api.post('/forums/api/forums/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateForum: (id, data) => api.patch(`/forums/api/forums/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteForum: (id) => api.delete(`/forums/api/forums/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
+  getForumStats: () => api.get('/forums/api/forums/stats/'),
 };
 
+// Moderation API
 export const moderationAPI = {
   getModerationQueue: (params) => api.get('/forums/api/queue/', { params }),
-  moderateItem: (id, data) => api.patch(`/forums/api/queue/${id}/`, data),
-  getPendingCount: () => api.get('/forums/api/queue/pending_count/')
+  moderateItem: (id, data) => api.patch(`/forums/api/queue/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  getPendingCount: () => api.get('/forums/api/queue/pending_count/'),
 };
 
-// Add to your api.js file
+// Quality API
 export const qualityAPI = {
   // Qualifications
   getQualifications: (params = {}) => api.get('/quality/api/qualifications/', { params }),
-  createQualification: (data) => api.post('/quality/api/qualifications/', data),
-  updateQualification: (id, data) => api.patch(`/quality/api/qualifications/${id}/`, data),
-  deleteQualification: (id) => api.delete(`/quality/api/qualifications/${id}/`),
-
+  createQualification: (data) => api.post('/quality/api/qualifications/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateQualification: (id, data) => api.patch(`/quality/api/qualifications/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteQualification: (id) => api.delete(`/quality/api/qualifications/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // Assessors
   getAssessors: (params = {}) => api.get('/quality/api/assessors/', { params }),
-  createAssessor: (data) => api.post('/quality/api/assessors/', data),
-  updateAssessor: (id, data) => api.patch(`/quality/api/assessors/${id}/`, data),
-  deleteAssessor: (id) => api.delete(`/quality/api/assessors/${id}/`),
-
+  createAssessor: (data) => api.post('/quality/api/assessors/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateAssessor: (id, data) => api.patch(`/quality/api/assessors/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteAssessor: (id) => api.delete(`/quality/api/assessors/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // IQAs
   getIQAs: (params = {}) => api.get('/quality/api/iqas/', { params }),
-  createIQA: (data) => api.post('/quality/api/iqas/', data),
-  updateIQA: (id, data) => api.patch(`/quality/api/iqas/${id}/`, data),
-  deleteIQA: (id) => api.delete(`/quality/api/iqas/${id}/`),
-
+  createIQA: (data) => api.post('/quality/api/iqas/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateIQA: (id, data) => api.patch(`/quality/api/iqas/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteIQA: (id) => api.delete(`/quality/api/iqas/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // EQAs
   getEQAs: (params = {}) => api.get('/quality/api/eqas/', { params }),
-  createEQA: (data) => api.post('/quality/api/eqas/', data),
-  updateEQA: (id, data) => api.patch(`/quality/api/eqas/${id}/`, data),
-  deleteEQA: (id) => api.delete(`/quality/api/eqas/${id}/`),
-
+  createEQA: (data) => api.post('/quality/api/eqas/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateEQA: (id, data) => api.patch(`/quality/api/eqas/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteEQA: (id) => api.delete(`/quality/api/eqas/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // Learners
   getLearners: (params = {}) => api.get('/quality/api/learners/', { params }),
-  createLearner: (data) => api.post('/quality/api/learners/', data),
-  updateLearner: (id, data) => api.patch(`/quality/api/learners/${id}/`, data),
-  deleteLearner: (id) => api.delete(`/quality/api/learners/${id}/`),
-
+  createLearner: (data) => api.post('/quality/api/learners/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateLearner: (id, data) => api.patch(`/quality/api/learners/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteLearner: (id) => api.delete(`/quality/api/learners/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // Assessments
   getAssessments: (params = {}) => api.get('/quality/api/assessments/', { params }),
   getAssessment: (id) => api.get(`/quality/api/assessments/${id}/`),
-  createAssessment: (data) => api.post('/quality/api/assessments/', data),
-  updateAssessment: (id, data) => api.patch(`/quality/api/assessments/${id}/`, data),
-  deleteAssessment: (id) => api.delete(`/quality/api/assessments/${id}/`),
-
+  createAssessment: (data) => api.post('/quality/api/assessments/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateAssessment: (id, data) => api.patch(`/quality/api/assessments/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteAssessment: (id) => api.delete(`/quality/api/assessments/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // IQA Samples
   getIQASamples: (params = {}) => api.get('/quality/api/iqasamples/', { params }),
-  createIQASample: (data) => api.post('/quality/api/iqasamples/', data),
-  updateIQASample: (id, data) => api.patch(`/quality/api/iqasamples/${id}/`, data),
-  deleteIQASample: (id) => api.delete(`/quality/api/iqasamples/${id}/`),
-
+  createIQASample: (data) => api.post('/quality/api/iqasamples/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateIQASample: (id, data) => api.patch(`/quality/api/iqasamples/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteIQASample: (id) => api.delete(`/quality/api/iqasamples/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // IQA Sampling Plans
   getIQASamplingPlans: (params = {}) => api.get('/quality/api/iqasamplingplans/', { params }),
-  createIQASamplingPlan: (data) => api.post('/quality/api/iqasamplingplans/', data),
-  updateIQASamplingPlan: (id, data) => api.patch(`/quality/api/iqasamplingplans/${id}/`, data),
-  deleteIQASamplingPlan: (id) => api.delete(`/quality/api/iqasamplingplans/${id}/`),
-
+  createIQASamplingPlan: (data) => api.post('/quality/api/iqasamplingplans/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateIQASamplingPlan: (id, data) => api.patch(`/quality/api/iqasamplingplans/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteIQASamplingPlan: (id) => api.delete(`/quality/api/iqasamplingplans/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // EQA Visits
   getEQAVisits: (params = {}) => api.get('/quality/api/eqavisits/', { params }),
-  createEQAVisit: (data) => api.post('/quality/api/eqavisits/', data),
-  updateEQAVisit: (id, data) => api.patch(`/quality/api/eqavisits/${id}/`, data),
-  deleteEQAVisit: (id) => api.delete(`/quality/api/eqavisits/${id}/`),
-
+  createEQAVisit: (data) => api.post('/quality/api/eqavisits/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateEQAVisit: (id, data) => api.patch(`/quality/api/eqavisits/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteEQAVisit: (id) => api.delete(`/quality/api/eqavisits/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // EQA Samples
   getEQASamples: (params = {}) => api.get('/quality/api/eqasamples/', { params }),
-  createEQASample: (data) => api.post('/quality/api/eqasamples/', data),
-  updateEQASample: (id, data) => api.patch(`/quality/api/eqasamples/${id}/`, data),
-  deleteEQASample: (id) => api.delete(`/quality/api/eqasamples/${id}/`),
-
+  createEQASample: (data) => api.post('/quality/api/eqasamples/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  updateEQASample: (id, data) => api.patch(`/quality/api/eqasamples/${id}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' }
+  }),
+  deleteEQASample: (id) => api.delete(`/quality/api/eqasamples/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  }),
   // Dashboard
   getQualityDashboard: () => api.get('/quality/api/dashboard/'),
 };
 
 // Utility functions
-export const setAuthTokens = (access, refresh) => {
-  localStorage.setItem('accessToken', access);
-  localStorage.setItem('refreshToken', refresh);
+export const setAuthTokens = () => {
+  // No need to set tokens manually; backend sets HttpOnly cookies
 };
 
 export const clearAuthTokens = () => {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
+  // No need to clear tokens manually; handled by logout API
 };
 
 export const getAuthHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+  // No need for Authorization header; cookies are sent automatically
 });
 
 export default {

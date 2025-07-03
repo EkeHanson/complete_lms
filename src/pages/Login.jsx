@@ -1,3 +1,4 @@
+// Login.js
 import React, { useState } from 'react';
 import {
   Box,
@@ -48,7 +49,6 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -89,48 +89,42 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
-      const response = await login(formData.email, formData.password);
-      
-      //console.log('Login response:', response);
-      
-      if (response.access) {
-        localStorage.setItem('accessToken', response.access);
-        localStorage.setItem('refreshToken', response.refresh);
-        localStorage.setItem('user', JSON.stringify(response.user));
-    
-        // Add a small delay to ensure auth state updates
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Use navigate instead of window.location.href
-        switch(response.user.role.toLowerCase()) {
-          case 'admin':
-          case 'super_admin':
-            navigate('/admin');
-            break;
-          case 'instructor':
-          case 'trainer':
-            window.location.href = '/instructor-dashboard';
-            break;
-          case 'learner':
-          case 'student':
-            window.location.href = '/student-dashboard';
-            break;
-          default:
-            window.location.href = '/';
-        }
+      const { user } = await login(formData.email, formData.password);
+
+      // Redirect based on user role
+      switch (user.role.toLowerCase()) {
+        case 'admin':
+        case 'super_admin':
+          navigate('/admin');
+          break;
+        case 'instructor':
+        case 'trainer':
+          navigate('/instructor-dashboard');
+          break;
+        case 'learner':
+        case 'student':
+          navigate('/student-dashboard');
+          break;
+        default:
+          navigate('/');
       }
     } catch (error) {
       console.error('Login error:', error);
       setErrors({
-        general: error.response?.data?.detail || 'Login failed. Please try again.'
+        general:
+          error.response?.data?.detail ||
+          'Login failed. Please try again.',
       });
+      if (error.response?.data?.remaining_attempts) {
+        setRemainingAttempts(error.response.data.remaining_attempts);
+      }
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Container maxWidth="sm" sx={{ py: isMobile ? 4 : 8 }}>
@@ -139,7 +133,6 @@ const Login = () => {
         borderRadius: 2,
         border: isMobile ? 'none' : `1px solid ${theme.palette.divider}`
       }}>
-        {/* Header */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography variant="h4" component="h1" sx={{ 
             fontWeight: 700,
@@ -152,13 +145,9 @@ const Login = () => {
           </Typography>
         </Box>
 
-        {/* Error message */}
         {errors.general && (
           <Alert 
-            severity={
-              remainingAttempts !== null && remainingAttempts <= 2 ? 
-              'warning' : 'error'
-            } 
+            severity={remainingAttempts !== null && remainingAttempts <= 2 ? 'warning' : 'error'} 
             sx={{ mb: 3 }}
           >
             {errors.general}
@@ -177,7 +166,6 @@ const Login = () => {
           </Alert>
         )}
 
-        {/* Login Form */}
         <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
           <TextField
             fullWidth
@@ -257,7 +245,6 @@ const Login = () => {
           </Button>
         </Box>
 
-        {/* Sign Up Link */}
         <Box sx={{ 
           textAlign: 'center',
           mt: 3

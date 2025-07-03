@@ -1,54 +1,31 @@
-// src/services/auth.js
+// src/services/auth.jsx
 import { authAPI } from '../config';
-import axios from 'axios';
 
 export const login = async (email, password) => {
   try {
     const response = await authAPI.login({ email, password });
+    return {
+      user: response.data.user,
+    };
+  } catch (error) {
+    throw error;
+  }
+};
 
-    console.log("response")
-    console.log(response)
-    console.log("response")
-    
-    if (response.data.access) {
-      localStorage.setItem('accessToken', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      
-      // Get and store user profile
-      const profileResponse = await getProfile();
-      localStorage.setItem('user', JSON.stringify(profileResponse.data));
-    }
-    
+export const getProfile = async () => {
+  try {
+    const response = await authAPI.getCurrentUser();
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-export const logout = () => {
-  authAPI.logout().then(() => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-  });
-};
-
-export const getCurrentUser = () => {
-  return JSON.parse(localStorage.getItem('user'));
-};
-
-export const refreshToken = async () => {
+export const logout = async () => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
-      refresh: localStorage.getItem('refreshToken')
-    });
-    
-    if (response.data.access) {
-      localStorage.setItem('accessToken', response.data.access);
-    }
-    
-    return response.data;
+    await authAPI.logout();
   } catch (error) {
+    console.error('Logout error:', error);
     throw error;
   }
 };
@@ -56,26 +33,13 @@ export const refreshToken = async () => {
 export const register = async (userData) => {
   try {
     const response = await authAPI.register(userData);
-    return response.data;
+    return {
+      user: response.data.user,
+    };
   } catch (error) {
     throw error;
   }
 };
 
-export const getProfile = async () => {
-  return authAPI.getCurrentUser();
-};
-
-// Optional: You can still provide a default export that contains all methods
-const authService = {
-  login,
-  logout,
-  getCurrentUser,
-  refreshToken,
-  register,
-  getProfile
-};
-
+// Export authAPI for use in other modules
 export { authAPI };
-export default authService;
-

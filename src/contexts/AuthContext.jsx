@@ -1,6 +1,7 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { authAPI } from '../services/auth';
+import { authAPI, getAuthHeader } from '../services/auth';
 import { QA_ROLES } from '../constants/qaRoles';
 
 // Create context
@@ -20,9 +21,9 @@ export const AuthProvider = ({ children }) => {
       qaStats: {
         lastSampled: userData.lastSampled || null,
         complianceScore: userData.complianceScore || 0,
-        completedTrainings: userData.completedTrainings || []
+        completedTrainings: userData.completedTrainings || [],
       },
-      permissions: QA_ROLES[userData.role]?.permissions || []
+      permissions: QA_ROLES[userData.role]?.permissions || [],
     };
   };
 
@@ -31,11 +32,9 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const response = await authAPI.getCurrentUser();
-      
       if (!response.data) {
         throw new Error('No user data returned');
       }
-
       setUser(transformUserData(response.data));
       setError(null);
     } catch (err) {
@@ -49,22 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth on mount
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          await authAPI.refreshToken(refreshToken);
-          await fetchUser();
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        localStorage.removeItem('refreshToken');
-        setLoading(false);
-      }
-    };
-
-    initAuth();
+    fetchUser();
   }, [fetchUser]);
 
   // Login handler
@@ -72,13 +56,9 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await authAPI.login(credentials);
-      
-      if (!response.data?.access) {
+      if (!response.data?.user) {
         throw new Error('Invalid credentials');
       }
-
-      localStorage.setItem('accessToken', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh || '');
       await fetchUser();
       return user;
     } catch (err) {
@@ -96,8 +76,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
       setUser(null);
     }
   };
@@ -118,16 +96,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.updateUser({
         ...updates,
-        userId: user.id
+        userId: user.id,
       });
-
-      setUser(prev => ({
+      setUser((prev) => ({
         ...prev,
         ...response.data,
         qaStats: {
           ...prev.qaStats,
-          ...response.data.qaStats
-        }
+          ...response.data.qaStats,
+        },
       }));
     } catch (err) {
       console.error('Update failed:', err);
@@ -145,18 +122,14 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     hasPermission,
     getDashboardRoute,
-    refetchUser: fetchUser
+    refetchUser: fetchUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 // Base auth hook
@@ -168,14 +141,13 @@ export const useAuth = () => {
   return context;
 };
 
-// Add this export at the bottom:
+// QA-specific auth hook
 export const useQAAuth = () => {
   const auth = useAuth();
-  
   return {
     ...auth,
     isIQALead: auth.hasPermission('sample_work'),
     isEQAAuditor: auth.hasPermission('manage_evidence'),
-    canViewReports: auth.hasPermission('view_reports')
+    canViewReports: auth.hasPermission('view_reports'),
   };
 };
