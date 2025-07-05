@@ -1,4 +1,3 @@
-// src/pages/Login.js
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -23,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import './Login.css';
 
 const Login = () => {
   const theme = useTheme();
@@ -42,37 +42,32 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState(null);
 
-  // Add to your Login component
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('session_expired') === '1') {
-    setErrors({
-      general: 'Your session has expired. Please log in again.'
-    });
-    // Clean URL without reload
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-}, []);
-
-// src/pages/Login.js
-useEffect(() => {
-  if (user && !authLoading) {
-    console.log('User authenticated:', user);
-    const route = getDashboardRoute();
-    console.log('Navigating to:', route);
-    alert('Navigating to:', route);
-    if (route === '/login') {
-      setErrors((prev) => ({
-        ...prev,
-        general: 'User data not properly set after login',
-      }));
-    } else if (window.location.pathname !== route) {
-      navigate(route, { replace: true });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('session_expired') === '1') {
+      setErrors({
+        general: 'Your session has expired. Please log in again.',
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }
-}, [user, authLoading, getDashboardRoute, navigate]);
+  }, []);
 
-  // Display authError from context if present
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('User authenticated:', user);
+      const route = getDashboardRoute();
+      console.log('Navigating to:', route);
+      if (route === '/login') {
+        setErrors((prev) => ({
+          ...prev,
+          general: 'User data not properly set after login',
+        }));
+      } else if (window.location.pathname !== route) {
+        navigate(route, { replace: true });
+      }
+    }
+  }, [user, authLoading, getDashboardRoute, navigate]);
+
   useEffect(() => {
     if (authError) {
       setErrors((prev) => ({
@@ -121,170 +116,206 @@ useEffect(() => {
     setErrors(newErrors);
     return valid;
   };
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
 
-  setLoading(true);
-  try {
-    await login(formData);
-  } catch (error) {
-    console.error('Login error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      stack: error.stack,
-    });
-    setErrors({
-      general: error.response?.data?.detail || 'Login failed. Please try again.',
-    });
-    if (error.response?.data?.remaining_attempts) {
-      setRemainingAttempts(error.response.data.remaining_attempts);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      await login(formData);
+    } catch (error) {
+      console.error('Login error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        stack: error.stack,
+      });
+      setErrors({
+        general: error.response?.data?.detail || 'Login failed. Please try again.',
+      });
+      if (error.response?.data?.remaining_attempts) {
+        setRemainingAttempts(error.response.data.remaining_attempts);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
-    <Container maxWidth="sm" sx={{ py: isMobile ? 4 : 8 }}>
-      <Paper
-        elevation={isMobile ? 0 : 3}
-        sx={{
-          p: isMobile ? 2 : 4,
-          borderRadius: 2,
-          border: isMobile ? 'none' : `1px solid ${theme.palette.divider}`,
-        }}
-      >
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography
-          variant="h4"
-          component="h1"
+    <Box className="login-container">
+      <Box className="wave wave-1" />
+      <Box className="wave wave-2" />
+      <Box className="wave wave-3" />
+      <Container maxWidth="xs" sx={{ py: isMobile ? 2 : 4, display: 'flex', alignItems: 'center', minHeight: '100vh' }}>
+        <Paper
+          className="login-card"
           sx={{
-            fontWeight: 700,
-            mb: 1,
+            p: isMobile ? 2 : 3,
+            borderRadius: '16px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.12)',
+            border: '1px solid rgba(30, 58, 138, 0.15)',
+            position: 'relative',
+            zIndex: 2,
           }}
         >
-          Welcome Back
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Sign in to access your account
-        </Typography>
-      </Box>
-
-        {errors.general && (
-          <Alert
-            severity={remainingAttempts !== null && remainingAttempts <= 2 ? 'warning' : 'error'}
-            sx={{ mb: 3 }}
-          >
-            {errors.general}
-            {remainingAttempts !== null && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="body2">
-                  Remaining attempts: {remainingAttempts}
-                </Typography>
-                {remainingAttempts <= 2 && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <Link href="/forgot-password">Reset your password</Link> if you've forgotten it
-                  </Typography>
-                  )}
-              </Box>
-            )}
-          </Alert>
-        )}
-
-        <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            label="Email Address"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={!!errors.email}
-            helperText={errors.email}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <EmailIcon color={errors.email ? 'error' : 'action'} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 3 }}
-          />
-
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleChange}
-            error={!!errors.password}
-            helperText={errors.password}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PasswordIcon color={errors.password ? 'error' : 'action'} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                  >
-                    {showPassword ? <HidePasswordIcon /> : <ShowPasswordIcon />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 1 }}
-          />
-
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              mb: 3,
-            }}
-          >
-            <Link href="/forgot-password" variant="body2">
-              Forgot Password?
-            </Link>
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{
+                fontWeight: 600,
+                mb: 1,
+                color: '#111827',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Welcome
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#111827', opacity: 0.7 }}>
+              Sign in to your account
+            </Typography>
           </Box>
 
-          <Button
-            fullWidth
-            type="submit"
-            variant="contained"
-            size="large"
-            disabled={loading}
-            sx={{
-              py: 1.5,
-              mb: 2,
-              fontWeight: 600,
-            }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
-          </Button>
-        </Box>
+          {errors.general && (
+            <Alert
+              severity={remainingAttempts !== null && remainingAttempts <= 2 ? 'warning' : 'error'}
+              sx={{ mb: 2, fontSize: '0.85rem' }}
+            >
+              {errors.general}
+              {remainingAttempts !== null && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption">
+                    Remaining attempts: {remainingAttempts}
+                  </Typography>
+                  {remainingAttempts <= 2 && (
+                    <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                      <Link href="/forgot-password">Reset your password</Link> if you've forgotten it
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Alert>
+          )}
 
-        <Box
-          sx={{
-            textAlign: 'center',
-            mt: 3,
-          }}
-        >
-          <Typography variant="body2">
-            Don't have an account?{' '}
-            <Link href="/signup" fontWeight={600}>
-              Sign up
-            </Link>
-          </Typography>
-        </Box>
-      </Paper>
-    </Container>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon sx={{ color: errors.email ? 'error.main' : '#1E3A8A', fontSize: '1.1rem' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  '& fieldset': { borderColor: 'rgba(30, 58, 138, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#1E3A8A' },
+                  '&.Mui-focused fieldset': { borderColor: '#1E3A8A', borderWidth: '2px' },
+                },
+                '& .MuiInputLabel-root': { color: '#111827', fontSize: '0.9rem' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#1E3A8A' },
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PasswordIcon sx={{ color: errors.password ? 'error.main' : '#1E3A8A', fontSize: '1.1rem' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? (
+                        <HidePasswordIcon sx={{ color: '#1E3A8A', fontSize: '1.1rem' }} />
+                      ) : (
+                        <ShowPasswordIcon sx={{ color: '#1E3A8A', fontSize: '1.1rem' }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  '& fieldset': { borderColor: 'rgba(30, 58, 138, 0.3)' },
+                  '&:hover fieldset': { borderColor: '#1E3A8A' },
+                  '&.Mui-focused fieldset': { borderColor: '#1E3A8A', borderWidth: '2px' },
+                },
+                '& .MuiInputLabel-root': { color: '#111827', fontSize: '0.9rem' },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#1E3A8A' },
+              }}
+            />
+
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                mb: 2,
+              }}
+            >
+              <Link href="/forgot-password" variant="body2" sx={{ color: '#3B82F6', fontWeight: 500, fontSize: '0.85rem' }}>
+                Forgot Password?
+              </Link>
+            </Box>
+
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading}
+              sx={{
+                py: 1.2,
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                backgroundColor: '#1E3A8A',
+                borderRadius: '8px',
+                textTransform: 'none',
+                '&:hover': { backgroundColor: '#3B82F6' },
+                '&:disabled': { backgroundColor: '#1E3A8A', opacity: 0.5 },
+              }}
+            >
+              {loading ? <CircularProgress size={20} color="inherit" /> : 'Sign In'}
+            </Button>
+          </Box>
+
+          <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Typography variant="body2" sx={{ color: '#111827', fontSize: '0.85rem' }}>
+              Don't have an account?{' '}
+              <Link href="/signup" sx={{ color: '#7C3AED', fontWeight: 600 }}>
+                Sign up
+              </Link>
+            </Typography>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 
