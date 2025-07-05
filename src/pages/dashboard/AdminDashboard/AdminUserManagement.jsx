@@ -1,44 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import API_BASE_URL, { userAPI, coursesAPI, messagingAPI } from '../../../config';
-import {
-  Box, Container, Typography, Grid, Paper, Table,
-  TableBody, TableCell, TableContainer, TableHead, Snackbar,
-  TableRow, TablePagination, Avatar, Chip, TextField, MenuItem,
-  Divider, IconButton, useTheme, useMediaQuery, Button,
-  Dialog, DialogTitle, DialogContent, DialogActions, Menu, Tooltip,
-  CircularProgress, Alert, Tabs, Tab, List, ListItem, ListItemText,
-  ListItemAvatar, Select, FormControl, InputLabel
-} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import {
   People as PeopleIcon, PersonAdd as PersonAddIcon,
   CheckCircle as ActiveIcon, Warning as WarningIcon, 
   Lock as SuspendedIcon, Schedule as PendingIcon, 
   Search as SearchIcon, FilterList as FilterIcon, 
   Refresh as RefreshIcon, MoreVert as MoreIcon,
-  Add as AddIcon, Upload as UploadIcon, Login as LoginIcon,
-  Close as CloseIcon, Login as ImpersonateIcon,
+  Add as AddIcon, Upload as UploadIcon, Login as ImpersonateIcon,
   Password as PasswordIcon, LockOpen as UnlockIcon,
-  School as CourseIcon, Message as MessageIcon
+  School as CourseIcon, Message as MessageIcon, Close as CloseIcon
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { useNavigate } from 'react-router-dom';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import API_BASE_URL, { userAPI, coursesAPI, messagingAPI } from '../../../config';
+
+
 import UserRegistration from './UserRegistration';
 import BulkUserUpload from './BulkUserUpload';
 import UserGroupsManagement from './UserGroupsManagement';
+import './AdminUserManagement.css';
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
-
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
     count: 0,
@@ -49,18 +37,15 @@ const AdminUserManagement = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showCourseEnrollment, setShowCourseEnrollment] = useState(false);
   const [showMessaging, setShowMessaging] = useState(false);
-
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [actionError, setActionError] = useState(null);
-
   const [filters, setFilters] = useState({
     role: 'all',
     status: 'all',
@@ -68,7 +53,6 @@ const AdminUserManagement = () => {
     dateFrom: null,
     dateTo: null
   });
-
   const [tabValue, setTabValue] = useState(0);
   const [userActivities, setUserActivities] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -83,7 +67,6 @@ const AdminUserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const params = {
         page: pagination.currentPage,
@@ -94,7 +77,6 @@ const AdminUserManagement = () => {
         ...(filters.dateFrom && { date_from: filters.dateFrom?.toISOString().split('T')[0] }),
         ...(filters.dateTo && { date_to: filters.dateTo?.toISOString().split('T')[0] })
       };
-
       const response = await userAPI.getUsers(params);
       setUsers(response.data.results || []);
       setPagination({
@@ -206,7 +188,6 @@ const AdminUserManagement = () => {
   };
 
   const handleImpersonate = async (userId) => {
-    // Placeholder: userAPI.impersonateUser is not defined in config.jsx or backend
     setSnackbar({
       open: true,
       message: 'Impersonation not implemented yet',
@@ -214,24 +195,23 @@ const AdminUserManagement = () => {
     });
   };
 
-// In AdminUserManagement.js, update handlePasswordReset
-const handlePasswordReset = async (userId) => {
-  try {
-    const user = users.find(u => u.id === userId);
-    await authAPI.resetPassword({ email: user.email });
-    setSnackbar({
-      open: true,
-      message: 'Password reset email sent successfully',
-      severity: 'success'
-    });
-  } catch (err) {
-    setSnackbar({
-      open: true,
-      message: 'Failed to send password reset email',
-      severity: 'error'
-    });
-  }
-};
+  const handlePasswordReset = async (userId) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      await authAPI.resetPassword({ email: user.email });
+      setSnackbar({
+        open: true,
+        message: 'Password reset email sent successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to send password reset email',
+        severity: 'error'
+      });
+    }
+  };
 
   const handleAccountLock = async (userId, lock) => {
     try {
@@ -272,7 +252,6 @@ const handlePasswordReset = async (userId) => {
   };
 
   const handleDisenrollCourse = async (enrollmentId) => {
-    // Placeholder: coursesAPI.deleteEnrollment is not defined in config.jsx or backend
     setSnackbar({
       open: true,
       message: 'Course disenrollment not implemented yet',
@@ -346,12 +325,10 @@ const handlePasswordReset = async (userId) => {
 
   const handleConfirmAction = async () => {
     setActionError(null);
-    
     if (!selectedUser) {
       setActionError('No user selected');
       return;
     }
-  
     try {
       if (actionType === 'delete') {
         await userAPI.deleteUser(selectedUser.id);
@@ -395,36 +372,29 @@ const handlePasswordReset = async (userId) => {
 
   const StatusChip = ({ status }) => {
     const statusMap = {
-      active: { color: 'success', icon: <ActiveIcon fontSize="small" /> },
-      pending: { color: 'warning', icon: <PendingIcon fontSize="small" /> },
-      suspended: { color: 'error', icon: <SuspendedIcon fontSize="small" /> }
+      active: { className: 'aum-status active', icon: <ActiveIcon /> },
+      pending: { className: 'aum-status warning', icon: <PendingIcon /> },
+      suspended: { className: 'aum-status error', icon: <SuspendedIcon /> }
     };
-
     return (
-      <Chip
-        icon={statusMap[status]?.icon}
-        label={status}
-        color={statusMap[status]?.color || 'default'}
-        size="small"
-        variant="outlined"
-      />
+      <span className={statusMap[status]?.className || 'aum-status'}>
+        {statusMap[status]?.icon}
+        {status}
+      </span>
     );
   };
 
   const RoleChip = ({ role }) => {
     const roleMap = {
-      admin: { color: 'primary', label: 'Admin' },
-      instructor: { color: 'secondary', label: 'Instructor' },
-      learner: { color: 'default', label: 'Learner' },
-      owner: { color: 'info', label: 'Owner' }
+      admin: { className: 'aum-chip primary', label: 'Admin' },
+      instructor: { className: 'aum-chip secondary', label: 'Instructor' },
+      learner: { className: 'aum-chip default', label: 'Learner' },
+      owner: { className: 'aum-chip info', label: 'Owner' }
     };
-
     return (
-      <Chip
-        label={roleMap[role]?.label || role}
-        color={roleMap[role]?.color || 'default'}
-        size="small"
-      />
+      <span className={roleMap[role]?.className || 'aum-chip'}>
+        {roleMap[role]?.label || role}
+      </span>
     );
   };
 
@@ -481,9 +451,7 @@ const handlePasswordReset = async (userId) => {
   };
 
   const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
+    if (reason === 'clickaway') return;
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
@@ -495,159 +463,109 @@ const handlePasswordReset = async (userId) => {
   const getSuspiciousActivityCount = () => users.filter(u => u.login_attempts > 0).length;
 
   const stats = [
-    { title: 'Total Users', value: pagination.count, icon: <PeopleIcon fontSize="large" />, change: '+12% from last month' },
-    { title: 'Active Users', value: getActiveUsersCount(), icon: <ActiveIcon fontSize="large" />, change: 'Active in last 30 days' },
-    { title: 'New Signups', value: getNewSignupsCount(), icon: <PersonAddIcon fontSize="large" />, change: 'This month' },
-    { title: 'Suspicious Activity', value: getSuspiciousActivityCount(), icon: <WarningIcon fontSize="large" />, change: 'Failed login attempts' }
+    { title: 'Total Users', value: pagination.count, icon: <PeopleIcon />, change: '+12% from last month' },
+    { title: 'Active Users', value: getActiveUsersCount(), icon: <ActiveIcon />, change: 'Active in last 30 days' },
+    { title: 'New Signups', value: getNewSignupsCount(), icon: <PersonAddIcon />, change: 'This month' },
+    { title: 'Suspicious Activity', value: getSuspiciousActivityCount(), icon: <WarningIcon />, change: 'Failed login attempts' }
   ];
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
-          User Management
-        </Typography>
+      <div className="aum-container">
+        {snackbar.open && (
+          <div className={`aum-alert aum-alert-${snackbar.severity}`}>
+            <span>{snackbar.message}</span>
+            <button onClick={handleCloseSnackbar} className="aum-alert-close">
+              <CloseIcon />
+            </button>
+          </div>
+        )}
 
-        {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <h1 className="aum-title">User Management</h1>
+
+        <div className="aum-stats-grid">
           {stats.map((stat, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
-              <Paper
-                elevation={3}
-                sx={{
-                  p: 3,
-                  borderRadius: 2,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                <Box sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: 2
-                }}>
-                  <Typography
-                    variant="subtitle1"
-                    color="text.secondary"
-                    sx={{ fontWeight: 500 }}
-                  >
-                    {stat.title}
-                  </Typography>
-                  <Avatar sx={{
-                    bgcolor: theme.palette.primary.light,
-                    color: theme.palette.primary.main
-                  }}>
-                    {stat.icon}
-                  </Avatar>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  {stat.value}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stat.change}
-                </Typography>
-              </Paper>
-            </Grid>
+            <div key={index} className="aum-stat-card">
+              <div className="aum-stat-header">
+                <span>{stat.title}</span>
+                <div className="aum-stat-icon">{stat.icon}</div>
+              </div>
+              <h3>{stat.value}</h3>
+              <span className="aum-stat-change">{stat.change}</span>
+            </div>
           ))}
-        </Grid>
+        </div>
 
-        {/* Action Buttons */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setShowRegistrationForm(true)}
-          >
-            Add User
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<UploadIcon />}
-            onClick={() => setShowBulkUpload(true)}
-          >
-            Bulk Upload
-          </Button>
-        </Box>
+        <div className="aum-actions">
+          <button className="aum-btn aum-btn-primary" onClick={() => setShowRegistrationForm(true)}>
+            <AddIcon /> Add User
+          </button>
+          <button className="aum-btn aum-btn-secondary" onClick={() => setShowBulkUpload(true)}>
+            <UploadIcon /> Bulk Upload
+          </button>
+        </div>
 
-        {/* Filters Section */}
-        <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                size="small"
+        <div className="aum-filters">
+          <div className="aum-filter-item">
+            <div className="aum-search-input">
+              <SearchIcon />
+              <input
+                type="text"
                 placeholder="Search users..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-                }}
               />
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Role"
-                value={filters.role}
-                onChange={(e) => handleFilterChange('role', e.target.value)}
-              >
-                <MenuItem value="all">All Roles</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="instructor">Instructor</MenuItem>
-                <MenuItem value="learner">Learner</MenuItem>
-                <MenuItem value="owner">Owner</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Status"
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <MenuItem value="all">All Statuses</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="suspended">Suspended</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={6} md={2}>
-              <DatePicker
-                label="From"
-                value={filters.dateFrom}
-                onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    size="small"
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={6} sm={6} md={2}>
-              <DatePicker
-                label="To"
-                value={filters.dateTo}
-                onChange={(newValue) => handleFilterChange('dateTo', newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    size="small"
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} md={1} sx={{ textAlign: 'right' }}>
-              <IconButton onClick={() => {
+            </div>
+          </div>
+          <div className="aum-filter-item">
+            <label>Role</label>
+            <select
+              value={filters.role}
+              onChange={(e) => handleFilterChange('role', e.target.value)}
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="instructor">Instructor</option>
+              <option value="learner">Learner</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+          <div className="aum-filter-item">
+            <label>Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div className="aum-filter-item">
+            <label>From</label>
+            <DatePicker
+              value={filters.dateFrom}
+              onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
+              renderInput={({ inputRef, inputProps }) => (
+                <input ref={inputRef} {...inputProps} className="aum-date-input" />
+              )}
+            />
+          </div>
+          <div className="aum-filter-item">
+            <label>To</label>
+            <DatePicker
+              value={filters.dateTo}
+              onChange={(newValue) => handleFilterChange('dateTo', newValue)}
+              renderInput={({ inputRef, inputProps }) => (
+                <input ref={inputRef} {...inputProps} className="aum-date-input" />
+              )}
+            />
+          </div>
+          <div className="aum-filter-buttons">
+            <button
+              className="aum-btn aum-btn-icon"
+              onClick={() => {
                 setFilters({
                   role: 'all',
                   status: 'all',
@@ -656,544 +574,475 @@ const handlePasswordReset = async (userId) => {
                   dateTo: null
                 });
                 setPagination(prev => ({ ...prev, currentPage: 1 }));
-              }}>
-                <RefreshIcon />
-              </IconButton>
-              <IconButton>
-                <FilterIcon />
-              </IconButton>
-            </Grid>
-          </Grid>
-        </Paper>
+              }}
+            >
+              <RefreshIcon />
+            </button>
+            <button className="aum-btn aum-btn-icon">
+              <FilterIcon />
+            </button>
+          </div>
+        </div>
 
-        {/* Users Table */}
-        <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-                <TableRow>
-                  <TableCell>User</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Signup Date</TableCell>
-                  <TableCell>Login Attempts</TableCell>
-                  <TableCell>Locked</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <CircularProgress />
-                    </TableCell>
-                  </TableRow>
-                ) : error ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography color="error">{error}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography>No users found</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user) => (
-                    <TableRow key={user.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              mr: 2,
-                              bgcolor: theme.palette.primary.light,
-                              color: theme.palette.primary.main
-                            }}
-                            onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
-                          >
-                            {getInitial(user)}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle2">{user.first_name} {user.last_name}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {user.email}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <RoleChip role={user.role} />
-                      </TableCell>
-                      <TableCell>
-                        <StatusChip status={user.status} />
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.signup_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {user.login_attempts > 0 ? (
-                          <Tooltip title="Click to reset">
-                            <Chip
-                              label={user.login_attempts}
-                              color="error"
-                              size="small"
-                              variant="outlined"
-                              onClick={() => resetLoginAttempts(user.id)}
-                              clickable
-                            />
-                          </Tooltip>
-                        ) : (
-                          <Typography variant="body2">0</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.is_locked ? 'Locked' : 'Unlocked'}
-                          color={user.is_locked ? 'error' : 'success'}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          size="small"
+        <div className="aum-table-container">
+          <table className="aum-table">
+            <thead>
+              <tr>
+                <th><span>User</span></th>
+                <th><span>Role</span></th>
+                <th><span>Status</span></th>
+                <th><span>Signup Date</span></th>
+                <th><span>Login Attempts</span></th>
+                <th><span>Locked</span></th>
+                <th><span>Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="aum-loading">
+                    <div className="aum-spinner"></div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="7" className="aum-error">{error}</td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="aum-no-data">No users found</td>
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="aum-user-cell">
+                        <div
+                          className="aum-avatar"
+                          onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
+                        >
+                          {getInitial(user)}
+                        </div>
+                        <div>
+                          <span>{user.first_name} {user.last_name}</span>
+                          <span className="aum-text-secondary">{user.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td><RoleChip role={user.role} /></td>
+                    <td><StatusChip status={user.status} /></td>
+                    <td>{new Date(user.signup_date).toLocaleDateString()}</td>
+                    <td>
+                      {user.login_attempts > 0 ? (
+                        <span
+                          className="aum-chip error clickable"
+                          onClick={() => resetLoginAttempts(user.id)}
+                          title="Click to reset"
+                        >
+                          {user.login_attempts}
+                        </span>
+                      ) : (
+                        <span>0</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`aum-chip ${user.is_locked ? 'error' : 'success'}`}>
+                        {user.is_locked ? 'Locked' : 'Unlocked'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="aum-action-btns">
+                        <button
+                          className="aum-btn aum-btn-icon"
                           onClick={(event) => handleMenuOpen(event, user)}
                         >
                           <MoreIcon />
-                        </IconButton>
-                        <Menu
-                          anchorEl={anchorEl}
-                          open={Boolean(anchorEl)}
-                          onClose={handleMenuClose}
+                        </button>
+                        <div
+                          className="aum-menu"
+                          style={{ display: anchorEl && selectedUser?.id === user.id ? 'block' : 'none' }}
                         >
-                          <MenuItem
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('activate')}
-                            disabled={selectedUser?.status === 'active'}
+                            disabled={user.status === 'active'}
                           >
                             Activate
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('suspend')}
-                            disabled={selectedUser?.status === 'suspended'}
+                            disabled={user.status === 'suspended'}
                           >
                             Suspend
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('delete')}
                           >
                             Delete
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('impersonate')}
                           >
                             Impersonate
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('reset_password')}
                           >
                             Reset Password
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect(user.is_locked ? 'unlock' : 'lock')}
                           >
                             {user.is_locked ? 'Unlock' : 'Lock'} Account
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => {
-                              resetLoginAttempts(selectedUser?.id);
+                              resetLoginAttempts(user.id);
                               handleMenuClose();
                             }}
-                            disabled={selectedUser?.login_attempts === 0}
+                            disabled={user.login_attempts === 0}
                           >
                             Reset Login Attempts
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('courses')}
                           >
                             Manage Courses
-                          </MenuItem>
-                          <MenuItem
+                          </button>
+                          <button
+                            className="aum-menu-item"
                             onClick={() => handleActionSelect('messages')}
                           >
                             Messages
-                          </MenuItem>
-                        </Menu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={pagination.count}
-            rowsPerPage={rowsPerPage}
-            page={pagination.currentPage - 1}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </Paper>
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <div className="aum-pagination">
+            <div className="aum-items-per-page">
+              <span>Items per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={handleChangeRowsPerPage}
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+              </select>
+            </div>
+            <div className="aum-page-navigation">
+              <span>
+                {((pagination.currentPage - 1) * rowsPerPage + 1)}-
+                {Math.min(pagination.currentPage * rowsPerPage, pagination.count)} of {pagination.count}
+              </span>
+              <div className="aum-page-btns">
+                <button
+                  onClick={() => handleChangePage(null, pagination.currentPage - 2)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleChangePage(null, pagination.currentPage)}
+                  disabled={pagination.currentPage * rowsPerPage >= pagination.count}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* User Details Section */}
         {selectedUser && (
-          <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              User Details: {selectedUser.first_name} {selectedUser.last_name}
-            </Typography>
-            <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} sx={{ mb: 3 }}>
-              <Tab label="Activity Logs" />
-              <Tab label="Course Enrollments" />
-              <Tab label="Messages" />
-            </Tabs>
-
+          <div className="aum-details">
+            <h2>User Details: {selectedUser.first_name} {selectedUser.last_name}</h2>
+            <div className="aum-tabs">
+              <button
+                className={`aum-tab ${tabValue === 0 ? 'active' : ''}`}
+                onClick={() => setTabValue(0)}
+              >
+                Activity Logs
+              </button>
+              <button
+                className={`aum-tab ${tabValue === 1 ? 'active' : ''}`}
+                onClick={() => setTabValue(1)}
+              >
+                Course Enrollments
+              </button>
+              <button
+                className={`aum-tab ${tabValue === 2 ? 'active' : ''}`}
+                onClick={() => setTabValue(2)}
+              >
+                Messages
+              </button>
+            </div>
             {tabValue === 0 && (
-              <List>
+              <div className="aum-list">
                 {userActivities.length > 0 ? (
                   userActivities.map((activity) => (
-                    <ListItem key={activity.id}>
-                      <ListItemAvatar>
-                        <Avatar>
-                          {activity.activity_type === 'login' ? <LoginIcon /> : <PeopleIcon />}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={`${activity.activity_type} - ${activity.status}`}
-                        secondary={`${activity.details} (${new Date(activity.timestamp).toLocaleString()})`}
-                      />
-                    </ListItem>
+                    <div key={activity.id} className="aum-list-item">
+                      <div className="aum-list-avatar">
+                        {activity.activity_type === 'login' ? <LoginIcon /> : <PeopleIcon />}
+                      </div>
+                      <div className="aum-list-content">
+                        <span>{activity.activity_type} - {activity.status}</span>
+                        <span className="aum-text-secondary">
+                          {activity.details} ({new Date(activity.timestamp).toLocaleString()})
+                        </span>
+                      </div>
+                    </div>
                   ))
                 ) : (
-                  <Typography>No activity logs found</Typography>
+                  <div className="aum-no-data">No activity logs found</div>
                 )}
-              </List>
+              </div>
             )}
-
             {tabValue === 1 && (
-              <Box>
-                <Typography variant="subtitle1" gutterBottom>
-                  Enrolled Courses
-                </Typography>
-                <List>
+              <div>
+                <h3>Enrolled Courses</h3>
+                <div className="aum-list">
                   {userEnrollments.map((enrollment) => (
-                    <ListItem key={enrollment.id} secondaryAction={
-                      <IconButton edge="end" onClick={() => handleDisenrollCourse(enrollment.id)}>
+                    <div key={enrollment.id} className="aum-list-item">
+                      <div className="aum-list-avatar">
+                        <CourseIcon />
+                      </div>
+                      <div className="aum-list-content">
+                        <span>{enrollment.course.title}</span>
+                        <span className="aum-text-secondary">
+                          Enrolled on: {new Date(enrollment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <button
+                        className="aum-btn aum-btn-icon"
+                        onClick={() => handleDisenrollCourse(enrollment.id)}
+                      >
                         <DeleteIcon />
-                      </IconButton>
-                    }>
-                      <ListItemAvatar>
-                        <Avatar>
-                          <CourseIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={enrollment.course.title}
-                        secondary={`Enrolled on: ${new Date(enrollment.created_at).toLocaleDateString()}`}
-                      />
-                    </ListItem>
+                      </button>
+                    </div>
                   ))}
-                </List>
-              </Box>
+                </div>
+              </div>
             )}
-
             {tabValue === 2 && (
-              <Box>
-                <Typography variant="subtitle1" gutterBottom>
-                  Message History
-                </Typography>
-                <List>
+              <div>
+                <h3>Message History</h3>
+                <div className="aum-list">
                   {messages.map((message) => (
-                    <ListItem key={message.id}>
-                      <ListItemAvatar>
-                        <Avatar>
-                          <MessageIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={message.subject}
-                        secondary={`${message.content} (${new Date(message.created_at).toLocaleString()})`}
-                      />
-                    </ListItem>
+                    <div key={message.id} className="aum-list-item">
+                      <div className="aum-list-avatar">
+                        <MessageIcon />
+                      </div>
+                      <div className="aum-list-content">
+                        <span>{message.subject}</span>
+                        <span className="aum-text-secondary">
+                          {message.content} ({new Date(message.created_at).toLocaleString()})
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </List>
-              </Box>
+                </div>
+              </div>
             )}
-          </Paper>
+          </div>
         )}
 
-        {/* User Groups Management Section */}
-        <Box sx={{ mt: 4 }}>
+        <div className="aum-groups">
           <UserGroupsManagement users={users} />
-        </Box>
+        </div>
 
-        {/* Confirmation Modal */}
-        <Dialog
-          open={openConfirmModal}
-          onClose={handleCancelAction}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            {actionType === 'delete' ? 'Delete User' : 
-             actionType === 'suspend' ? 'Suspend User' :
-             actionType === 'impersonate' ? 'Impersonate User' :
-             actionType === 'reset_password' ? 'Reset Password' :
-             actionType === 'lock' ? 'Lock Account' :
-             actionType === 'unlock' ? 'Unlock Account' : 'Activate User'}
-          </DialogTitle>
-          <DialogContent>
-            {actionError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {actionError}
-              </Alert>
-            )}
-            {selectedUser ? (
-              <Typography>
-                Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
-                {actionType === 'delete' && ' This action cannot be undone.'}
-                {actionType === 'impersonate' && ' You will be logged in as this user.'}
-              </Typography>
-            ) : (
-              <Typography color="error">No user selected</Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancelAction}>Cancel</Button>
-            <Button
-              onClick={handleConfirmAction}
-              variant="contained"
-              color={actionType === 'delete' ? 'error' : 'primary'}
-              disabled={!selectedUser}
-            >
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <div className="aum-dialog" style={{ display: openConfirmModal ? 'block' : 'none' }}>
+          <div className="aum-dialog-backdrop" onClick={handleCancelAction}></div>
+          <div className="aum-dialog-content">
+            <div className="aum-dialog-header">
+              <h3>
+                {actionType === 'delete' ? 'Delete User' : 
+                 actionType === 'suspend' ? 'Suspend User' :
+                 actionType === 'impersonate' ? 'Impersonate User' :
+                 actionType === 'reset_password' ? 'Reset Password' :
+                 actionType === 'lock' ? 'Lock Account' :
+                 actionType === 'unlock' ? 'Unlock Account' : 'Activate User'}
+              </h3>
+              <button className="aum-dialog-close" onClick={handleCancelAction}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="aum-dialog-body">
+              {actionError && (
+                <div className="aum-alert aum-alert-error">{actionError}</div>
+              )}
+              {selectedUser ? (
+                <p>
+                  Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
+                  {actionType === 'delete' && ' This action cannot be undone.'}
+                  {actionType === 'impersonate' && ' You will be logged in as this user.'}
+                </p>
+              ) : (
+                <p className="aum-error">No user selected</p>
+              )}
+            </div>
+            <div className="aum-dialog-actions">
+              <button className="aum-btn aum-btn-cancel" onClick={handleCancelAction}>
+                Cancel
+              </button>
+              <button
+                className={`aum-btn ${actionType === 'delete' ? 'aum-btn-error' : 'aum-btn-confirm'}`}
+                onClick={handleConfirmAction}
+                disabled={!selectedUser}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
 
-        {/* Course Enrollment Dialog */}
-        <Dialog
-          open={showCourseEnrollment}
-          onClose={() => setShowCourseEnrollment(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            Manage Course Enrollments
-            <IconButton
-              aria-label="close"
-              onClick={() => setShowCourseEnrollment(false)}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel>Available Courses</InputLabel>
-              <Select
-                label="Available Courses"
+        <div className="aum-dialog" style={{ display: showCourseEnrollment ? 'block' : 'none' }}>
+          <div className="aum-dialog-backdrop" onClick={() => setShowCourseEnrollment(false)}></div>
+          <div className="aum-dialog-content aum-dialog-wide">
+            <div className="aum-dialog-header">
+              <h3>Manage Course Enrollments</h3>
+              <button className="aum-dialog-close" onClick={() => setShowCourseEnrollment(false)}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="aum-dialog-body">
+              <label>Available Courses</label>
+              <select
                 onChange={(e) => handleEnrollCourse(e.target.value)}
               >
+                <option value="">Select a course</option>
                 {courses
                   .filter(course => !userEnrollments.some(e => e.course.id === course.id))
                   .map(course => (
-                    <MenuItem key={course.id} value={course.id}>
+                    <option key={course.id} value={course.id}>
                       {course.title}
-                    </MenuItem>
+                    </option>
                   ))}
-              </Select>
-            </FormControl>
-          </DialogContent>
-        </Dialog>
+              </select>
+            </div>
+          </div>
+        </div>
 
-        {/* Messaging Dialog */}
-        <Dialog
-          open={showMessaging}
-          onClose={() => setShowMessaging(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            Send Message
-            <IconButton
-              aria-label="close"
-              onClick={() => setShowMessaging(false)}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              fullWidth
-              label="Subject"
-              value={newMessage.subject}
-              onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
-              sx={{ mt: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Message"
-              multiline
-              rows={4}
-              value={newMessage.content}
-              onChange={(e) => setNewMessage({ ...newMessage, content: e.target.value })}
-              sx={{ mt: 2 }}
-            />
-            <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel>Message Type</InputLabel>
-              <Select
-                label="Message Type"
-                value={newMessage.type}
-                onChange={(e) => setNewMessage({ ...newMessage, type: e.target.value })}
+        <div className="aum-dialog" style={{ display: showMessaging ? 'block' : 'none' }}>
+          <div className="aum-dialog-backdrop" onClick={() => setShowMessaging(false)}></div>
+          <div className="aum-dialog-content aum-dialog-wide">
+            <div className="aum-dialog-header">
+              <h3>Send Message</h3>
+              <button className="aum-dialog-close" onClick={() => setShowMessaging(false)}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="aum-dialog-body">
+              <div className="aum-form-field">
+                <label>Subject</label>
+                <input
+                  type="text"
+                  value={newMessage.subject}
+                  onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
+                />
+              </div>
+              <div className="aum-form-field">
+                <label>Message</label>
+                <textarea
+                  rows="4"
+                  value={newMessage.content}
+                  onChange={(e) => setNewMessage({ ...newMessage, content: e.target.value })}
+                ></textarea>
+              </div>
+              <div className="aum-form-field">
+                <label>Message Type</label>
+                <select
+                  value={newMessage.type}
+                  onChange={(e) => setNewMessage({ ...newMessage, type: e.target.value })}
+                >
+                  <option value="general">General</option>
+                  <option value="alert">Alert</option>
+                  <option value="notification">Notification</option>
+                </select>
+              </div>
+              <button
+                className="aum-btn aum-btn-confirm"
+                onClick={handleSendMessage}
+                disabled={!newMessage.subject || !newMessage.content}
               >
-                <MenuItem value="general">General</MenuItem>
-                <MenuItem value="alert">Alert</MenuItem>
-                <MenuItem value="notification">Notification</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              onClick={handleSendMessage}
-              sx={{ mt: 2 }}
-              disabled={!newMessage.subject || !newMessage.content}
-            >
-              Send Message
-            </Button>
-          </DialogContent>
-        </Dialog>
+                Send Message
+              </button>
+            </div>
+          </div>
+        </div>
 
-        {/* User Roles & Permissions Summary */}
-        <Paper elevation={3} sx={{ p: 3, mt: 4, borderRadius: 2 }}>
-          <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-            User Roles & Permissions Overview
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.primary.main}` }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Administrators
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {users.filter(u => u.role === 'admin').length} users • Full system access
-                </Typography>
-                <Typography variant="caption">
-                  Can manage all users, courses, and system settings
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.secondary.main}` }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Instructors
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {users.filter(u => u.role === 'instructor').length} users • Can create and manage courses
-                </Typography>
-                <Typography variant="caption">
-                  Can create course content, manage learners, and view analytics
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ p: 2, borderLeft: `4px solid ${theme.palette.success.main}` }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Learners
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {users.filter(u => u.role === 'learner').length} users • Can enroll in courses
-                </Typography>
-                <Typography variant="caption">
-                  Can browse courses, enroll in programs, and track progress
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
+        <div className="aum-roles-permissions">
+          <h2>User Roles & Permissions Overview</h2>
+          <div className="aum-roles-grid">
+            <div className="aum-role-card">
+              <h3>Administrators</h3>
+              <p className="aum-text-secondary">
+                {users.filter(u => u.role === 'admin').length} users • Full system access
+              </p>
+              <p>Can manage all users, courses, and system settings</p>
+            </div>
+            <div className="aum-role-card">
+              <h3>Instructors</h3>
+              <p className="aum-text-secondary">
+                {users.filter(u => u.role === 'instructor').length} users • Can create and manage courses
+              </p>
+              <p>Can create course content, manage learners, and view analytics</p>
+            </div>
+            <div className="aum-role-card">
+              <h3>Learners</h3>
+              <p className="aum-text-secondary">
+                {users.filter(u => u.role === 'learner').length} users • Can enroll in courses
+              </p>
+              <p>Can browse courses, enroll in programs, and track progress</p>
+            </div>
+          </div>
+        </div>
 
-        {/* Registration Dialog */}
-        <Dialog
-          open={showRegistrationForm}
-          onClose={() => setShowRegistrationForm(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            Register New User
-            <IconButton
-              aria-label="close"
-              onClick={() => setShowRegistrationForm(false)}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <UserRegistration onRegister={handleAddUser} />
-          </DialogContent>
-        </Dialog>
+        <div className="aum-dialog" style={{ display: showRegistrationForm ? 'block' : 'none' }}>
+          <div className="aum-dialog-backdrop" onClick={() => setShowRegistrationForm(false)}></div>
+          <div className="aum-dialog-content aum-dialog-wide">
+            <div className="aum-dialog-header">
+              <h3>Register New User</h3>
+              <button className="aum-dialog-close" onClick={() => setShowRegistrationForm(false)}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="aum-dialog-body">
+              <UserRegistration onRegister={handleAddUser} />
+            </div>
+          </div>
+        </div>
 
-        {/* Bulk Upload Dialog */}
-        <Dialog
-          open={showBulkUpload}
-          onClose={() => setShowBulkUpload(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            Bulk User Upload
-            <IconButton
-              aria-label="close"
-              onClick={() => setShowBulkUpload(false)}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <BulkUserUpload onUpload={handleBulkUpload} />
-          </DialogContent>
-        </Dialog>
-      </Container>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        <div className="aum-dialog" style={{ display: showBulkUpload ? 'block' : 'none' }}>
+          <div className="aum-dialog-backdrop" onClick={() => setShowBulkUpload(false)}></div>
+          <div className="aum-dialog-content aum-dialog-wide">
+            <div className="aum-dialog-header">
+              <h3>Bulk User Upload</h3>
+              <button className="aum-dialog-close" onClick={() => setShowBulkUpload(false)}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="aum-dialog-body">
+              <BulkUserUpload onUpload={handleBulkUpload} />
+            </div>
+          </div>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 };

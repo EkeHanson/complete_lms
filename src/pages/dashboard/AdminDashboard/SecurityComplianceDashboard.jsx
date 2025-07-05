@@ -1,18 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Box,  Container, Typography,
-  Grid, Card,List, CardContent,
-  Divider, Tabs, Tab, Table, TableBody,
-  TableCell, TableContainer,
-  TableHead, TableRow, Paper,  Chip,
-  Avatar, IconButton, Tooltip, useTheme,
-  useMediaQuery, TextField,
-  InputAdornment,  Button, Badge, Stack, // Added List import
-  ListItem, // Added ListItem import
-  ListItemIcon, // Added ListItemIcon import
-  ListItemText // Added ListItemText import
-} from '@mui/material';
-import {
   Security as SecurityIcon,
   Warning as WarningIcon,
   Lock as LockIcon,
@@ -30,15 +17,13 @@ import {
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import './SecurityComplianceDashboard.css';
 
 const SecurityComplianceDashboard = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState([null, null]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock data - replace with actual API calls
   const failedLogins = [
     { id: 1, ip: '192.168.1.45', username: 'admin', timestamp: '2023-06-15 14:32:45', attempts: 5, status: 'active' },
     { id: 2, ip: '203.113.117.89', username: 'user123', timestamp: '2023-06-15 11:15:22', attempts: 3, status: 'blocked' },
@@ -84,21 +69,19 @@ const SecurityComplianceDashboard = () => {
   };
 
   const handleResolveAlert = (id) => {
-    // API call to resolve alert
     console.log(`Resolving alert ${id}`);
   };
 
   const handleBlockIP = (ip) => {
-    // API call to block IP
     console.log(`Blocking IP ${ip}`);
   };
 
   const severityColor = (severity) => {
     switch (severity) {
-      case 'high': return theme.palette.error.main;
-      case 'medium': return theme.palette.warning.main;
-      case 'low': return theme.palette.success.main;
-      default: return theme.palette.text.secondary;
+      case 'high': return '#991b1b';
+      case 'medium': return '#d97706';
+      case 'low': return '#065f46';
+      default: return '#6251a4';
     }
   };
 
@@ -117,430 +100,340 @@ const SecurityComplianceDashboard = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-          <SecurityIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-          Security & Compliance
-        </Typography>
-        <Button variant="outlined" startIcon={<RefreshIcon />}>
-          Refresh Data
-        </Button>
-      </Box>
+      <div className="scd-container">
+        <div className="scd-header">
+          <div className="scd-header-title">
+            <SecurityIcon className="scd-icon" />
+            <h1>Security & Compliance</h1>
+          </div>
+          <button className="scd-btn scd-btn-refresh">
+            <RefreshIcon />
+            Refresh Data
+          </button>
+        </div>
 
-      {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Failed Logins (24h)
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <WarningIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">12</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Blocked IPs
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <LockIcon color="warning" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">8</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Active Alerts
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <WarningIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">3</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Audit Events (7d)
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <VisibilityIcon color="info" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">42</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Compliance Status
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <ComplianceIcon color="success" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">2/3</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">
-                Data Requests (30d)
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <HistoryIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
-                <Typography variant="h4">5</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        <div className="scd-top-cards">
+          <div className="scd-card">
+            <h5>Failed Logins (24h)</h5>
+            <div className="scd-card-content">
+              <WarningIcon className="scd-icon-large" />
+              <h3>12</h3>
+            </div>
+          </div>
+          <div className="scd-card">
+            <h5>Blocked IPs</h5>
+            <div className="scd-card-content">
+              <LockIcon className="scd-icon-large" />
+              <h3>8</h3>
+            </div>
+          </div>
+          <div className="scd-card">
+            <h5>Active Alerts</h5>
+            <div className="scd-card-content">
+              <WarningIcon className="scd-icon-large" />
+              <h3>3</h3>
+            </div>
+          </div>
+          <div className="scd-card">
+            <h5>Audit Events (7d)</h5>
+            <div className="scd-card-content">
+              <VisibilityIcon className="scd-icon-large" />
+              <h3>42</h3>
+            </div>
+          </div>
+          <div className="scd-card">
+            <h5>Compliance Status</h5>
+            <div className="scd-card-content">
+              <ComplianceIcon className="scd-icon-large" />
+              <h3>2/3</h3>
+            </div>
+          </div>
+          <div className="scd-card">
+            <h5>Data Requests (30d)</h5>
+            <div className="scd-card-content">
+              <HistoryIcon className="scd-icon-large" />
+              <h3>5</h3>
+            </div>
+          </div>
+        </div>
 
-      {/* Main Content */}
-      <Card elevation={3}>
-        {/* Tabs */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-            <Tab label="Failed Logins" icon={<WarningIcon />} iconPosition="start" />
-            <Tab label="Blocked IPs" icon={<BlockIcon />} iconPosition="start" />
-            <Tab label="Audit Logs" icon={<VisibilityIcon />} iconPosition="start" />
-            <Tab label="Vulnerability Alerts" icon={<SecurityIcon />} iconPosition="start" />
-            <Tab label="Compliance Reports" icon={<ComplianceIcon />} iconPosition="start" />
-          </Tabs>
-        </Box>
+        <div className="scd-main-content">
+          <div className="scd-tabs">
+            <button className={`scd-tab ${tabValue === 0 ? 'active' : ''}`} onClick={() => handleTabChange(null, 0)}>
+              <WarningIcon />
+              Failed Logins
+            </button>
+            <button className={`scd-tab ${tabValue === 1 ? 'active' : ''}`} onClick={() => handleTabChange(null, 1)}>
+              <BlockIcon />
+              Blocked IPs
+            </button>
+            <button className={`scd-tab ${tabValue === 2 ? 'active' : ''}`} onClick={() => handleTabChange(null, 2)}>
+              <VisibilityIcon />
+              Audit Logs
+            </button>
+            <button className={`scd-tab ${tabValue === 3 ? 'active' : ''}`} onClick={() => handleTabChange(null, 3)}>
+              <SecurityIcon />
+              Vulnerability Alerts
+            </button>
+            <button className={`scd-tab ${tabValue === 4 ? 'active' : ''}`} onClick={() => handleTabChange(null, 4)}>
+              <ComplianceIcon />
+              Compliance Reports
+            </button>
+          </div>
 
-        {/* Filter Bar */}
-        <Box sx={{ p: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-          <TextField
-            size="small"
-            placeholder="Search..."
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ flexGrow: 1, maxWidth: 400 }}
-          />
-          
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <CalendarIcon color="action" />
-            <DatePicker
-              label="From"
-              value={dateRange[0]}
-              onChange={(newValue) => handleDateChange(newValue, 0)}
-              renderInput={(params) => <TextField {...params} size="small" />}
-            />
-            <Typography>-</Typography>
-            <DatePicker
-              label="To"
-              value={dateRange[1]}
-              onChange={(newValue) => handleDateChange(newValue, 1)}
-              renderInput={(params) => <TextField {...params} size="small" />}
-            />
-          </Stack>
-          
-          <Button variant="outlined" startIcon={<FilterIcon />}>
-            Filters
-          </Button>
-        </Box>
+          <div className="scd-filter-bar">
+            <div className="scd-search-input">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="scd-date-picker">
+              <CalendarIcon />
+              <DatePicker
+                label="From"
+                value={dateRange[0]}
+                onChange={(newValue) => handleDateChange(newValue, 0)}
+                renderInput={(params) => <input {...params} />}
+              />
+              <span>-</span>
+              <DatePicker
+                label="To"
+                value={dateRange[1]}
+                onChange={(newValue) => handleDateChange(newValue, 1)}
+                renderInput={(params) => <input {...params} />}
+              />
+            </div>
+            <button className="scd-btn scd-btn-filter">
+              <FilterIcon />
+              Filters
+            </button>
+          </div>
 
-        <Divider />
-
-        {/* Tab Content */}
-        <Box sx={{ p: 2 }}>
-          {/* Failed Logins Tab */}
-          {tabValue === 0 && (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Timestamp</TableCell>
-                    <TableCell>IP Address</TableCell>
-                    <TableCell>Username</TableCell>
-                    <TableCell align="center">Attempts</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+          <div className="scd-table-container">
+            {tabValue === 0 && (
+              <table className="scd-table">
+                <thead>
+                  <tr>
+                    <th><span>Timestamp</span></th>
+                    <th><span>IP Address</span></th>
+                    <th><span>Username</span></th>
+                    <th><span>Attempts</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {failedLogins.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>{row.timestamp}</TableCell>
-                      <TableCell>{row.ip}</TableCell>
-                      <TableCell>{row.username}</TableCell>
-                      <TableCell align="center">{row.attempts}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color={statusColor(row.status)} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Block IP">
-                          <IconButton size="small" onClick={() => handleBlockIP(row.ip)}>
-                            <BlockIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View details">
-                          <IconButton size="small">
-                            <DetailsIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
+                    <tr key={row.id}>
+                      <td>{row.timestamp}</td>
+                      <td>{row.ip}</td>
+                      <td>{row.username}</td>
+                      <td>{row.attempts}</td>
+                      <td>
+                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                      </td>
+                      <td>
+                        <div className="scd-action-btns">
+                          <button className="scd-btn scd-btn-block" onClick={() => handleBlockIP(row.ip)} title="Block IP">
+                            <BlockIcon />
+                          </button>
+                          <button className="scd-btn scd-btn-details" title="View details">
+                            <DetailsIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
-          {/* Blocked IPs Tab */}
-          {tabValue === 1 && (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>IP Address</TableCell>
-                    <TableCell>Reason</TableCell>
-                    <TableCell>Blocked At</TableCell>
-                    <TableCell>Action</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                </tbody>
+              </table>
+            )}
+            {tabValue === 1 && (
+              <table className="scd-table">
+                <thead>
+                  <tr>
+                    <th><span>IP Address</span></th>
+                    <th><span>Reason</span></th>
+                    <th><span>Blocked At</span></th>
+                    <th><span>Action</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {blockedIPs.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>{row.ip}</TableCell>
-                      <TableCell>{row.reason}</TableCell>
-                      <TableCell>{row.timestamp}</TableCell>
-                      <TableCell>{row.action}</TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Unblock">
-                          <IconButton size="small">
-                            <ResolveIcon fontSize="small" color="success" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="View details">
-                          <IconButton size="small">
-                            <DetailsIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
+                    <tr key={row.id}>
+                      <td>{row.ip}</td>
+                      <td>{row.reason}</td>
+                      <td>{row.timestamp}</td>
+                      <td>{row.action}</td>
+                      <td>
+                        <div className="scd-action-btns">
+                          <button className="scd-btn scd-btn-resolve" title="Unblock">
+                            <ResolveIcon />
+                          </button>
+                          <button className="scd-btn scd-btn-details" title="View details">
+                            <DetailsIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
-          {/* Audit Logs Tab */}
-          {tabValue === 2 && (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Admin</TableCell>
-                    <TableCell>Action</TableCell>
-                    <TableCell>Target</TableCell>
-                    <TableCell>Timestamp</TableCell>
-                    <TableCell align="right">Details</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                </tbody>
+              </table>
+            )}
+            {tabValue === 2 && (
+              <table className="scd-table">
+                <thead>
+                  <tr>
+                    <th><span>Admin</span></th>
+                    <th><span>Action</span></th>
+                    <th><span>Target</span></th>
+                    <th><span>Timestamp</span></th>
+                    <th><span>Details</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {auditLogs.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>{row.admin}</TableCell>
-                      <TableCell>{row.action}</TableCell>
-                      <TableCell>{row.target}</TableCell>
-                      <TableCell>{row.timestamp}</TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small">
-                          <DetailsIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
+                    <tr key={row.id}>
+                      <td>{row.admin}</td>
+                      <td>{row.action}</td>
+                      <td>{row.target}</td>
+                      <td>{row.timestamp}</td>
+                      <td>
+                        <div className="scd-action-btns">
+                          <button className="scd-btn scd-btn-details" title="View details">
+                            <DetailsIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
-          {/* Vulnerability Alerts Tab */}
-          {tabValue === 3 && (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Severity</TableCell>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Component</TableCell>
-                    <TableCell>Detected</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                </tbody>
+              </table>
+            )}
+            {tabValue === 3 && (
+              <table className="scd-table">
+                <thead>
+                  <tr>
+                    <th><span>Severity</span></th>
+                    <th><span>Title</span></th>
+                    <th><span>Component</span></th>
+                    <th><span>Detected</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {vulnerabilityAlerts.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>
-                        <Chip 
-                          label={row.severity} 
-                          sx={{ 
-                            backgroundColor: severityColor(row.severity),
-                            color: 'white',
-                            fontWeight: 'bold'
-                          }} 
-                        />
-                      </TableCell>
-                      <TableCell>{row.title}</TableCell>
-                      <TableCell>{row.component}</TableCell>
-                      <TableCell>{row.detected}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color={statusColor(row.status)} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        {row.status !== 'resolved' && (
-                          <Tooltip title="Mark as resolved">
-                            <IconButton 
-                              size="small" 
+                    <tr key={row.id}>
+                      <td>
+                        <span className="scd-chip" style={{ backgroundColor: severityColor(row.severity), color: '#fff' }}>
+                          {row.severity}
+                        </span>
+                      </td>
+                      <td>{row.title}</td>
+                      <td>{row.component}</td>
+                      <td>{row.detected}</td>
+                      <td>
+                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                      </td>
+                      <td>
+                        <div className="scd-action-btns">
+                          {row.status !== 'resolved' && (
+                            <button
+                              className="scd-btn scd-btn-resolve"
                               onClick={() => handleResolveAlert(row.id)}
+                              title="Mark as resolved"
                             >
-                              <ResolveIcon fontSize="small" color="success" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                        <Tooltip title="View details">
-                          <IconButton size="small">
-                            <DetailsIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
+                              <ResolveIcon />
+                            </button>
+                          )}
+                          <button className="scd-btn scd-btn-details" title="View details">
+                            <DetailsIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
-          {/* Compliance Reports Tab */}
-          {tabValue === 4 && (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Standard</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Last Audit</TableCell>
-                    <TableCell>Next Audit</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                </tbody>
+              </table>
+            )}
+            {tabValue === 4 && (
+              <table className="scd-table">
+                <thead>
+                  <tr>
+                    <th><span>Standard</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Last Audit</span></th>
+                    <th><span>Next Audit</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {complianceReports.map((row) => (
-                    <TableRow key={row.id} hover>
-                      <TableCell>{row.type}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={row.status} 
-                          color={statusColor(row.status)} 
-                          size="small" 
-                        />
-                      </TableCell>
-                      <TableCell>{row.lastAudit}</TableCell>
-                      <TableCell>{row.nextAudit}</TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Generate Report">
-                          <IconButton size="small">
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Schedule Audit">
-                          <IconButton size="small">
-                            <CalendarIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
+                    <tr key={row.id}>
+                      <td>{row.type}</td>
+                      <td>
+                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                      </td>
+                      <td>{row.lastAudit}</td>
+                      <td>{row.nextAudit}</td>
+                      <td>
+                        <div className="scd-action-btns">
+                          <button className="scd-btn scd-btn-view" title="Generate Report">
+                            <VisibilityIcon />
+                          </button>
+                          <button className="scd-btn scd-btn-schedule" title="Schedule Audit">
+                            <CalendarIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Box>
-      </Card>
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
 
-      {/* Recent Activity Sidebar (would be fixed position in a real layout) */}
-      {!isMobile && (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-            Recent Security Events
-          </Typography>
-          <Paper elevation={3} sx={{ p: 2 }}>
-            <List dense>
-              <ListItem>
-                <ListItemIcon>
-                  <Avatar sx={{ bgcolor: theme.palette.error.light }}>
-                    <WarningIcon color="error" />
-                  </Avatar>
-                </ListItemIcon>
-                <ListItemText
-                  primary="Multiple failed login attempts"
-                  secondary="5 minutes ago - IP: 192.168.1.45"
-                />
-              </ListItem>
-              <Divider component="li" />
-              <ListItem>
-                <ListItemIcon>
-                  <Avatar sx={{ bgcolor: theme.palette.success.light }}>
-                    <ResolveIcon color="success" />
-                  </Avatar>
-                </ListItemIcon>
-                <ListItemText
-                  primary="Vulnerability resolved"
-                  secondary="1 hour ago - Outdated library updated"
-                />
-              </ListItem>
-              <Divider component="li" />
-              <ListItem>
-                <ListItemIcon>
-                  <Avatar sx={{ bgcolor: theme.palette.info.light }}>
-                    <VisibilityIcon color="info" />
-                  </Avatar>
-                </ListItemIcon>
-                <ListItemText
-                  primary="Admin permissions modified"
-                  secondary="2 hours ago - User: admin@example.com"
-                />
-              </ListItem>
-            </List>
-          </Paper>
-        </Box>
-      )}
-    </Container>
+        <div className="scd-sidebar">
+          <h2>Recent Security Events</h2>
+          <div className="scd-event-list">
+            <div className="scd-event-item">
+              <div className="scd-event-icon">
+                <WarningIcon />
+              </div>
+              <div className="scd-event-text">
+                <span>Multiple failed login attempts</span>
+                <span className="scd-text-secondary">5 minutes ago - IP: 192.168.1.45</span>
+              </div>
+            </div>
+            <div className="scd-event-divider"></div>
+            <div className="scd-event-item">
+              <div className="scd-event-icon">
+                <ResolveIcon />
+              </div>
+              <div className="scd-event-text">
+                <span>Vulnerability resolved</span>
+                <span className="scd-text-secondary">1 hour ago - Outdated library updated</span>
+              </div>
+            </div>
+            <div className="scd-event-divider"></div>
+            <div className="scd-event-item">
+              <div className="scd-event-icon">
+                <VisibilityIcon />
+              </div>
+              <div className="scd-event-text">
+                <span>Admin permissions modified</span>
+                <span className="scd-text-secondary">2 hours ago - User: admin@example.com</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 };

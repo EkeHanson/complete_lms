@@ -1,22 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, IconButton, Stack,
-  Collapse, Card, CardContent, CardActions, List, ListItem, ListItemText, TablePagination,
-  Grid, LinearProgress, useMediaQuery, FormControlLabel, Checkbox,Autocomplete 
-} from '@mui/material';
+import React, { useState, useEffect } from 'react';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Forum as ForumIcon,
   ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Search as SearchIcon,
   Refresh as RefreshIcon, Close as CloseIcon
 } from '@mui/icons-material';
+import { TablePagination, Autocomplete, TextField, Chip } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { forumAPI, groupsAPI, userAPI } from '../../../config';
-import { debounce } from 'lodash';
+import { forumAPI, groupsAPI } from '../../../config';
+import './ForumManager.css';
 
 const ForumManager = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const isMobile = useMediaQuery('(max-width:600px)');
   const [forums, setForums] = useState([]);
   const [groups, setGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +31,6 @@ const ForumManager = () => {
     isActive: true
   });
 
-  // Fetch forums
   const fetchForums = async () => {
     setIsLoading(true);
     try {
@@ -139,253 +132,268 @@ const ForumManager = () => {
   };
 
   const renderMobileForumCards = () => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div className="fm-mobile-cards">
       {forums.map((forum) => (
-        <Card key={forum.id} elevation={3}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ForumIcon color={forum.is_active ? 'primary' : 'disabled'} />
-                <Typography variant="subtitle1">{forum.title}</Typography>
-              </Box>
-              <IconButton onClick={() => toggleExpandForum(forum.id)}>
-                {expandedForum === forum.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </IconButton>
-            </Box>
-            <Typography color="text.secondary" gutterBottom>
-              Posts: {forum.post_count} | Last activity: {forum.last_activity}
-            </Typography>
-            <Collapse in={expandedForum === forum.id}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" sx={{ mb: 2 }}>{forum.description}</Typography>
-                <Typography variant="subtitle2">Allowed Groups:</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {forum.allowed_groups.map((group, i) => (
-                    <Chip key={i} label={group.name} size="small" />
-                  ))}
-                </Box>
-              </Box>
-            </Collapse>
-          </CardContent>
-          <CardActions>
-            <Button
-              size="small"
-              startIcon={<EditIcon />}
+        <div key={forum.id} className="fm-card">
+          <div className="fm-card-header">
+            <div className="fm-card-title">
+              <ForumIcon className={forum.is_active ? 'fm-icon-active' : 'fm-icon-inactive'} />
+              <span>{forum.title}</span>
+            </div>
+            <button
+              className="fm-expand-btn"
+              onClick={() => toggleExpandForum(forum.id)}
+            >
+              {expandedForum === forum.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </button>
+          </div>
+          <div className="fm-card-content">
+            <div className="fm-card-meta">
+              <span>Posts: {forum.post_count}</span>
+              <span>Last activity: {forum.last_activity}</span>
+            </div>
+            <div className={`fm-collapse ${expandedForum === forum.id ? 'open' : ''}`}>
+              <p>{forum.description}</p>
+              <div className="fm-chip-container">
+                <span>Allowed Groups:</span>
+                {forum.allowed_groups.map((group, i) => (
+                  <span key={i} className="fm-chip">{group.name}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="fm-card-actions">
+            <button
+              className="fm-btn fm-btn-edit"
               onClick={() => handleOpenDialog(forum)}
             >
+              <EditIcon />
               Edit
-            </Button>
-            <Button
-              size="small"
-              startIcon={<DeleteIcon />}
+            </button>
+            <button
+              className="fm-btn fm-btn-delete"
               onClick={() => handleDeleteForum(forum.id)}
-              color="error"
             >
+              <DeleteIcon />
               Delete
-            </Button>
-          </CardActions>
-        </Card>
+            </button>
+          </div>
+        </div>
       ))}
-    </Box>
+    </div>
   );
 
   const renderDesktopForumTable = () => (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Title</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell>Posts</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Allowed Groups</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
+    <div className="fm-table-container">
+      <table className="fm-table">
+        <thead>
+          <tr>
+            <th><span>Title</span></th>
+            <th><span>Description</span></th>
+            <th><span>Posts</span></th>
+            <th><span>Status</span></th>
+            <th><span>Allowed Groups</span></th>
+            <th><span>Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
           {forums.map((forum) => (
-            <TableRow
+            <tr
               key={forum.id}
-              hover
-              sx={{ '&:hover': { cursor: 'pointer' } }}
+              className="fm-table-row"
               onClick={() => toggleExpandForum(forum.id)}
             >
-              <TableCell>{forum.title}</TableCell>
-              <TableCell>{forum.description.substring(0, 100)}...</TableCell>
-              <TableCell>{forum.post_count}</TableCell>
-              <TableCell>
-                <Chip
-                  label={forum.is_active ? 'Active' : 'Inactive'}
-                  color={forum.is_active ? 'success' : 'default'}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <td>{forum.title}</td>
+              <td>{forum.description.substring(0, 100)}...</td>
+              <td>{forum.post_count}</td>
+              <td>
+                <span className={`fm-status ${forum.is_active ? 'active' : 'inactive'}`}>
+                  {forum.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td>
+                <div className="fm-chip-container">
                   {forum.allowed_groups.slice(0, 2).map((group, i) => (
-                    <Chip key={i} label={group.name} size="small" />
+                    <span key={i} className="fm-chip">{group.name}</span>
                   ))}
                   {forum.allowed_groups.length > 2 && (
-                    <Chip label={`+${forum.allowed_groups.length - 2}`} size="small" />
+                    <span className="fm-chip">+{forum.allowed_groups.length - 2}</span>
                   )}
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <IconButton onClick={() => handleOpenDialog(forum)}>
+                </div>
+              </td>
+              <td>
+                <div className="fm-action-btns">
+                  <button
+                    className="fm-btn fm-btn-edit"
+                    onClick={() => handleOpenDialog(forum)}
+                  >
                     <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handleDeleteForum(forum.id)} color="error">
+                  </button>
+                  <button
+                    className="fm-btn fm-btn-delete"
+                    onClick={() => handleDeleteForum(forum.id)}
+                  >
                     <DeleteIcon />
-                  </IconButton>
-                </Stack>
-              </TableCell>
-            </TableRow>
+                  </button>
+                </div>
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </tbody>
+      </table>
+    </div>
   );
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Forum Manager
-      </Typography>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={() => handleOpenDialog()}
-        sx={{ mb: 3 }}
-      >
-        Create Forum
-      </Button>
+    <div className="fm-container">
+      {error && (
+        <div className="fm-alert fm-alert-error">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="fm-alert-close">
+            <CloseIcon />
+          </button>
+        </div>
+      )}
 
-      <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="Search forums..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={filters.isActive}
-                  onChange={(e) => handleFilterChange('isActive', e.target.checked)}
-                />
-              }
-              label="Show Active Forums Only"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} sx={{ textAlign: 'right' }}>
-            <IconButton onClick={resetFilters}>
-              <RefreshIcon />
-            </IconButton>
-          </Grid>
-        </Grid>
-      </Paper>
+      <div className="fm-header">
+        <h1>Forum Manager</h1>
+        <button
+          className="fm-btn fm-btn-primary"
+          onClick={() => handleOpenDialog()}
+        >
+          <AddIcon />
+          Create Forum
+        </button>
+      </div>
+
+      <div className="fm-filters">
+        <div className="fm-filter-search">
+          <SearchIcon />
+          <input
+            type="text"
+            placeholder="Search forums..."
+            value={filters.search}
+            onChange={(e) => handleFilterChange('search', e.target.value)}
+          />
+        </div>
+        <label className="fm-checkbox">
+          <input
+            type="checkbox"
+            checked={filters.isActive}
+            onChange={(e) => handleFilterChange('isActive', e.target.checked)}
+          />
+          <span>Show Active Forums Only</span>
+        </label>
+        <button className="fm-btn fm-btn-refresh" onClick={resetFilters}>
+          <RefreshIcon />
+        </button>
+      </div>
 
       {isLoading ? (
-        <LinearProgress />
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
+        <div className="fm-loading">
+          <div className="fm-spinner"></div>
+        </div>
       ) : forums.length === 0 ? (
-        <Typography>No forums found</Typography>
-      ) : isMobile ? (
+        <div className="fm-no-data">No forums found</div>
+      ) : window.innerWidth <= 600 ? (
         renderMobileForumCards()
       ) : (
         renderDesktopForumTable()
       )}
 
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={pagination.count}
-        rowsPerPage={rowsPerPage}
-        page={pagination.page - 1}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
+      <div className="fm-pagination">
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={pagination.count}
+          rowsPerPage={rowsPerPage}
+          page={pagination.page - 1}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </div>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {currentForum?.id ? 'Edit Forum' : 'Create Forum'}
-          <IconButton
-            onClick={handleCloseDialog}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Title"
-            fullWidth
-            value={currentForum?.title || ''}
-            onChange={(e) => setCurrentForum({ ...currentForum, title: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            multiline
-            rows={4}
-            value={currentForum?.description || ''}
-            onChange={(e) => setCurrentForum({ ...currentForum, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={currentForum?.is_active || false}
-                onChange={(e) => setCurrentForum({ ...currentForum, is_active: e.target.checked })}
+      <div className="fm-dialog" style={{ display: openDialog ? 'block' : 'none' }}>
+        <div className="fm-dialog-backdrop" onClick={handleCloseDialog}></div>
+        <div className="fm-dialog-content">
+          <div className="fm-dialog-header">
+            <h3>{currentForum?.id ? 'Edit Forum' : 'Create Forum'}</h3>
+            <button className="fm-dialog-close" onClick={handleCloseDialog}>
+              <CloseIcon />
+            </button>
+          </div>
+          <div className="fm-dialog-body">
+            <div className="fm-form-field">
+              <label>Title</label>
+              <input
+                type="text"
+                value={currentForum?.title || ''}
+                onChange={(e) => setCurrentForum({ ...currentForum, title: e.target.value })}
               />
-            }
-            label="Active"
-            sx={{ mb: 2 }}
-          />
-          <Typography variant="subtitle2" gutterBottom>Select Groups</Typography>
-          <Autocomplete
-            multiple
-            options={groups}
-            getOptionLabel={(option) => option.name}
-            value={selectedGroups}
-            onChange={(event, newValue) => setSelectedGroups(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} label="Allowed Groups" placeholder="Select groups" />
-            )}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip {...getTagProps({ index })} key={option.id} label={option.name} />
-              ))
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button
-            onClick={handleSaveForum}
-            variant="contained"
-            disabled={!currentForum?.title}
-          >
-            {currentForum?.id ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            </div>
+            <div className="fm-form-field">
+              <label>Description</label>
+              <textarea
+                rows="4"
+                value={currentForum?.description || ''}
+                onChange={(e) => setCurrentForum({ ...currentForum, description: e.target.value })}
+              ></textarea>
+            </div>
+            <div className="fm-form-field">
+              <label className="fm-checkbox">
+                <input
+                  type="checkbox"
+                  checked={currentForum?.is_active || false}
+                  onChange={(e) => setCurrentForum({ ...currentForum, is_active: e.target.checked })}
+                />
+                <span>Active</span>
+              </label>
+            </div>
+            <div className="fm-form-field">
+              <label>Select Groups</label>
+              <Autocomplete
+                multiple
+                options={groups}
+                getOptionLabel={(option) => option.name}
+                value={selectedGroups}
+                onChange={(event, newValue) => setSelectedGroups(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Allowed Groups"
+                    placeholder="Select groups"
+                    className="fm-autocomplete"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      className="fm-chip"
+                    />
+                  ))
+                }
+                className="fm-autocomplete"
+              />
+            </div>
+          </div>
+          <div className="fm-dialog-actions">
+            <button className="fm-btn fm-btn-cancel" onClick={handleCloseDialog}>
+              Cancel
+            </button>
+            <button
+              className="fm-btn fm-btn-confirm"
+              onClick={handleSaveForum}
+              disabled={!currentForum?.title}
+            >
+              {currentForum?.id ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

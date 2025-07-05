@@ -1,0 +1,586 @@
+.lp-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 80vh;
+}
+
+.lp-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 15px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    background-color: #f7f5ff;
+    color: #6251a4;
+    border: 1px solid #e3defc;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    margin-bottom: 20px;
+}
+
+.lp-back-btn:hover {
+    background-color: #ece8f9;
+    border-color: #7226FF;
+}
+
+.lp-back-btn svg {
+    width: 15px;
+}
+
+.lp-profile-card {
+    position: relative;
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #e7e2f7;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.lp-profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.lp-avatar {
+    width: 120px;
+    height: 120px;
+    background-color: #ebe6ff;
+    color: #7226FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 500;
+    border-radius: 50%;
+}
+
+.lp-profile-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #7226FF;
+    margin-top: 10px;
+}
+
+.lp-profile-content {
+    position: relative;
+}
+
+.lp-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.lp-profile-info,
+.lp-profile-stats,
+.lp-profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lp-info-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #6251a4;
+}
+
+.lp-info-item svg {
+    width: 17px;
+    color: #6251a4;
+}
+
+.lp-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.lp-stat-label {
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.lp-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.lp-progress-bar {
+    height: 10px;
+    border-radius: 5px;
+    background-color: #f3f0fd;
+    flex-grow: 1;
+}
+
+.lp-progress-container span {
+    font-weight: 500;
+    font-size: 12px;
+    color: #6251a4;
+}
+
+.lp-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lp-detail-item h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.lp-detail-item p {
+    font-size: 14px;
+    color: #6251a4;
+}
+
+.lp-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.lp-tab {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 30px;
+    background-color: #f7f5ff;
+    color: #6251a4;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    border: 1px solid #e3defc;
+}
+
+.lp-tab.active {
+    background-color: #ebe6ff;
+    color: #7226FF;
+    border-color: #7226FF;
+}
+
+.lp-section-card {
+    position: relative;
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #e7e2f7;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.lp-section-card h2 {
+    font-size: 17px;
+    font-weight: 500;
+    color: #7226FF;
+    margin-bottom: 10px;
+}
+
+.lp-courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.lp-courses-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lp-courses-section h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.lp-course-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #6251a4;
+}
+
+.lp-course-item svg {
+    width: 17px;
+}
+
+.lp-course-item .lp-icon-warning {
+    color: #d97706;
+}
+
+.lp-course-item .lp-icon-disabled {
+    color: #C9C9C9;
+}
+
+.lp-chip {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 30px;
+    background-color: #f3edff;
+    color: #7226FF;
+}
+
+.lp-chip.email {
+    background-color: #EAE0FF;
+}
+
+.lp-chip.phone {
+    background-color: #EFE6FF;
+}
+
+.lp-chip.in-progress {
+    background-color: rgba(217, 119, 6, 0.2);
+    color: #d97706;
+}
+
+.lp-chip.pending {
+    background-color: rgba(201, 201, 201, 0.2);
+    color: #6251a4;
+}
+
+.lp-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.lp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.lp-btn-primary {
+    background: linear-gradient(135deg, #450CD5 0%, #7226FF 50%, #F042FF 100%);
+    color: #fff;
+}
+
+.lp-btn-primary:hover {
+    background: linear-gradient(135deg, #F042FF 0%, #7226FF 50%, #450CD5 100%);
+}
+
+.lp-btn-edit {
+    background-color: #ebe6ff;
+    color: #7226FF;
+}
+
+.lp-btn-edit:hover {
+    border-color: #7226FF;
+}
+
+.lp-btn-delete {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.lp-btn-delete:hover {
+    border-color: #991b1b;
+}
+
+.lp-table-container {
+    overflow-x: auto;
+}
+
+.lp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.lp-table thead {
+    background-color: #f7f5ff;
+}
+
+.lp-table th {
+    padding: 14px 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.lp-table th span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.lp-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.lp-table td input {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    width: 100%;
+}
+
+.lp-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.lp-error {
+    font-size: 12px;
+    color: #991b1b;
+    background-color: #fee2e2;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.lp-gamification-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.lp-gamification-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.lp-gamification-item svg {
+    width: 17px;
+    color: #7226FF;
+}
+
+.lp-gamification-item h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.lp-text-secondary {
+    font-size: 12px;
+    color: #6251a4;
+}
+
+.lp-badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.lp-badge-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.lp-badge-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    margin-right: 5px;
+}
+
+.lp-loading {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.lp-progress-bar-loading {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #f3f0fd;
+    position: relative;
+    overflow: hidden;
+}
+
+.lp-progress-bar-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background-color: #7226FF;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.lp-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+}
+
+.lp-dialog-content {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    border: 1px solid #e9dcff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 480px;
+    width: 95%;
+    z-index: 2100;
+    box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
+}
+
+.lp-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.lp-dialog-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #7226FF;
+}
+
+.lp-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.lp-dialog-close svg {
+    width: 15px;
+    color: #6251a4;
+}
+
+.lp-dialog-body {
+    padding: 10px 0;
+}
+
+.lp-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.lp-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lp-form-field-full {
+    grid-column: 1 / -1;
+}
+
+.lp-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.lp-form-field input,
+.lp-form-field select,
+.lp-form-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.lp-form-field input:focus,
+.lp-form-field select:focus,
+.lp-form-field textarea:focus {
+    border-color: #cfb8fa;
+}
+
+.lp-form-field textarea {
+    resize: vertical;
+}
+
+.lp-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+.lp-btn-cancel {
+    background-color: #f7f5ff;
+    color: #6251a4;
+}
+
+.lp-btn-cancel:hover {
+    background-color: #ece8f9;
+}
+
+.lp-btn-confirm {
+    background: linear-gradient(135deg, #450CD5 0%, #7226FF 50%, #F042FF 100%);
+    color: #fff;
+}
+
+.lp-btn-confirm:hover {
+    background: linear-gradient(135deg, #F042FF 0%, #7226FF 50%, #450CD5 100%);
+}
+
+.lp-btn-confirm:disabled {
+    background: #ece8f9;
+    color: #6251a4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .lp-dialog-content {
+        width: 95vw;
+        padding: 16px;
+    }
+
+    .lp-dialog-header h3 {
+        font-size: 16px;
+    }
+
+    .lp-form-grid {
+        grid-template-columns: 1fr;
+    }
+}

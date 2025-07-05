@@ -1,29 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Box, Container, Typography,  Grid, Card, List, CardContent,
-  Divider, Tabs, Tab, Table, TableBody,  TableCell, TableContainer,
-  TableHead, TableRow, Paper, Chip,  InputAdornment, Button, Badge, Stack,
-  Avatar, IconButton, Tooltip, useTheme,  useMediaQuery, TextField,ListItem, ListItemIcon, ListItemText
-} from '@mui/material';
-import {
-  Notifications as NotificationsIcon,  Warning as WarningIcon,  Report as ReportIcon,
-  AddShoppingCart as ListingIcon,  HowToReg as ApprovalIcon,  Security as SuspiciousIcon,
-   ArrowForward as DetailsIcon,  Refresh as RefreshIcon,  CheckCircle as ResolveIcon,  
-  CalendarToday as CalendarIcon,  FilterList as FilterIcon, Search as SearchIcon, Block as BlockIcon,
-  Error as CriticalIcon,  Storage as StorageIcon,  Traffic as TrafficIcon,
-  } from '@mui/icons-material';
+  Notifications as NotificationsIcon,
+  Warning as WarningIcon,
+  Report as ReportIcon,
+  AddShoppingCart as ListingIcon,
+  HowToReg as ApprovalIcon,
+  Security as SuspiciousIcon,
+  ArrowForward as DetailsIcon,
+  Refresh as RefreshIcon,
+  // ResolveIcon, <-- remove this line
+  AssignmentTurnedIn as ResolveIcon,  // or Done, CheckCircle, etc.
+  CalendarToday as CalendarIcon,
+  FilterList as FilterIcon,
+  Search as SearchIcon,
+  Block as BlockIcon,
+  Error as CriticalIcon,
+  Storage as StorageIcon,
+  Traffic as TrafficIcon
+} from '@mui/icons-material';
+
+
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import './NotificationsDashboard.css';
 
 const NotificationsDashboard = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState([null, null]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock data - replace with actual API calls
   const systemWarnings = [
     { id: 1, type: 'API Failure', component: 'Payment Gateway', severity: 'critical', message: 'Failed to process 12 transactions', timestamp: '2023-06-15 14:32:45', status: 'unresolved' },
     { id: 2, type: 'High Traffic', component: 'Web Server', severity: 'high', message: 'Traffic spike detected (300% increase)', timestamp: '2023-06-15 11:15:22', status: 'monitoring' },
@@ -60,7 +66,13 @@ const NotificationsDashboard = () => {
     { id: 4, type: 'Fake Reviews', user: 'reviewer123@example.com', details: '5 identical positive reviews', timestamp: '2023-06-13 22:18:37', status: 'investigating' }
   ];
 
-  
+  const recentAlerts = [
+    { id: 1, type: 'API Failure - Payment Gateway', message: '15 minutes ago - 12 failed transactions', icon: <CriticalIcon className="nd-icon" />, bgColor: '#fee2e2' },
+    { id: 2, type: 'New user complaint', message: '1 hour ago - Wrong item received', icon: <ReportIcon className="nd-icon" />, bgColor: '#fff7e6' },
+    { id: 3, type: 'Suspicious activity detected', message: '2 hours ago - Multiple accounts from same IP', icon: <SuspiciousIcon className="nd-icon" />, bgColor: '#e6f4ff' },
+    { id: 4, type: 'New listing added', message: '3 hours ago - Wireless Headphones', icon: <ListingIcon className="nd-icon" />, bgColor: '#e6fffa' }
+  ];
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -72,561 +84,434 @@ const NotificationsDashboard = () => {
   };
 
   const handleResolveAlert = (id) => {
-    // API call to resolve alert
     console.log(`Resolving alert ${id}`);
   };
 
   const handleApproveRequest = (id) => {
-    // API call to approve request
     console.log(`Approving request ${id}`);
   };
 
   const severityColor = (severity) => {
     switch (severity) {
-      case 'critical': return theme.palette.error.dark;
-      case 'high': return theme.palette.error.main;
-      case 'medium': return theme.palette.warning.main;
-      case 'low': return theme.palette.success.main;
-      default: return theme.palette.text.secondary;
+      case 'critical': return '#991b1b';
+      case 'high': return '#d32f2f';
+      case 'medium': return '#ff9800';
+      case 'low': return '#065f46';
+      default: return '#6251a4';
     }
   };
 
   const statusColor = (status) => {
     switch (status) {
-      case 'unresolved': return 'error';
-      case 'monitoring': return 'info';
-      case 'investigating': return 'warning';
-      case 'resolved': return 'success';
-      case 'new': return 'warning';
-      case 'in-progress': return 'info';
-      case 'review': return 'secondary';
-      case 'pending': return 'warning';
-      case 'pending-review': return 'warning';
-      case 'approved': return 'success';
-      case 'rejected': return 'error';
-      case 'blocked': return 'error';
-      default: return 'default';
+      case 'unresolved': return '#991b1b';
+      case 'monitoring': return '#0288d1';
+      case 'investigating': return '#ff9800';
+      case 'resolved': return '#065f46';
+      case 'new': return '#7226FF';
+      case 'in-progress': return '#0288d1';
+      case 'review': return '#6251a4';
+      case 'pending': return '#ff9800';
+      case 'pending-review': return '#ff9800';
+      case 'approved': return '#065f46';
+      case 'rejected': return '#991b1b';
+      case 'blocked': return '#991b1b';
+      default: return '#6251a4';
     }
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-            <NotificationsIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+      <div className="nd-container">
+        <div className="nd-header">
+          <h1>
+            <NotificationsIcon className="nd-icon" />
             Notifications & Alerts
-          </Typography>
-          <Button variant="outlined" startIcon={<RefreshIcon />}>
+          </h1>
+          <button className="nd-btn nd-btn-refresh">
+            <RefreshIcon className="nd-icon" />
             Refresh Data
-          </Button>
-        </Box>
+          </button>
+        </div>
 
-        {/* Summary Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  System Warnings
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <WarningIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                  <Box>
-                    <Typography variant="h4">8</Typography>
-                    <Typography variant="caption" color="error.main">3 critical</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  User Reports
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <ReportIcon color="warning" sx={{ fontSize: 40, mr: 2 }} />
-                  <Box>
-                    <Typography variant="h4">12</Typography>
-                    <Typography variant="caption">5 new</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  New Listings
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <ListingIcon color="info" sx={{ fontSize: 40, mr: 2 }} />
-                  <Box>
-                    <Typography variant="h4">24</Typography>
-                    <Typography variant="caption">7 pending</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Pending Approvals
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <ApprovalIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">9</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Suspicious Activities
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <SuspiciousIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">5</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Total Alerts
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <CriticalIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">58</Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        <div className="nd-top-cards">
+          <div className="nd-card">
+            <p>System Warnings</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#fee2e2' }}>
+                <WarningIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>8</h3>
+                <span className="nd-card-subtext" style={{ color: '#991b1b' }}>3 critical</span>
+              </div>
+            </div>
+          </div>
+          <div className="nd-card">
+            <p>User Reports</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#fff7e6' }}>
+                <ReportIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>12</h3>
+                <span className="nd-card-subtext">5 new</span>
+              </div>
+            </div>
+          </div>
+          <div className="nd-card">
+            <p>New Listings</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#e6f4ff' }}>
+                <ListingIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>24</h3>
+                <span className="nd-card-subtext">7 pending</span>
+              </div>
+            </div>
+          </div>
+          <div className="nd-card">
+            <p>Pending Approvals</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#f3edff' }}>
+                <ApprovalIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>9</h3>
+              </div>
+            </div>
+          </div>
+          <div className="nd-card">
+            <p>Suspicious Activities</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#fee2e2' }}>
+                <SuspiciousIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>5</h3>
+              </div>
+            </div>
+          </div>
+          <div className="nd-card">
+            <p>Total Alerts</p>
+            <div className="nd-card-content">
+              <span className="nd-card-icon" style={{ backgroundColor: '#fee2e2' }}>
+                <CriticalIcon className="nd-icon" />
+              </span>
+              <div>
+                <h3>58</h3>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Main Content */}
-        <Card elevation={3}>
-          {/* Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-              <Tab label="System Warnings" icon={<WarningIcon />} iconPosition="start" />
-              <Tab label="User Reports" icon={<ReportIcon />} iconPosition="start" />
-              <Tab label="New Listings" icon={<ListingIcon />} iconPosition="start" />
-              <Tab label="Pending Approvals" icon={<ApprovalIcon />} iconPosition="start" />
-              <Tab label="Suspicious Activities" icon={<SuspiciousIcon />} iconPosition="start" />
-            </Tabs>
-          </Box>
+        <div className="nd-main-content">
+          <div className="nd-tabs">
+            <button className={`nd-tab ${tabValue === 0 ? 'active' : ''}`} onClick={() => handleTabChange(null, 0)}>
+              <WarningIcon className="nd-icon" />
+              System Warnings
+            </button>
+            <button className={`nd-tab ${tabValue === 1 ? 'active' : ''}`} onClick={() => handleTabChange(null, 1)}>
+              <ReportIcon className="nd-icon" />
+              User Reports
+            </button>
+            <button className={`nd-tab ${tabValue === 2 ? 'active' : ''}`} onClick={() => handleTabChange(null, 2)}>
+              <ListingIcon className="nd-icon" />
+              New Listings
+            </button>
+            <button className={`nd-tab ${tabValue === 3 ? 'active' : ''}`} onClick={() => handleTabChange(null, 3)}>
+              <ApprovalIcon className="nd-icon" />
+              Pending Approvals
+            </button>
+            <button className={`nd-tab ${tabValue === 4 ? 'active' : ''}`} onClick={() => handleTabChange(null, 4)}>
+              <SuspiciousIcon className="nd-icon" />
+              Suspicious Activities
+            </button>
+          </div>
 
-          {/* Filter Bar */}
-          <Box sx={{ p: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-            <TextField
-              size="small"
-              placeholder="Search..."
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ flexGrow: 1, maxWidth: 400 }}
-            />
-            
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <CalendarIcon color="action" />
+          <div className="nd-filter-bar">
+            <div className="nd-search-input">
+              <SearchIcon className="nd-icon" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="nd-date-picker">
+              <CalendarIcon className="nd-icon" />
               <DatePicker
-                label="From"
                 value={dateRange[0]}
                 onChange={(newValue) => handleDateChange(newValue, 0)}
-                renderInput={(params) => <TextField {...params} size="small" />}
+                renderInput={({ inputRef, inputProps }) => (
+                  <input ref={inputRef} {...inputProps} className="nd-date-input" placeholder="From" />
+                )}
               />
-              <Typography>-</Typography>
+              <span>-</span>
               <DatePicker
-                label="To"
                 value={dateRange[1]}
                 onChange={(newValue) => handleDateChange(newValue, 1)}
-                renderInput={(params) => <TextField {...params} size="small" />}
+                renderInput={({ inputRef, inputProps }) => (
+                  <input ref={inputRef} {...inputProps} className="nd-date-input" placeholder="To" />
+                )}
               />
-            </Stack>
-            
-            <Button variant="outlined" startIcon={<FilterIcon />}>
+            </div>
+            <button className="nd-btn nd-btn-filter">
+              <FilterIcon className="nd-icon" />
               Filters
-            </Button>
-          </Box>
+            </button>
+          </div>
 
-          <Divider />
-
-          {/* Tab Content */}
-          <Box sx={{ p: 2 }}>
-            {/* System Warnings Tab */}
+          <div className="nd-table-container">
             {tabValue === 0 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Component</TableCell>
-                      <TableCell>Severity</TableCell>
-                      <TableCell>Message</TableCell>
-                      <TableCell>Timestamp</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {systemWarnings.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.type}</TableCell>
-                        <TableCell>{row.component}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.severity} 
-                            sx={{ 
-                              backgroundColor: severityColor(row.severity),
-                              color: 'white',
-                              fontWeight: 'bold'
-                            }} 
-                          />
-                        </TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          <Typography noWrap>{row.message}</Typography>
-                        </TableCell>
-                        <TableCell>{row.timestamp}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            color={statusColor(row.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
+              <table className="nd-table">
+                <thead>
+                  <tr>
+                    <th><span>Type</span></th>
+                    <th><span>Component</span></th>
+                    <th><span>Severity</span></th>
+                    <th><span>Message</span></th>
+                    <th><span>Timestamp</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {systemWarnings.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.type}</td>
+                      <td>{row.component}</td>
+                      <td>
+                        <span className="nd-chip" style={{ backgroundColor: severityColor(row.severity), color: '#fff' }}>
+                          {row.severity}
+                        </span>
+                      </td>
+                      <td className="nd-text-truncate">{row.message}</td>
+                      <td>{row.timestamp}</td>
+                      <td>
+                        <span className={`nd-status ${row.status}`} style={{ color: statusColor(row.status) }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nd-action-btns">
                           {row.status !== 'resolved' && (
-                            <Tooltip title="Mark as resolved">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleResolveAlert(row.id)}
-                              >
-                                <ResolveIcon fontSize="small" color="success" />
-                              </IconButton>
-                            </Tooltip>
+                            <button className="nd-btn nd-btn-resolve" onClick={() => handleResolveAlert(row.id)}>
+                              <ResolveIcon className="nd-icon" />
+                            </button>
                           )}
-                          <Tooltip title="View details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          <button className="nd-btn nd-btn-details">
+                            <DetailsIcon className="nd-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-
-            {/* User Reports Tab */}
             {tabValue === 1 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>User</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Subject</TableCell>
-                      <TableCell>Message</TableCell>
-                      <TableCell>Timestamp</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {userReports.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.user}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.type} 
-                            color={row.type === 'Complaint' ? 'error' : 'info'} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell>{row.subject}</TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          <Typography noWrap>{row.message}</Typography>
-                        </TableCell>
-                        <TableCell>{row.timestamp}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            color={statusColor(row.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="View details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <table className="nd-table">
+                <thead>
+                  <tr>
+                    <th><span>User</span></th>
+                    <th><span>Type</span></th>
+                    <th><span>Subject</span></th>
+                    <th><span>Message</span></th>
+                    <th><span>Timestamp</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userReports.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.user}</td>
+                      <td>
+                        <span className="nd-chip" style={{ backgroundColor: row.type === 'Complaint' ? '#fee2e2' : '#e6f4ff', color: row.type === 'Complaint' ? '#991b1b' : '#0288d1' }}>
+                          {row.type}
+                        </span>
+                      </td>
+                      <td>{row.subject}</td>
+                      <td className="nd-text-truncate">{row.message}</td>
+                      <td>{row.timestamp}</td>
+                      <td>
+                        <span className={`nd-status ${row.status}`} style={{ color: statusColor(row.status) }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nd-action-btns">
+                          <button className="nd-btn nd-btn-details">
+                            <DetailsIcon className="nd-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-
-            {/* New Listings Tab */}
             {tabValue === 2 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Item ID</TableCell>
-                      <TableCell>Title</TableCell>
-                      <TableCell>Seller</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Timestamp</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {newListings.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.itemId}</TableCell>
-                        <TableCell>{row.title}</TableCell>
-                        <TableCell>{row.seller}</TableCell>
-                        <TableCell>{row.category}</TableCell>
-                        <TableCell>{row.timestamp}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            color={statusColor(row.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
+              <table className="nd-table">
+                <thead>
+                  <tr>
+                    <th><span>Item ID</span></th>
+                    <th><span>Title</span></th>
+                    <th><span>Seller</span></th>
+                    <th><span>Category</span></th>
+                    <th><span>Timestamp</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {newListings.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.itemId}</td>
+                      <td>{row.title}</td>
+                      <td>{row.seller}</td>
+                      <td>{row.category}</td>
+                      <td>{row.timestamp}</td>
+                      <td>
+                        <span className={`nd-status ${row.status}`} style={{ color: statusColor(row.status) }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nd-action-btns">
                           {row.status === 'pending-review' && (
                             <>
-                              <Tooltip title="Approve">
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleApproveRequest(row.id)}
-                                >
-                                  <ResolveIcon fontSize="small" color="success" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Reject">
-                                <IconButton size="small">
-                                  <BlockIcon fontSize="small" color="error" />
-                                </IconButton>
-                              </Tooltip>
+                              <button className="nd-btn nd-btn-resolve" onClick={() => handleApproveRequest(row.id)}>
+                                <ResolveIcon className="nd-icon" />
+                              </button>
+                              <button className="nd-btn nd-btn-reject">
+                                <BlockIcon className="nd-icon" />
+                              </button>
                             </>
                           )}
-                          <Tooltip title="View details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          <button className="nd-btn nd-btn-details">
+                            <DetailsIcon className="nd-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-
-            {/* Pending Approvals Tab */}
             {tabValue === 3 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Request ID</TableCell>
-                      <TableCell>Type</TableCell>
-                      <TableCell>User</TableCell>
-                      <TableCell>Details</TableCell>
-                      <TableCell>Submitted</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pendingApprovals.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.requestId}</TableCell>
-                        <TableCell>{row.type}</TableCell>
-                        <TableCell>{row.user}</TableCell>
-                        <TableCell>
-                          {row.order && `Order: ${row.order}`}
-                          {row.page && `Page: ${row.page}`}
-                          {row.plan && `Plan: ${row.plan}`}
-                        </TableCell>
-                        <TableCell>{row.submitted}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            color={statusColor(row.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="Approve">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleApproveRequest(row.id)}
-                            >
-                              <ResolveIcon fontSize="small" color="success" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <IconButton size="small">
-                              <BlockIcon fontSize="small" color="error" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="View details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <table className="nd-table">
+                <thead>
+                  <tr>
+                    <th><span>Request ID</span></th>
+                    <th><span>Type</span></th>
+                    <th><span>User</span></th>
+                    <th><span>Details</span></th>
+                    <th><span>Submitted</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingApprovals.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.requestId}</td>
+                      <td>{row.type}</td>
+                      <td>{row.user}</td>
+                      <td>
+                        {row.order && `Order: ${row.order}`}
+                        {row.page && `Page: ${row.page}`}
+                        {row.plan && `Plan: ${row.plan}`}
+                      </td>
+                      <td>{row.submitted}</td>
+                      <td>
+                        <span className={`nd-status ${row.status}`} style={{ color: statusColor(row.status) }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nd-action-btns">
+                          <button className="nd-btn nd-btn-resolve" onClick={() => handleApproveRequest(row.id)}>
+                            <ResolveIcon className="nd-icon" />
+                          </button>
+                          <button className="nd-btn nd-btn-reject">
+                            <BlockIcon className="nd-icon" />
+                          </button>
+                          <button className="nd-btn nd-btn-details">
+                            <DetailsIcon className="nd-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-
-            {/* Suspicious Activities Tab */}
             {tabValue === 4 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Type</TableCell>
-                      <TableCell>User/Order</TableCell>
-                      <TableCell>IP Address</TableCell>
-                      <TableCell>Details</TableCell>
-                      <TableCell>Timestamp</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {suspiciousActivities.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell>{row.type}</TableCell>
-                        <TableCell>
-                          {row.user && row.user}
-                          {row.order && row.order}
-                        </TableCell>
-                        <TableCell>{row.ip}</TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          <Typography noWrap>{row.details}</Typography>
-                        </TableCell>
-                        <TableCell>{row.timestamp}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            color={statusColor(row.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
+              <table className="nd-table">
+                <thead>
+                  <tr>
+                    <th><span>Type</span></th>
+                    <th><span>User/Order</span></th>
+                    <th><span>IP Address</span></th>
+                    <th><span>Details</span></th>
+                    <th><span>Timestamp</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suspiciousActivities.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.type}</td>
+                      <td>{row.user || row.order}</td>
+                      <td>{row.ip}</td>
+                      <td className="nd-text-truncate">{row.details}</td>
+                      <td>{row.timestamp}</td>
+                      <td>
+                        <span className={`nd-status ${row.status}`} style={{ color: statusColor(row.status) }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nd-action-btns">
                           {row.status !== 'blocked' && (
-                            <Tooltip title="Block">
-                              <IconButton size="small">
-                                <BlockIcon fontSize="small" color="error" />
-                              </IconButton>
-                            </Tooltip>
+                            <button className="nd-btn nd-btn-reject">
+                              <BlockIcon className="nd-icon" />
+                            </button>
                           )}
-                          <Tooltip title="View details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          <button className="nd-btn nd-btn-details">
+                            <DetailsIcon className="nd-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-          </Box>
-        </Card>
+          </div>
+        </div>
 
-        {/* Recent Activity Sidebar */}
-        {!isMobile && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-              Recent Alerts
-            </Typography>
-            <Paper elevation={3} sx={{ p: 2 }}>
-              <List dense>
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.error.light }}>
-                      <CriticalIcon color="error" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="API Failure - Payment Gateway"
-                    secondary="15 minutes ago - 12 failed transactions"
-                  />
-                </ListItem>
-                <Divider component="li" />
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.warning.light }}>
-                      <ReportIcon color="warning" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="New user complaint"
-                    secondary="1 hour ago - Wrong item received"
-                  />
-                </ListItem>
-                <Divider component="li" />
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.info.light }}>
-                      <SuspiciousIcon color="info" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Suspicious activity detected"
-                    secondary="2 hours ago - Multiple accounts from same IP"
-                  />
-                </ListItem>
-                <Divider component="li" />
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.success.light }}>
-                      <ListingIcon color="success" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="New listing added"
-                    secondary="3 hours ago - Wireless Headphones"
-                  />
-                </ListItem>
-              </List>
-            </Paper>
-          </Box>
-        )}
-      </Container>
+        <div className="nd-recent-alerts">
+          <h2>Recent Alerts</h2>
+          <div className="nd-alerts-list">
+            {recentAlerts.map((alert) => (
+              <div key={alert.id} className="nd-alert-item">
+                <span className="nd-alert-icon" style={{ backgroundColor: alert.bgColor }}>
+                  {alert.icon}
+                </span>
+                <div>
+                  <span>{alert.type}</span>
+                  <span className="nd-text-secondary">{alert.message}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 };

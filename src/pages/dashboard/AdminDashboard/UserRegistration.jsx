@@ -1,10 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Box, Container, Typography, Grid, Paper, Button,
-  TextField, MenuItem, Avatar, Chip, Divider, Alert,
-  FormControlLabel, Checkbox, Link, useTheme
-} from '@mui/material';
-import {
   PersonAdd as PersonAddIcon,
   Email as EmailIcon,
   Lock as PasswordIcon,
@@ -17,10 +12,9 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import './UserRegistration.css';
 
 const UserRegistration = ({ onRegister }) => {
-  const theme = useTheme();
-  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,10 +30,10 @@ const UserRegistration = ({ onRegister }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roles = [
-    { value: 'learner', label: 'Learner', icon: <LearnerIcon /> },
-    { value: 'instructor', label: 'Instructor/Trainer', icon: <InstructorIcon /> },
-    { value: 'admin', label: 'Administrator', icon: <AdminIcon /> },
-    { value: 'owner', label: 'Owner', icon: <AdminIcon /> }
+    { value: 'learner', label: 'Learner', icon: <LearnerIcon className="ur-icon" /> },
+    { value: 'instructor', label: 'Instructor/Trainer', icon: <InstructorIcon className="ur-icon" /> },
+    { value: 'admin', label: 'Administrator', icon: <AdminIcon className="ur-icon" /> },
+    { value: 'owner', label: 'Owner', icon: <AdminIcon className="ur-icon" /> }
   ];
 
   const validate = () => {
@@ -111,201 +105,155 @@ const UserRegistration = ({ onRegister }) => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Avatar sx={{ 
-              bgcolor: theme.palette.primary.main, 
-              color: 'white',
-              width: 56, 
-              height: 56,
-              mx: 'auto'
-            }}>
-              <PersonAddIcon fontSize="large" />
-            </Avatar>
-            <Typography variant="h4" component="h1" sx={{ mt: 2, fontWeight: 700 }}>
-              Add New User
-            </Typography>
-            <Typography color="text.secondary">
-              Add a new user to the system
-            </Typography>
-          </Box>
-
-          {errors.submit && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {errors.submit}
-            </Alert>
-          )}
-
+      <div className="ur-container">
+        {errors.submit && (
+          <div className="ur-alert ur-alert-error">
+            <span>{errors.submit}</span>
+          </div>
+        )}
+        <div className="ur-card">
+          <div className="ur-header">
+            <div className="ur-avatar">
+              <PersonAddIcon />
+            </div>
+            <h1>Add New User</h1>
+            <p>Add a new user to the system</p>
+          </div>
           <form onSubmit={handleSubmit}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  error={!!errors.firstName}
-                  helperText={errors.firstName}
-                  InputProps={{
-                    startAdornment: (
-                      <NameIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  error={!!errors.lastName}
-                  helperText={errors.lastName}
-                  InputProps={{
-                    startAdornment: (
-                      <NameIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Email Address"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  InputProps={{
-                    startAdornment: (
-                      <EmailIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                  InputProps={{
-                    startAdornment: (
-                      <PasswordIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Confirm Password"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword}
-                  InputProps={{
-                    startAdornment: (
-                      <PasswordIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+            <div className="ur-form-grid">
+              <div className="ur-form-field">
+                <label>First Name</label>
+                <div className="ur-input-container">
+                  <NameIcon />
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className={errors.firstName ? 'error' : ''}
+                  />
+                </div>
+                {errors.firstName && <span className="ur-error">{errors.firstName}</span>}
+              </div>
+              <div className="ur-form-field">
+                <label>Last Name</label>
+                <div className="ur-input-container">
+                  <NameIcon />
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className={errors.lastName ? 'error' : ''}
+                  />
+                </div>
+                {errors.lastName && <span className="ur-error">{errors.lastName}</span>}
+              </div>
+              <div className="ur-form-field ur-form-field-full">
+                <label>Email Address</label>
+                <div className="ur-input-container">
+                  <EmailIcon />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={errors.email ? 'error' : ''}
+                  />
+                </div>
+                {errors.email && <span className="ur-error">{errors.email}</span>}
+              </div>
+              <div className="ur-form-field">
+                <label>Password</label>
+                <div className="ur-input-container">
+                  <PasswordIcon />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={errors.password ? 'error' : ''}
+                  />
+                </div>
+                {errors.password && <span className="ur-error">{errors.password}</span>}
+              </div>
+              <div className="ur-form-field">
+                <label>Confirm Password</label>
+                <div className="ur-input-container">
+                  <PasswordIcon />
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={errors.confirmPassword ? 'error' : ''}
+                  />
+                </div>
+                {errors.confirmPassword && <span className="ur-error">{errors.confirmPassword}</span>}
+              </div>
+              <div className="ur-form-field">
+                <label>Date of Birth</label>
                 <DatePicker
-                  label="Date of Birth"
                   value={formData.birthDate}
                   onChange={handleDateChange}
-                  renderInput={(params) => (
-                    <TextField 
-                      {...params} 
-                      fullWidth 
-                      error={!!errors.birthDate}
-                      helperText={errors.birthDate}
-                    />
+                  renderInput={({ inputRef, inputProps, InputProps }) => (
+                    <div className="ur-input-container">
+                      {InputProps?.endAdornment}
+                      <input ref={inputRef} {...inputProps} className={errors.birthDate ? 'error' : ''} />
+                    </div>
                   )}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  select
-                  fullWidth
-                  label="User Role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  InputProps={{
-                    startAdornment: (
-                      <GroupIcon color="action" sx={{ mr: 1 }} />
-                    )
-                  }}
-                >
-                  {roles.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ mr: 1 }}>{option.icon}</Box>
+                {errors.birthDate && <span className="ur-error">{errors.birthDate}</span>}
+              </div>
+              <div className="ur-form-field">
+                <label>User Role</label>
+                <div className="ur-input-container">
+                  <GroupIcon />
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                  >
+                    {roles.map((option) => (
+                      <option key={option.value} value={option.value}>
                         {option.label}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="termsAccepted"
-                      checked={formData.termsAccepted}
-                      onChange={handleChange}
-                      color="primary"
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">
-                      I agree to the{' '}
-                      <Link href="/terms" target="_blank">
-                        Terms and Conditions
-                      </Link>{' '}
-                      and{' '}
-                      <Link href="/privacy" target="_blank">
-                        Privacy Policy
-                      </Link>
-                    </Typography>
-                  }
-                />
-                {errors.termsAccepted && (
-                  <Typography color="error" variant="caption">
-                    {errors.termsAccepted}
-                  </Typography>
-                )}
-              </Grid>
-              <Grid item xs={12}>
-                <Button
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="ur-form-field ur-form-field-full">
+                <label className="ur-checkbox">
+                  <input
+                    type="checkbox"
+                    name="termsAccepted"
+                    checked={formData.termsAccepted}
+                    onChange={handleChange}
+                  />
+                  <span>
+                    I agree to the <a href="/terms" target="_blank">Terms and Conditions</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
+                  </span>
+                </label>
+                {errors.termsAccepted && <span className="ur-error">{errors.termsAccepted}</span>}
+              </div>
+              <div className="ur-form-field ur-form-field-full">
+                <button
                   type="submit"
-                  fullWidth
-                  variant="contained"
-                  size="large"
+                  className="ur-btn ur-btn-confirm"
                   disabled={isSubmitting}
-                  startIcon={<PersonAddIcon />}
                 >
-                  {isSubmitting ? 'Processing...' : 'Add User'}
-                </Button>
-              </Grid>
-            </Grid>
+                  {isSubmitting ? <div className="ur-spinner"></div> : (
+                    <>
+                      <PersonAddIcon />
+                      Add User
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </form>
-        </Paper>
-      </Container>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 };

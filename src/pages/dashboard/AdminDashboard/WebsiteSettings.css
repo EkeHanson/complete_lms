@@ -1,0 +1,164 @@
+.ws-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 80vh;
+}
+
+.ws-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #7226FF;
+    margin-bottom: 20px;
+}
+
+.ws-form-container {
+    position: relative;
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #e7e2f7;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.ws-section {
+    margin-bottom: 20px;
+}
+
+.ws-section h2 {
+    font-size: 17px;
+    font-weight: 500;
+    color: #7226FF;
+    margin-bottom: 10px;
+}
+
+.ws-divider {
+    height: 1px;
+    background-color: #e3defc;
+    margin-bottom: 15px;
+}
+
+.ws-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.ws-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ws-form-field-full {
+    grid-column: 1 / -1;
+}
+
+.ws-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.ws-form-field input,
+.ws-form-field select,
+.ws-form-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.ws-form-field input:focus,
+.ws-form-field select:focus,
+.ws-form-field textarea:focus {
+    border-color: #cfb8fa;
+}
+
+.ws-form-field textarea {
+    resize: vertical;
+}
+
+.ws-helper-text {
+    font-size: 10px;
+    color: #6251a4;
+    margin-top: 5px;
+}
+
+.ws-helper-link {
+    font-size: 10px;
+    color: #7226FF;
+    text-decoration: none;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+.ws-helper-link:hover {
+    text-decoration: underline;
+}
+
+.ws-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ws-checkbox .MuiFormControlLabel-root {
+    margin: 0;
+}
+
+.ws-checkbox .MuiFormControlLabel-label {
+    font-size: 12px;
+    color: #6251a4;
+}
+
+.ws-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.ws-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 20px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: all 0.3s ease-in-out;
+}
+
+.ws-btn-confirm {
+    background: linear-gradient(135deg, #450CD5 0%, #7226FF 50%, #F042FF 100%);
+    color: #fff;
+}
+
+.ws-btn-confirm:hover {
+    background: linear-gradient(135deg, #F042FF 0%, #7226FF 50%, #450CD5 100%);
+}
+
+@media (max-width: 480px) {
+    .ws-container {
+        padding: 10px;
+    }
+
+    .ws-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ws-title {
+        font-size: 20px;
+    }
+
+    .ws-section h2 {
+        font-size: 16px;
+    }
+}

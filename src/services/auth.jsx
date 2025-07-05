@@ -1,13 +1,18 @@
 // src/services/auth.jsx
-import { authAPI } from '../config';
+import { authAPI, userAPI } from '../config';
 
 export const login = async (email, password) => {
   try {
     const response = await authAPI.login({ email, password });
+    console.log('Login API response:', response.data); // Debug log
+    if (!response.data.user) {
+      throw new Error('No user data in login response');
+    }
     return {
       user: response.data.user,
     };
   } catch (error) {
+    console.error('Login API error:', error);
     throw error;
   }
 };
@@ -41,5 +46,4 @@ export const register = async (userData) => {
   }
 };
 
-// Export authAPI for use in other modules
-export { authAPI };
+export { authAPI, userAPI };

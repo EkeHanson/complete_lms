@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Container, Typography, Grid, Paper, Divider, LinearProgress,
-  Chip, List, ListItem, ListItemText, ListItemIcon, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton,
-  Tooltip, useTheme, useMediaQuery, Avatar, Badge, CircularProgress,
-  Tabs, Tab, Button, Stack, Skeleton, TablePagination, TextField, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions, Menu, Alert, Snackbar,
-} from '@mui/material';
-import {
   Refresh as RefreshIcon, People as UsersIcon, School as CoursesIcon,
   CreditCard as PaymentsIcon, Assessment as AnalyticsIcon,
-  EventNote as ScheduleIcon, Email as MessagesIcon,Feedback as FeedbackIcon,FactCheck as IQAIcon,
-  Notifications as AlertsIcon, Storage as DatabaseIcon,
+  EventNote as ScheduleIcon, Email as MessagesIcon, Feedback as FeedbackIcon,
+  FactCheck as IQAIcon, Notifications as AlertsIcon, Storage as DatabaseIcon,
   BarChart as StatsIcon, LibraryBooks as ContentIcon,
   GroupWork as GroupsIcon, VerifiedUser as CertificatesIcon,
   Timeline as ActivityIcon, Settings as SettingsIcon,
   CheckCircle as SuccessIcon, Warning as WarningIcon,
   Error as ErrorIcon, Info as InfoIcon, Campaign as AdvertsIcon,
-  MoreVert as MoreIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon,
-  Search as SearchIcon, FilterList as FilterIcon, Add as AddIcon
+  MoreVert as MoreIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Visibility as VisibilityIcon, Search as SearchIcon, FilterList as FilterIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
-import {isSuperAdmin, userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAPI, groupsAPI, advertAPI } from '../../../config';
+import { 
+  Box, Typography, Button, Paper, Table, TableBody, TableCell, 
+  TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
+  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
+  Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
+  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
+  Collapse, Card, CardContent, CardActions, List, ListItem, 
+  ListItemText, ListItemAvatar, Avatar, TablePagination, Grid,
+  LinearProgress, CircularProgress, Badge,
+} from '@mui/material';
+import { isSuperAdmin, userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAPI, groupsAPI, advertAPI } from '../../../config';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import './AdminDashboard.css';
+
+dayjs.extend(relativeTime);
 
 // StatusChip component for user status
 const StatusChip = ({ status }) => {
@@ -34,23 +40,11 @@ const StatusChip = ({ status }) => {
   };
 
   return (
-    <Chip
-      icon={statusMap[status]?.icon}
-      label={status}
-      color={statusMap[status]?.color || 'default'}
-      size="small"
-      variant="outlined"
-    />
+    <span className={`ad-chip ad-chip-${statusMap[status]?.color || 'default'}`}>
+      {statusMap[status]?.icon}
+      {status}
+    </span>
   );
-};
-
-const getStatusIcon = (status) => {
-  switch (status) {
-    case 'success': return <SuccessIcon color="success" fontSize="small" />;
-    case 'warning': return <WarningIcon color="warning" fontSize="small" />;
-    case 'error': return <ErrorIcon color="error" fontSize="small" />;
-    default: return <InfoIcon color="info" fontSize="small" />;
-  }
 };
 
 // RoleChip component for user roles
@@ -62,12 +56,12 @@ const RoleChip = ({ role }) => {
     owner: { color: 'info', label: 'Owner' }
   };
 
+  alert("Already Here")
+
   return (
-    <Chip
-      label={roleMap[role]?.label || role}
-      color={roleMap[role]?.color || 'default'}
-      size="small"
-    />
+    <span className={`ad-chip ad-chip-${roleMap[role]?.color || 'default'}`}>
+      {roleMap[role]?.label || role}
+    </span>
   );
 };
 
@@ -81,10 +75,8 @@ const getInitial = (user) => {
 // Helper function to format course prices
 const formatPrice = (price, currency) => {
   if (price === undefined || price === null) return 'Free';
-  
   const priceNumber = typeof price === 'string' ? parseFloat(price) : price;
   const currencyToUse = currency || 'USD';
-  
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -105,12 +97,18 @@ const getStatusColor = (status) => {
   }
 };
 
+// Helper function to get status icon
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'success': return <SuccessIcon className="ad-icon-success" fontSize="small" />;
+    case 'warning': return <WarningIcon className="ad-icon-warning" fontSize="small" />;
+    case 'error': return <ErrorIcon className="ad-icon-error" fontSize="small" />;
+    default: return <InfoIcon className="ad-icon-info" fontSize="small" />;
+  }
+};
+
 const AdminDashboard = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
-  
-  // Dashboard state
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [stats, setStats] = useState(null);
@@ -121,8 +119,6 @@ const AdminDashboard = () => {
     message: '',
     severity: 'success'
   });
-
-  // User management state
   const [users, setUsers] = useState([]);
   const [userPagination, setUserPagination] = useState({
     count: 0,
@@ -136,14 +132,11 @@ const AdminDashboard = () => {
     status: 'all',
     search: ''
   });
-  
   const [userAnchorEl, setUserAnchorEl] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionType, setActionType] = useState(null);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [actionError, setActionError] = useState(null);
-
-  // Course management state
   const [courses, setCourses] = useState([]);
   const [coursePagination, setCoursePagination] = useState({
     count: 0,
@@ -158,8 +151,6 @@ const AdminDashboard = () => {
   });
   const [courseAnchorEl, setCourseAnchorEl] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
-
-  // Dashboard data
   const [recentActivities, setRecentActivities] = useState([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [totalMessages, setTotalMessages] = useState(0);
@@ -170,68 +161,64 @@ const AdminDashboard = () => {
   const [certificateStats, setCertificateStats] = useState(null);
   const [advertStats, setAdvertStats] = useState(null);
 
-  // Fetch dashboard data
-// Update the fetchDashboardData function in your AdminDashboard component:
-const fetchDashboardData = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const [
-      userStats,
-      courseStats,
-      recentUsersRes,
-      popularCoursesRes,
-      activitiesRes,
-      messagesRes,
-      schedulesRes,
-      paymentsRes,
-      groupsRes,
-      certificatesRes,
-      advertsRes,
-      totalMessagesRes,
-      totalSchedulesRes,
-      faqStatsRes  // Add this
-    ] = await Promise.all([
-      userAPI.getUserStats(),
-      coursesAPI.getCourses(),
-      fetchUsers(1, usersPerPage, userFilters),
-      fetchCourses(1, coursesPerPage, courseFilters),
-      userAPI.getUserActivities({ limit: 10 }),
-      messagingAPI.getUnreadCount(),
-      scheduleAPI.getUpcomingSchedules(),
-      paymentAPI.getPaymentConfig(),
-      groupsAPI.getGroups({ limit: 10 }),
-      coursesAPI.getCertificates(),
-      advertAPI.getAdverts(),
-      messagingAPI.getTotalMessages(),
-      scheduleAPI.getTotalSchedules(),
-      coursesAPI.getFAQStats()  // Add this
-    ]);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [
+        userStats,
+        courseStats,
+        recentUsersRes,
+        popularCoursesRes,
+        activitiesRes,
+        messagesRes,
+        schedulesRes,
+        paymentsRes,
+        groupsRes,
+        certificatesRes,
+        advertsRes,
+        totalMessagesRes,
+        totalSchedulesRes,
+        faqStatsRes
+      ] = await Promise.all([
+        userAPI.getUserStats(),
+        coursesAPI.getCourses(),
+        fetchUsers(1, usersPerPage, userFilters),
+        fetchCourses(1, coursesPerPage, courseFilters),
+        userAPI.getUserActivities({ limit: 10 }),
+        messagingAPI.getUnreadCount(),
+        scheduleAPI.getUpcomingSchedules(),
+        paymentAPI.getPaymentConfig(),
+        groupsAPI.getGroups({ limit: 10 }),
+        coursesAPI.getCertificates(),
+        advertAPI.getAdverts(),
+        messagingAPI.getTotalMessages(),
+        scheduleAPI.getTotalSchedules(),
+        coursesAPI.getFAQStats()
+      ]);
 
-    setStats({
-      users: userStats.data,
-      courses: courseStats.data
-    });
+      setStats({
+        users: userStats.data,
+        courses: courseStats.data
+      });
+      setRecentActivities(activitiesRes.data.results);
+      setUnreadMessages(messagesRes.data.count);
+      setTotalMessages(totalMessagesRes.data.total_messages);
+      setUpcomingSchedules(schedulesRes.data);
+      setTotalSchedules(totalSchedulesRes.data.total_schedule);
+      setPaymentData(paymentsRes.data);
+      setGroupStats(groupsRes.data);
+      setCertificateStats(certificatesRes.data);
+      setAdvertStats(advertsRes.data);
+      setFAQStats(faqStatsRes.data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError('Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setRecentActivities(activitiesRes.data.results);
-    setUnreadMessages(messagesRes.data.count);
-    setTotalMessages(totalMessagesRes.data.total_messages);
-    setUpcomingSchedules(schedulesRes.data);
-    setTotalSchedules(totalSchedulesRes.data.total_schedule);
-    setPaymentData(paymentsRes.data);
-    setGroupStats(groupsRes.data);
-    setCertificateStats(certificatesRes.data);
-    setAdvertStats(advertsRes.data);
-    setFAQStats(faqStatsRes.data);  // Add this
-  } catch (err) {
-    console.error('Failed to fetch dashboard data:', err);
-    setError('Failed to load dashboard data. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Fetch users with pagination and filtering
   const fetchUsers = async (page, pageSize, filters) => {
     setUserLoading(true);
     setUserError(null);
@@ -243,7 +230,6 @@ const fetchDashboardData = async () => {
         ...(filters.status !== 'all' && { status: filters.status }),
         ...(filters.search && { search: filters.search })
       };
-
       const response = await userAPI.getUsers(params);
       setUsers(response.data.results || []);
       setUserPagination({
@@ -264,7 +250,6 @@ const fetchDashboardData = async () => {
     }
   };
 
-  // Fetch courses with pagination and filtering
   const fetchCourses = async (page, pageSize, filters) => {
     setCourseLoading(true);
     setCourseError(null);
@@ -275,7 +260,6 @@ const fetchDashboardData = async () => {
         ...(filters.status !== 'all' && { status: filters.status }),
         ...(filters.search && { search: filters.search })
       };
-
       const response = await coursesAPI.getCourses(params);
       setCourses(response.data.results || []);
       setCoursePagination({
@@ -296,7 +280,6 @@ const fetchDashboardData = async () => {
     }
   };
 
-  // User pagination handlers
   const handleUserPageChange = (event, newPage) => {
     fetchUsers(newPage + 1, usersPerPage, userFilters);
   };
@@ -307,7 +290,6 @@ const fetchDashboardData = async () => {
     fetchUsers(1, newPerPage, userFilters);
   };
 
-  // Course pagination handlers
   const handleCoursePageChange = (event, newPage) => {
     fetchCourses(newPage + 1, coursesPerPage, courseFilters);
   };
@@ -318,21 +300,18 @@ const fetchDashboardData = async () => {
     fetchCourses(1, newPerPage, courseFilters);
   };
 
-  // User filter handlers
   const handleUserFilterChange = (name, value) => {
     const newFilters = { ...userFilters, [name]: value };
     setUserFilters(newFilters);
     fetchUsers(1, usersPerPage, newFilters);
   };
 
-  // Course filter handlers
   const handleCourseFilterChange = (name, value) => {
     const newFilters = { ...courseFilters, [name]: value };
     setCourseFilters(newFilters);
     fetchCourses(1, coursesPerPage, newFilters);
   };
 
-  // User actions
   const resetLoginAttempts = async (userId) => {
     try {
       await userAPI.updateUser(userId, { login_attempts: 0 });
@@ -370,12 +349,10 @@ const fetchDashboardData = async () => {
 
   const handleConfirmAction = async () => {
     setActionError(null);
-    
     if (!selectedUser) {
       setActionError('No user selected');
       return;
     }
-  
     try {
       if (actionType === 'delete') {
         await userAPI.deleteUser(selectedUser.id);
@@ -411,7 +388,6 @@ const fetchDashboardData = async () => {
     setActionError(null);
   };
 
-  // Course actions
   const handleCourseMenuOpen = (event, course) => {
     setCourseAnchorEl(event.currentTarget);
     setSelectedCourse(course);
@@ -452,629 +428,411 @@ const fetchDashboardData = async () => {
     }
   };
 
-  // Snackbar handler
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') return;
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  // Initialize data
   useEffect(() => {
     fetchDashboardData();
     fetchUsers(1, usersPerPage, userFilters);
     fetchCourses(1, coursesPerPage, courseFilters);
   }, []);
 
-  // Stats calculations
-  const getActiveUsersCount = () => users.filter(u => u.status === 'active').length;
-  const getNewSignupsCount = () => {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    return users.filter(u => u.signup_date && new Date(u.signup_date) > thirtyDaysAgo).length;
-  };
-  const getSuspiciousActivityCount = () => users.filter(u => u.login_attempts > 0).length;
-
-  // Render user stats chart
-  const renderUserStatsChart = () => {
-    if (!stats?.users?.role_distribution) return null;
-
-    const data = Object.entries(stats.users.role_distribution).map(([role, count]) => ({
-      name: role,
-      value: count
-    }));
-
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <ChartTooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    );
-  };
-
-  // Render enrollment trends
-  const renderEnrollmentTrends = () => {
-    if (!stats?.courses?.monthly_trends) return null;
-
-    const data = Object.entries(stats.courses.monthly_trends).map(([month, count]) => ({
-      name: month,
-      enrollments: count
-    }));
-
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <ChartTooltip />
-          <Area type="monotone" dataKey="enrollments" stroke="#8884d8" fill="#8884d8" />
-        </AreaChart>
-      </ResponsiveContainer>
-    );
-  };
-
-  // Render revenue chart
-  const renderRevenueChart = () => {
-    if (!paymentData?.monthly_revenue) return null;
-
-    const data = Object.entries(paymentData.monthly_revenue).map(([month, amount]) => ({
-      name: month,
-      revenue: amount
-    }));
-
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <ChartTooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
-          <Legend />
-          <Bar dataKey="revenue" fill="#82ca9d" name="Revenue" />
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  };
-
   if (loading && !stats) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Skeleton variant="rectangular" width="100%" height={400} />
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          {[1, 2, 3, 4, 5, 6].map((item) => (
-            <Grid item xs={12} sm={4} md={2} key={item}>
-              <Skeleton variant="rectangular" width="100%" height={100} />
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
+      <div className="ad-container ad-loading">
+        <div className="ad-spinner"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4, textAlign: 'center' }}>
-        <ErrorIcon color="error" sx={{ fontSize: 48, mb: 2 }} />
-        <Typography variant="h6" gutterBottom>{error}</Typography>
-        <Button variant="contained" onClick={fetchDashboardData} startIcon={<RefreshIcon />}>
+      <div className="ad-container ad-error">
+        <ErrorIcon className="ad-error-icon" />
+        <span>{error}</span>
+        <button className="ad-btn ad-btn-primary" onClick={fetchDashboardData}>
+          <RefreshIcon />
           Retry
-        </Button>
-      </Container>
+        </button>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-          LMS Admin Dashboard
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <MessagesIcon color="action" />
-            <Typography variant="body2">
-              Messages: <strong>{totalMessages}</strong> ({unreadMessages} unread)
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ScheduleIcon color="action" />
-            <Typography variant="body2">
-              Schedules: <strong>{totalSchedules}</strong> ({upcomingSchedules.length} upcoming)
-            </Typography>
-          </Box>
-          <Tooltip title="Refresh data">
-            <IconButton onClick={fetchDashboardData} disabled={loading}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
+    <div className="ad-container">
+      {snackbar.open && (
+        <div className={`ad-alert ad-alert-${snackbar.severity}`}>
+          <span>{snackbar.message}</span>
+          <button onClick={handleCloseSnackbar} className="ad-alert-close">
+            <ErrorIcon />
+          </button>
+        </div>
+      )}
 
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      <div className="ad-header">
+        <h1>LMS Admin Dashboard</h1>
+        <div className="ad-header-info">
+          <div className="ad-info-item">
+            <MessagesIcon />
+            <span>Messages: <strong>{totalMessages}</strong> ({unreadMessages} unread)</span>
+          </div>
+          <div className="ad-info-item">
+            <ScheduleIcon />
+            <span>Schedules: <strong>{totalSchedules}</strong> ({upcomingSchedules.length} upcoming)</span>
+          </div>
+          <button className="ad-btn ad-btn-icon" onClick={fetchDashboardData} disabled={loading}>
+            <RefreshIcon />
+          </button>
+        </div>
+      </div>
 
-      {/* Summary Cards - Smaller and More Compact */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        {/* Users Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Total Users</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.primary.light, width: 24, height: 24 }}>
-                <UsersIcon sx={{ fontSize: 16, color: theme.palette.primary.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {stats?.users?.total_users || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {stats?.users?.active_users || 0} active
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {stats?.users?.new_users_today || 0} new today
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+      {loading && <div className="ad-progress-bar"></div>}
 
-        {/* Courses Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Total Courses</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.secondary.light, width: 24, height: 24 }}>
-                <CoursesIcon sx={{ fontSize: 16, color: theme.palette.secondary.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {stats?.courses?.count || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {stats?.courses?.active_courses || 0} active
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {stats?.courses?.total_all_enrollments || 3} enrollments
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+      <div className="ad-grid">
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Total Users</span>
+            <div className="ad-avatar">
+              <UsersIcon />
+            </div>
+          </div>
+          <h3>{stats?.users?.total_users || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{stats?.users?.active_users || 0} active</span>
+            <span className="ad-divider"></span>
+            <span>{stats?.users?.new_users_today || 0} new today</span>
+          </div>
+        </div>
 
-        {/* Revenue Card */}
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Total Courses</span>
+            <div className="ad-avatar">
+              <CoursesIcon />
+            </div>
+          </div>
+          <h3>{stats?.courses?.count || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{stats?.courses?.active_courses || 0} active</span>
+            <span className="ad-divider"></span>
+            <span>{stats?.courses?.total_all_enrollments || 0} enrollments</span>
+          </div>
+        </div>
+
         {isSuperAdmin() && (
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Paper sx={{ p: 2, height: '100%' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">Total Revenue</Typography>
-                <Avatar sx={{ bgcolor: theme.palette.success.light, width: 24, height: 24 }}>
-                  <PaymentsIcon sx={{ fontSize: 16, color: theme.palette.success.contrastText }} />
-                </Avatar>
-              </Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                ${paymentData?.total_revenue?.toLocaleString() || '0'}
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  ${paymentData?.monthly_revenue ? Object.values(paymentData.monthly_revenue).reduce((a, b) => a + b, 0).toLocaleString() : '0'} this month
-                </Typography>
-                <Divider orientation="vertical" flexItem />
-                <Typography variant="caption" color="text.secondary">
-                  {paymentData?.active_payment_methods?.length || 0} methods
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
+          <div className="ad-card">
+            <div className="ad-card-header">
+              <span>Total Revenue</span>
+              <div className="ad-avatar">
+                <PaymentsIcon />
+              </div>
+            </div>
+            <h3>${paymentData?.total_revenue?.toLocaleString() || '0'}</h3>
+            <div className="ad-card-footer">
+              <span>${paymentData?.monthly_revenue ? Object.values(paymentData.monthly_revenue).reduce((a, b) => a + b, 0).toLocaleString() : '0'} this month</span>
+              <span className="ad-divider"></span>
+              <span>{paymentData?.active_payment_methods?.length || 0} methods</span>
+            </div>
+          </div>
         )}
 
-        {/* Groups Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Total Groups</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
-                <GroupsIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {groupStats?.count || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {groupStats?.results?.reduce((acc, group) => acc + (group.member_count || 0), 0) || 0} members
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {groupStats?.results?.filter(g => g.is_active).length || 0} active
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Total Groups</span>
+            <div className="ad-avatar">
+              <GroupsIcon />
+            </div>
+          </div>
+          <h3>{groupStats?.count || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{groupStats?.results?.reduce((acc, group) => acc + (group.member_count || 0), 0) || 0} members</span>
+            <span className="ad-divider"></span>
+            <span>{groupStats?.results?.filter(g => g.is_active).length || 0} active</span>
+          </div>
+        </div>
 
-        {/* Certificates Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Certificates</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 24, height: 24 }}>
-                <CertificatesIcon sx={{ fontSize: 16, color: theme.palette.warning.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {certificateStats?.count || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {certificateStats?.results?.filter(c => dayjs(c.issued_at).isAfter(dayjs().subtract(30, 'day'))).length || 0} last 30d
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {certificateStats?.results?.length || 0} issued
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Certificates</span>
+            <div className="ad-avatar">
+              <CertificatesIcon />
+            </div>
+          </div>
+          <h3>{certificateStats?.count || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{certificateStats?.results?.filter(c => dayjs(c.issued_at).isAfter(dayjs().subtract(30, 'day'))).length || 0} last 30d</span>
+            <span className="ad-divider"></span>
+            <span>{certificateStats?.results?.length || 0} issued</span>
+          </div>
+        </div>
 
-        {/* Adverts Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Adverts</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.error.light, width: 24, height: 24 }}>
-                <AdvertsIcon sx={{ fontSize: 16, color: theme.palette.error.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {advertStats?.count || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {advertStats?.advertStats || 0} clicks
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {(advertStats?.average_ctr || 0).toFixed(2)}% CTR
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Adverts</span>
+            <div className="ad-avatar">
+              <AdvertsIcon />
+            </div>
+          </div>
+          <h3>{advertStats?.count || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{advertStats?.advertStats || 0} clicks</span>
+            <span className="ad-divider"></span>
+            <span>{(advertStats?.average_ctr || 0).toFixed(2)}% CTR</span>
+          </div>
+        </div>
 
-        {/* Messages Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Messages</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
-                <MessagesIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {totalMessages}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {unreadMessages} unread
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {recentActivities.filter(a => a.action_type === 'message').length} recent
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Messages</span>
+            <div className="ad-avatar">
+              <MessagesIcon />
+            </div>
+          </div>
+          <h3>{totalMessages}</h3>
+          <div className="ad-card-footer">
+            <span>{unreadMessages} unread</span>
+            <span className="ad-divider"></span>
+            <span>{recentActivities.filter(a => a.action_type === 'message').length} recent</span>
+          </div>
+        </div>
 
-        {/* Schedules Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Schedules</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.warning.light, width: 24, height: 24 }}>
-                <ScheduleIcon sx={{ fontSize: 16, color: theme.palette.warning.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {totalSchedules}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {upcomingSchedules.length} upcoming
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {recentActivities.filter(a => a.action_type === 'schedule').length} recent
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Schedules</span>
+            <div className="ad-avatar">
+              <ScheduleIcon />
+            </div>
+          </div>
+          <h3>{totalSchedules}</h3>
+          <div className="ad-card-footer">
+            <span>{upcomingSchedules.length} upcoming</span>
+            <span className="ad-divider"></span>
+            <span>{recentActivities.filter(a => a.action_type === 'schedule').length} recent</span>
+          </div>
+        </div>
 
-        {/* FAQ Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">FAQs</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
-                <ContentIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {faqStats?.total_faqs || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.active_faqs || 0} active
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.inactive_faqs || 0} inactive
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        {/* Feedback Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">Feedback</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
-                <FeedbackIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {faqStats?.total_faqs || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.active_faqs || 0} active
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.inactive_faqs || 0} inactive
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        {/* IQA Card */}
-        <Grid item xs={12} sm={6} md={2.4}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">IQA</Typography>
-              <Avatar sx={{ bgcolor: theme.palette.info.light, width: 24, height: 24 }}>
-                <IQAIcon sx={{ fontSize: 16, color: theme.palette.info.contrastText }} />
-              </Avatar>
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {faqStats?.total_faqs || 0}
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.active_faqs || 0} active
-              </Typography>
-              <Divider orientation="vertical" flexItem />
-              <Typography variant="caption" color="text.secondary">
-                {faqStats?.inactive_faqs || 0} inactive
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>FAQs</span>
+            <div className="ad-avatar">
+              <ContentIcon />
+            </div>
+          </div>
+          <h3>{faqStats?.total_faqs || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{faqStats?.active_faqs || 0} active</span>
+            <span className="ad-divider"></span>
+            <span>{faqStats?.inactive_faqs || 0} inactive</span>
+          </div>
+        </div>
 
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>Feedback</span>
+            <div className="ad-avatar">
+              <FeedbackIcon />
+            </div>
+          </div>
+          <h3>{faqStats?.total_faqs || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{faqStats?.active_faqs || 0} active</span>
+            <span className="ad-divider"></span>
+            <span>{faqStats?.inactive_faqs || 0} inactive</span>
+          </div>
+        </div>
 
+        <div className="ad-card">
+          <div className="ad-card-header">
+            <span>IQA</span>
+            <div className="ad-avatar">
+              <IQAIcon />
+            </div>
+          </div>
+          <h3>{faqStats?.total_faqs || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{faqStats?.active_faqs || 0} active</span>
+            <span className="ad-divider"></span>
+            <span>{faqStats?.inactive_faqs || 0} inactive</span>
+          </div>
+        </div>
+      </div>
 
-      {/* Main Content */}
-      <Paper sx={{ mb: 4 }}>
-        <Tabs value={activeTab} onChange={(e, newVal) => setActiveTab(newVal)} variant="scrollable" scrollButtons="auto">
-          {/* <Tab label="Overview" icon={<AnalyticsIcon fontSize="small" />} /> */}
-          <Tab label="Users" icon={<UsersIcon fontSize="small" />} />
-          <Tab label="Courses" icon={<CoursesIcon fontSize="small" />} />
-          {isSuperAdmin() && <Tab label="Payments" icon={<PaymentsIcon fontSize="small" />} />}
-          <Tab label="Activity" icon={<ActivityIcon fontSize="small" />} />
-          <Tab label="Messages" icon={<MessagesIcon fontSize="small" />} />
-          <Tab label="Schedules" icon={<ScheduleIcon fontSize="small" />} />
-        </Tabs>
-        <Divider />
+      <div className="ad-tabs-container">
+        <div className="ad-tabs">
+          <button className={`ad-tab ${activeTab === 0 ? 'active' : ''}`} onClick={() => setActiveTab(0)}>
+            <UsersIcon />
+            Users
+          </button>
+          <button className={`ad-tab ${activeTab === 1 ? 'active' : ''}`} onClick={() => setActiveTab(1)}>
+            <CoursesIcon />
+            Courses
+          </button>
+          {isSuperAdmin() && (
+            <button className={`ad-tab ${activeTab === 2 ? 'active' : ''}`} onClick={() => setActiveTab(2)}>
+              <PaymentsIcon />
+              Payments
+            </button>
+          )}
+          <button className={`ad-tab ${activeTab === 3 ? 'active' : ''}`} onClick={() => setActiveTab(3)}>
+            <ActivityIcon />
+            Activity
+          </button>
+          <button className={`ad-tab ${activeTab === 4 ? 'active' : ''}`} onClick={() => setActiveTab(4)}>
+            <MessagesIcon />
+            Messages
+          </button>
+          <button className={`ad-tab ${activeTab === 5 ? 'active' : ''}`} onClick={() => setActiveTab(5)}>
+            <ScheduleIcon />
+            Schedules
+          </button>
+        </div>
 
-
-        {/* Users Tab */}
         {activeTab === 0 && (
-          <Box sx={{ p: 3 }}>
-            {/* Users Table Filter */}
-            <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
+          <div className="ad-tab-content">
+            <div className="ad-filter-container">
+              <div className="ad-filter-grid">
+                <div className="ad-search-input">
+                  <SearchIcon />
+                  <input
+                    type="text"
                     placeholder="Search users..."
                     value={userFilters.search}
                     onChange={(e) => handleUserFilterChange('search', e.target.value)}
-                    InputProps={{
-                      startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-                    }}
                   />
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Role"
+                </div>
+                <div className="ad-form-field">
+                  <select
                     value={userFilters.role}
                     onChange={(e) => handleUserFilterChange('role', e.target.value)}
                   >
-                    <MenuItem value="all">All Roles</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                    <MenuItem value="instructor">Instructor</MenuItem>
-                    <MenuItem value="learner">Learner</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Status"
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="learner">Learner</option>
+                  </select>
+                </div>
+                <div className="ad-form-field">
+                  <select
                     value={userFilters.status}
                     onChange={(e) => handleUserFilterChange('status', e.target.value)}
                   >
-                    <MenuItem value="all">All Statuses</MenuItem>
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="pending">Pending</MenuItem>
-                    <MenuItem value="suspended">Suspended</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={4} sx={{ textAlign: 'right' }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={() => {
-                      setUserFilters({
-                        role: 'all',
-                        status: 'all',
-                        search: ''
-                      });
-                      fetchUsers(1, usersPerPage, {
-                        role: 'all',
-                        status: 'all',
-                        search: ''
-                      });
-                    }}
-                  >
-                    Reset Filters
-                  </Button>
-                </Grid>
-              </Grid>
-            </Paper>
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+                <button
+                  className="ad-btn ad-btn-secondary"
+                  onClick={() => {
+                    setUserFilters({
+                      role: 'all',
+                      status: 'all',
+                      search: ''
+                    });
+                    fetchUsers(1, usersPerPage, {
+                      role: 'all',
+                      status: 'all',
+                      search: ''
+                    });
+                  }}
+                >
+                  <RefreshIcon />
+                  Reset Filters
+                </button>
+              </div>
+            </div>
 
-            {/* Users Table */}
-            <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-              <TableContainer>
-                <Table>
-                  <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
-                    <TableRow>
-                      <TableCell>User</TableCell>
-                      <TableCell>Role</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Signup Date</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {userLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center">
-                          <CircularProgress />
-                        </TableCell>
-                      </TableRow>
-                    ) : userError ? (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center">
-                          <Typography color="error">{userError}</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : users.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center">
-                          <Typography>No users found</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      users.map((user) => (
-                        <TableRow key={user.id} hover>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Avatar
-                                sx={{
-                                  width: 36,
-                                  height: 36,
-                                  mr: 2,
-                                  bgcolor: theme.palette.primary.light,
-                                  color: theme.palette.primary.main
-                                }}
-                                onClick={() => navigate(`/admin/learner-profile/${user.id}`)}
-                              >
-                                {getInitial(user)}
-                              </Avatar>
-                              <Box>
-                                <Typography variant="subtitle2">{user.first_name} {user.last_name}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {/* {user.email} */}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <RoleChip role={user.role} />
-                          </TableCell>
-                          <TableCell>
-                            <StatusChip status={user.status} />
-                          </TableCell>
-                          <TableCell>
-                            {new Date(user.signup_date).toLocaleDateString()}
-                          </TableCell>
-       
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
+            <div className="ad-table-container">
+              <table className="ad-table">
+                <thead>
+                  <tr>
+                    <th><span>User</span></th>
+                    <th><span>Role</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Signup Date</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userLoading ? (
+                    <tr>
+                      <td colSpan="5" className="ad-no-data">
+                        <div className="ad-spinner"></div>
+                      </td>
+                    </tr>
+                  ) : userError ? (
+                    <tr>
+                      <td colSpan="5" className="ad-no-data ad-error">{userError}</td>
+                    </tr>
+                  ) : users.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="ad-no-data">No users found</td>
+                    </tr>
+                  ) : (
+                    users.map((user) => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="ad-user-cell" onClick={() => navigate(`/admin/learner-profile/${user.id}`)}>
+                            <div className="ad-avatar">{getInitial(user)}</div>
+                            <div>
+                              <span>{user.first_name} {user.last_name}</span>
+                              <span className="ad-text-secondary">{user.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><RoleChip role={user.role} /></td>
+                        <td><StatusChip status={user.status} /></td>
+                        <td>{new Date(user.signup_date).toLocaleDateString()}</td>
+                        <td>
+                          <div className="ad-action-btns">
+                            <button
+                              className="ad-btn ad-btn-icon"
                               onClick={(event) => handleUserMenuOpen(event, user)}
                             >
                               <MoreIcon />
-                            </IconButton>
-                            <Menu
-                              anchorEl={userAnchorEl}
-                              open={Boolean(userAnchorEl)}
-                              onClose={handleUserMenuClose}
-                            >
-                              <MenuItem
+                            </button>
+                            <div className="ad-menu" style={{ display: userAnchorEl && selectedUser?.id === user.id ? 'block' : 'none' }}>
+                              <button
+                                className="ad-menu-item"
                                 onClick={() => handleUserActionSelect('activate')}
-                                disabled={selectedUser?.status === 'active'}
+                                disabled={user.status === 'active'}
                               >
                                 Activate
-                              </MenuItem>
-                              <MenuItem
+                              </button>
+                              <button
+                                className="ad-menu-item"
                                 onClick={() => handleUserActionSelect('suspend')}
-                                disabled={selectedUser?.status === 'suspended'}
+                                disabled={user.status === 'suspended'}
                               >
                                 Suspend
-                              </MenuItem>
-                              <MenuItem
+                              </button>
+                              <button
+                                className="ad-menu-item ad-menu-item-error"
                                 onClick={() => handleUserActionSelect('delete')}
                               >
                                 Delete
-                              </MenuItem>
-                              <MenuItem
+                              </button>
+                              <button
+                                className="ad-menu-item"
                                 onClick={() => {
-                                  resetLoginAttempts(selectedUser?.id);
+                                  resetLoginAttempts(user.id);
                                   handleUserMenuClose();
                                 }}
-                                disabled={selectedUser?.login_attempts === 0}
+                                disabled={user.login_attempts === 0}
                               >
                                 Reset Login Attempts
-                              </MenuItem>
-                            </Menu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
@@ -1084,154 +842,129 @@ const fetchDashboardData = async () => {
                 onPageChange={handleUserPageChange}
                 onRowsPerPageChange={handleUsersPerPageChange}
               />
-            </Paper>
-          </Box>
+            </div>
+          </div>
         )}
 
-        {/* Courses Tab */}
         {activeTab === 1 && (
-          <Box sx={{ p: 3 }}>
-            {/* Courses Table Filter */}
-            <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
+          <div className="ad-tab-content">
+            <div className="ad-filter-container">
+              <div className="ad-filter-grid">
+                <div className="ad-search-input">
+                  <SearchIcon />
+                  <input
+                    type="text"
                     placeholder="Search courses..."
                     value={courseFilters.search}
                     onChange={(e) => handleCourseFilterChange('search', e.target.value)}
-                    InputProps={{
-                      startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-               }}
                   />
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Status"
+                </div>
+                <div className="ad-form-field">
+                  <select
                     value={courseFilters.status}
                     onChange={(e) => handleCourseFilterChange('status', e.target.value)}
                   >
-                    <MenuItem value="all">All Statuses</MenuItem>
-                    <MenuItem value="Published">Published</MenuItem>
-                    <MenuItem value="Draft">Draft</MenuItem>
-                    <MenuItem value="Archived">Archived</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} md={6} sx={{ textAlign: 'right' }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={() => {
-                      setCourseFilters({
-                        status: 'all',
-                        search: ''
-                      });
-                      fetchCourses(1, coursesPerPage, {
-                        status: 'all',
-                        search: ''
-                      });
-                    }}
-                  >
-                    Reset Filters
-                  </Button>
-                </Grid>
-              </Grid>
-            </Paper>
+                    <option value="all">All Statuses</option>
+                    <option value="Published">Published</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+                <button
+                  className="ad-btn ad-btn-secondary"
+                  onClick={() => {
+                    setCourseFilters({
+                      status: 'all',
+                      search: ''
+                    });
+                    fetchCourses(1, coursesPerPage, {
+                      status: 'all',
+                      search: ''
+                    });
+                  }}
+                >
+                  <RefreshIcon />
+                  Reset Filters
+                </button>
+              </div>
+            </div>
 
-            {/* Courses Table */}
-            <TableContainer component={Paper} sx={{ maxWidth: '90%', overflowX: 'auto' }}>
-              <Table sx={{ minWidth: 650 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ minWidth: 200 }}>Title</TableCell>
-                    <TableCell sx={{ minWidth: 150 }}>Price</TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>Status</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <div className="ad-table-container">
+              <table className="ad-table">
+                <thead>
+                  <tr>
+                    <th><span>Title</span></th>
+                    <th><span>Price</span></th>
+                    <th><span>Status</span></th>
+                    <th><span>Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
                   {courseLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td colSpan="4" className="ad-no-data">
+                        <div className="ad-spinner"></div>
+                      </td>
+                    </tr>
                   ) : courseError ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <Typography color="error">{courseError}</Typography>
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td colSpan="4" className="ad-no-data ad-error">{courseError}</td>
+                    </tr>
                   ) : courses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <Typography>No courses found</Typography>
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td colSpan="4" className="ad-no-data">No courses found</td>
+                    </tr>
                   ) : (
                     courses.map((course) => (
-                      <TableRow key={course.id} hover>
-                        <TableCell>
-                          <Typography sx={{ fontWeight: 500 }}>{course.title}</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {course.category?.name || 'No category'} • {course.level}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
+                      <tr key={course.id}>
+                        <td>
+                          <div className="ad-course-cell">
+                            <span>{course.title}</span>
+                            <span className="ad-text-secondary">{course.category?.name || 'No category'} • {course.level}</span>
+                          </div>
+                        </td>
+                        <td>
                           {course.discount_price ? (
                             <>
-                              <Typography sx={{ textDecoration: 'line-through' }}>
-                                {formatPrice(course.price, course.currency)}
-                              </Typography>
-                              <Typography color="error" sx={{ fontWeight: 600 }}>
-                                {formatPrice(course.discount_price, course.currency)}
-                              </Typography>
+                              <span className="ad-price-discounted">{formatPrice(course.price, course.currency)}</span>
+                              <span className="ad-price">{formatPrice(course.discount_price, course.currency)}</span>
                             </>
                           ) : (
-                            <Typography>{formatPrice(course.price, course.currency)}</Typography>
+                            <span>{formatPrice(course.price, course.currency)}</span>
                           )}
-                        </TableCell>
-                       
-                        <TableCell>
-                          <Chip 
-                            label={course.status} 
-                            size="small" 
-                            color={getStatusColor(course.status)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleEditCourse(course.id)}
-                            aria-label="edit"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleViewCourse(course.id)}
-                            aria-label="view"
-                          >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleDeleteCourse(course.id)}
-                            aria-label="view"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td>
+                          <span className={`ad-chip ad-chip-${getStatusColor(course.status)}`}>
+                            {course.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="ad-action-btns">
+                            <button
+                              className="ad-btn ad-btn-icon ad-btn-edit"
+                              onClick={() => handleEditCourse(course.id)}
+                            >
+                              <EditIcon />
+                            </button>
+                            <button
+                              className="ad-btn ad-btn-icon ad-btn-view"
+                              onClick={() => handleViewCourse(course.id)}
+                            >
+                              <VisibilityIcon />
+                            </button>
+                            <button
+                              className="ad-btn ad-btn-icon ad-btn-delete"
+                              onClick={() => handleDeleteCourse(course.id)}
+                            >
+                              <DeleteIcon />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
@@ -1241,368 +974,252 @@ const fetchDashboardData = async () => {
                 onPageChange={handleCoursePageChange}
                 onRowsPerPageChange={handleCoursesPerPageChange}
               />
-            </TableContainer>
-
-            {/* Course Actions Menu */}
-            <Menu
-              anchorEl={courseAnchorEl}
-              open={Boolean(courseAnchorEl)}
-              onClose={handleCourseMenuClose}
-            >
-              <MenuItem onClick={() => handleEditCourse(selectedCourse?.id)}>
-                <EditIcon fontSize="small" sx={{ mr: 1 }} /> Edit
-              </MenuItem>
-              <MenuItem onClick={() => handleViewCourse(selectedCourse?.id)}>
-                <VisibilityIcon fontSize="small" sx={{ mr: 1 }} /> View Details
-              </MenuItem>
-              <MenuItem 
-                onClick={() => handleDeleteCourse(selectedCourse?.id)} 
-                sx={{ color: 'error.main' }}
-              >
-                Delete
-              </MenuItem>
-            </Menu>
-          </Box>
+            </div>
+          </div>
         )}
 
-        {/* Payments Tab */}
         {activeTab === 2 && (
-          <Box sx={{ p: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Payment Methods</Typography>
+          <div className="ad-tab-content">
+            <div className="ad-grid">
+              <div className="ad-section">
+                <h3>Payment Methods</h3>
                 {paymentData?.active_payment_methods?.length > 0 ? (
-                  <List dense>
+                  <div className="ad-list">
                     {paymentData.active_payment_methods.map((method) => (
-                      <ListItem key={method.name} sx={{ py: 2 }}>
-                        <ListItemIcon>
-                          <Avatar sx={{ bgcolor: theme.palette.grey[200] }}>
-                            {method.name[0]}
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={method.name}
-                          secondary={`${method.transaction_count} transactions • $${method.total_amount?.toLocaleString()}`}
-                        />
-                        <Chip
-                          label={method.is_live ? 'Live' : 'Test'}
-                          size="small"
-                          color={method.is_live ? 'success' : 'default'}
-                          variant="outlined"
-                        />
-                      </ListItem>
+                      <div key={method.name} className="ad-list-item">
+                        <div className="ad-avatar">{method.name[0]}</div>
+                        <div className="ad-list-item-content">
+                          <span>{method.name}</span>
+                          <span className="ad-text-secondary">{method.transaction_count} transactions • ${method.total_amount?.toLocaleString()}</span>
+                        </div>
+                        <span className={`ad-chip ad-chip-${method.is_live ? 'success' : 'default'}`}>
+                          {method.is_live ? 'Live' : 'Test'}
+                        </span>
+                      </div>
                     ))}
-                  </List>
+                  </div>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No payment methods configured
-                  </Typography>
+                  <span className="ad-no-data">No payment methods configured</span>
                 )}
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Recent Transactions</Typography>
+              </div>
+              <div className="ad-section">
+                <h3>Recent Transactions</h3>
                 {paymentData?.recent_transactions?.length > 0 ? (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Date</TableCell>
-                          <TableCell>User</TableCell>
-                          <TableCell align="right">Amount</TableCell>
-                          <TableCell align="right">Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {paymentData.recent_transactions.map((tx) => (
-                          <TableRow key={tx.id}>
-                            <TableCell>{new Date(tx.created_at).toLocaleDateString()}</TableCell>
-                            <TableCell>{tx.user_email}</TableCell>
-                            <TableCell align="right">${tx.amount.toFixed(2)}</TableCell>
-                            <TableCell align="right">
-                              <Chip
-                                label={tx.status}
-                                size="small"
-                                color={
-                                  tx.status === 'completed' ? 'success' :
-                                  tx.status === 'failed' ? 'error' : 'default'
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <table className="ad-table">
+                    <thead>
+                      <tr>
+                        <th><span>Date</span></th>
+                        <th><span>User</span></th>
+                        <th><span>Amount</span></th>
+                        <th><span>Status</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentData.recent_transactions.map((tx) => (
+                        <tr key={tx.id}>
+                          <td>{new Date(tx.created_at).toLocaleDateString()}</td>
+                          <td>{tx.user_email}</td>
+                          <td>${tx.amount.toFixed(2)}</td>
+                          <td>
+                            <span className={`ad-chip ad-chip-${tx.status === 'completed' ? 'success' : tx.status === 'failed' ? 'error' : 'default'}`}>
+                              {tx.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No recent transactions
-                  </Typography>
+                  <span className="ad-no-data">No recent transactions</span>
                 )}
-              </Grid>
-            </Grid>
-          </Box>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Activity Tab */}
         {activeTab === 3 && (
-          <Box sx={{ p: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Recent Activities</Typography>
-                <List>
+          <div className="ad-tab-content">
+            <div className="ad-grid">
+              <div className="ad-section">
+                <h3>Recent Activities</h3>
+                <div className="ad-list">
                   {recentActivities.map((activity) => (
-                    <ListItem key={activity.id} sx={{ py: 1 }}>
-                      <ListItemIcon>
-                        {getStatusIcon(activity.action_type)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={activity.description}
-                        secondary={
-                          <>
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              color="text.primary"
-                              sx={{ display: 'inline' }}
-                            >
-                              {activity.user?.full_name || 'System'}
-                            </Typography>
-                            {` • ${new Date(activity.timestamp).toLocaleString()}`}
-                          </>
-                        }
-                      />
-                    </ListItem>
+                    <div key={activity.id} className="ad-list-item">
+                      <div className="ad-list-item-icon">{getStatusIcon(activity.action_type)}</div>
+                      <div className="ad-list-item-content">
+                        <span>{activity.description}</span>
+                        <span className="ad-text-secondary">
+                          {activity.user?.full_name || 'System'} • {new Date(activity.timestamp).toLocaleString()}
+                        </span>
+                    </div>
+                    </div>
                   ))}
-                </List>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Upcoming Events</Typography>
+                </div>
+              </div>
+              <div className="ad-section">
+                <h3>Upcoming Events</h3>
                 {upcomingSchedules.length > 0 ? (
-                  <List>
+                  <div className="ad-list">
                     {upcomingSchedules.map((event) => (
-                      <ListItem key={event.id} sx={{ py: 2 }}>
-                        <ListItemIcon>
-                          <Avatar sx={{ bgcolor: theme.palette.primary.light }}>
-                            <ScheduleIcon sx={{ color: theme.palette.primary.contrastText }} />
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={event.title}
-                          secondary={
-                            <>
-                              <Typography
-                                component="span"
-                                variant="body2"
-                                color="text.primary"
-                                sx={{ display: 'inline' }}
-                              >
-                                {new Date(event.start_time).toLocaleString()}
-                              </Typography>
-                              {` • ${event.description.substring(0, 50)}...`}
-                            </>
-                          }
-                        />
-                      </ListItem>
+                      <div key={event.id} className="ad-list-item">
+                        <div className="ad-avatar">
+                          <ScheduleIcon />
+                        </div>
+                        <div className="ad-list-item-content">
+                          <span>{event.title}</span>
+                          <span className="ad-text-secondary">
+                            {new Date(event.start_time).toLocaleString()} • {event.description.substring(0, 50)}...
+                          </span>
+                        </div>
+                      </div>
                     ))}
-                  </List>
+                  </div>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No upcoming events
-                  </Typography>
+                  <span className="ad-no-data">No upcoming events</span>
                 )}
-              </Grid>
-            </Grid>
-          </Box>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Messages Tab */}
         {activeTab === 4 && (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>Messages Overview</Typography>
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">{totalMessages}</Typography>
-                  <Typography variant="subtitle1">Total Messages</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">{unreadMessages}</Typography>
-                  <Typography variant="subtitle1">Unread Messages</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">
-                    {totalMessages > 0 ? Math.round((unreadMessages / totalMessages) * 100) : 0}%
-                  </Typography>
-                  <Typography variant="subtitle1">Unread Percentage</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">
-                    {recentActivities.filter(a => a.action_type === 'message').length}
-                  </Typography>
-                  <Typography variant="subtitle1">Recent Message Activities</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-            <Typography variant="h6" gutterBottom>Recent Messages</Typography>
+          <div className="ad-tab-content">
+            <h2>Messages Overview</h2>
+            <div className="ad-grid">
+              <div className="ad-card">
+                <h3>{totalMessages}</h3>
+                <span>Total Messages</span>
+              </div>
+              <div className="ad-card">
+                <h3>{unreadMessages}</h3>
+                <span>Unread Messages</span>
+              </div>
+              <div className="ad-card">
+                <h3>{totalMessages > 0 ? Math.round((unreadMessages / totalMessages) * 100) : 0}%</h3>
+                <span>Unread Percentage</span>
+              </div>
+              <div className="ad-card">
+                <h3>{recentActivities.filter(a => a.action_type === 'message').length}</h3>
+                <span>Recent Message Activities</span>
+              </div>
+            </div>
+            <h3>Recent Messages</h3>
             {recentActivities.filter(a => a.action_type === 'message').length > 0 ? (
-              <List>
+              <div className="ad-list">
                 {recentActivities
                   .filter(a => a.action_type === 'message')
                   .slice(0, 5)
                   .map((activity, index) => (
-                    <ListItem key={index} sx={{ py: 2, borderBottom: 1, borderColor: 'divider' }}>
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: theme.palette.primary.light }}>
-                          <MessagesIcon sx={{ color: theme.palette.primary.contrastText }} />
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={activity.description}
-                        secondary={
-                          <>
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              color="text.primary"
-                              sx={{ display: 'inline' }}
-                            >
-                              {activity.user?.full_name || 'System'}
-                            </Typography>
-                            {` • ${dayjs(activity.timestamp).fromNow()}`}
-                          </>
-                        }
-                      />
-                    </ListItem>
+                    <div key={index} className="ad-list-item">
+                      <div className="ad-avatar">
+                        <MessagesIcon />
+                      </div>
+                      <div className="ad-list-item-content">
+                        <span>{activity.description}</span>
+                        <span className="ad-text-secondary">
+                          {activity.user?.full_name || 'System'} • {dayjs(activity.timestamp).fromNow()}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-              </List>
+              </div>
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                No recent message activities
-              </Typography>
+              <span className="ad-no-data">No recent message activities</span>
             )}
-          </Box>
+          </div>
         )}
 
-        {/* Schedules Tab */}
         {activeTab === 5 && (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>Schedules Overview</Typography>
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">{totalSchedules}</Typography>
-                  <Typography variant="subtitle1">Total Schedules</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">{upcomingSchedules.length}</Typography>
-                  <Typography variant="subtitle1">Upcoming Schedules</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h4">
-                    {recentActivities.filter(a => a.action_type === 'schedule').length}
-                  </Typography>
-                  <Typography variant="subtitle1">Recent Schedule Activities</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-            <Typography variant="h6" gutterBottom>Upcoming Schedules</Typography>
+          <div className="ad-tab-content">
+            <h2>Schedules Overview</h2>
+            <div className="ad-grid">
+              <div className="ad-card">
+                <h3>{totalSchedules}</h3>
+                <span>Total Schedules</span>
+              </div>
+              <div className="ad-card">
+                <h3>{upcomingSchedules.length}</h3>
+                <span>Upcoming Schedules</span>
+              </div>
+              <div className="ad-card">
+                <h3>{recentActivities.filter(a => a.action_type === 'schedule').length}</h3>
+                <span>Recent Schedule Activities</span>
+              </div>
+            </div>
+            <h3>Upcoming Schedules</h3>
             {upcomingSchedules.length > 0 ? (
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Title</TableCell>
-                      <TableCell>Start Time</TableCell>
-                      <TableCell>End Time</TableCell>
-                      <TableCell>Description</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+              <div className="ad-table-container">
+                <table className="ad-table">
+                  <thead>
+                    <tr>
+                      <th><span>Title</span></th>
+                      <th><span>Start Time</span></th>
+                      <th><span>End Time</span></th>
+                      <th><span>Description</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {upcomingSchedules.map((schedule) => (
-                      <TableRow key={schedule.id}>
-                        <TableCell>{schedule.title}</TableCell>
-                        <TableCell>{new Date(schedule.start_time).toLocaleString()}</TableCell>
-                        <TableCell>{new Date(schedule.end_time).toLocaleString()}</TableCell>
-                        <TableCell>{schedule.description.substring(0, 50)}...</TableCell>
-                      </TableRow>
+                      <tr key={schedule.id}>
+                        <td>{schedule.title}</td>
+                        <td>{new Date(schedule.start_time).toLocaleString()}</td>
+                        <td>{new Date(schedule.end_time).toLocaleString()}</td>
+                        <td>{schedule.description.substring(0, 50)}...</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                No upcoming schedules
-              </Typography>
+              <span className="ad-no-data">No upcoming schedules</span>
             )}
-          </Box>
+          </div>
         )}
-      </Paper>
+      </div>
 
-      {/* Confirmation Modal for User Actions */}
-      <Dialog
-        open={openConfirmModal}
-        onClose={handleCancelAction}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {actionType === 'delete' ? 'Delete User' : 
-           actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
-        </DialogTitle>
-        <DialogContent>
-          {actionError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {actionError}
-            </Alert>
-          )}
-          {selectedUser ? (
-            <Typography>
-              Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
-              {actionType === 'delete' && ' This action cannot be undone.'}
-            </Typography>
-          ) : (
-            <Typography color="error">No user selected</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelAction}>Cancel</Button>
-          <Button
-            onClick={handleConfirmAction}
-            variant="contained"
-            color={actionType === 'delete' ? 'error' : 'primary'}
-            disabled={!selectedUser}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+      <div className="ad-dialog" style={{ display: openConfirmModal ? 'block' : 'none' }}>
+        <div className="ad-dialog-backdrop" onClick={handleCancelAction}></div>
+        <div className="ad-dialog-content">
+          <div className="ad-dialog-header">
+            <h3>
+              {actionType === 'delete' ? 'Delete User' : 
+               actionType === 'suspend' ? 'Suspend User' : 'Activate User'}
+            </h3>
+            <button className="ad-dialog-close" onClick={handleCancelAction}>
+              <ErrorIcon />
+            </button>
+          </div>
+          <div className="ad-dialog-body">
+            {actionError && (
+              <div className="ad-alert ad-alert-error">
+                <span>{actionError}</span>
+                <button onClick={() => setActionError(null)} className="ad-alert-close">
+                  <ErrorIcon />
+                </button>
+              </div>
+            )}
+            {selectedUser ? (
+              <span>
+                Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
+                {actionType === 'delete' && ' This action cannot be undone.'}
+              </span>
+            ) : (
+              <span className="ad-error">No user selected</span>
+            )}
+          </div>
+          <div className="ad-dialog-actions">
+            <button className="ad-btn ad-btn-cancel" onClick={handleCancelAction}>Cancel</button>
+            <button
+              className={`ad-btn ${actionType === 'delete' ? 'ad-btn-error' : 'ad-btn-confirm'}`}
+              onClick={handleConfirmAction}
+              disabled={!selectedUser}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

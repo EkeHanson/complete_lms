@@ -1,46 +1,26 @@
 import React, { useState } from 'react';
-import { Assessment as AssessmentIcon } from '@mui/icons-material';
-import { Avatar } from '@mui/material';
 import {
-  Box, Container, Typography,
-  Grid, Card, CardContent,
-  Divider, Tabs, Tab, Table, TableBody,
-  TableCell, TableContainer, TableHead,
-  TableRow, Paper, Chip, IconButton,
-  Tooltip, useTheme, useMediaQuery,
-  TextField, InputAdornment, Button,
-  Badge, Stack, List, ListItem,
-  ListItemIcon, ListItemText,
-  Menu, MenuItem, Dialog, DialogTitle,
-  DialogContent, DialogActions, DialogContentText,
-  Select, FormControl, InputLabel
-} from '@mui/material';
-import {
-  Assessment as ReportsIcon,
-  Timeline as TrendsIcon,
-  AttachMoney as FinanceIcon,
-  Warning as FraudIcon,
-  BarChart as AnalyticsIcon,
+  Assessment as AssessmentIcon,
+  Timeline as TrendsIcon, // Changed from Trends to Timeline
+  AttachMoney as FinanceIcon, // Changed from Finance to AttachMoney
+  Warning as FraudIcon, // Changed from Fraud to Warning
+  Analytics as AnalyticsIcon,
   Search as SearchIcon,
   Refresh as RefreshIcon,
   Download as DownloadIcon,
-  ArrowForward as DetailsIcon,
+  Details as DetailsIcon,
   CalendarToday as CalendarIcon,
   FilterList as FilterIcon,
   MoreVert as MoreIcon,
-  InsertChartOutlined as ChartIcon,
-  Receipt as ReceiptIcon,
-  People as UsersIcon,
-  SettingsApplications as FeaturesIcon
+  InsertChartOutlined as ChartIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import './ReportsDashboard.css';
 
 const ReportsDashboard = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState([null, null]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +29,6 @@ const ReportsDashboard = () => {
   const [exportFormat, setExportFormat] = useState('csv');
   const [selectedReport, setSelectedReport] = useState(null);
 
-  // Mock data - replace with actual API calls
   const userGrowthData = [
     { month: 'Jan', newUsers: 120, activeUsers: 450, returningUsers: 180 },
     { month: 'Feb', newUsers: 150, activeUsers: 520, returningUsers: 210 },
@@ -110,29 +89,27 @@ const ReportsDashboard = () => {
   };
 
   const handleExport = () => {
-    // API call to export report
     console.log(`Exporting ${selectedReport?.period} report as ${exportFormat}`);
     handleCloseExportDialog();
   };
 
   const handleGenerateReport = (type) => {
-    // API call to generate report
     console.log(`Generating ${type} report`);
   };
 
   const statusColor = (status) => {
     switch (status) {
-      case 'generated': return 'success';
-      case 'pending': return 'warning';
-      case 'error': return 'error';
+      case 'generated': return 'active';
+      case 'pending': return 'pending';
+      case 'error': return 'rejected';
       default: return 'default';
     }
   };
 
   const riskColor = (score) => {
-    if (score >= 80) return theme.palette.error.main;
-    if (score >= 60) return theme.palette.warning.main;
-    return theme.palette.success.main;
+    if (score >= 80) return '#991b1b';
+    if (score >= 60) return '#212529';
+    return '#065f46';
   };
 
   const trendIcon = (trend) => {
@@ -145,171 +122,133 @@ const ReportsDashboard = () => {
 
   const trendColor = (trend) => {
     switch (trend) {
-      case 'up': return theme.palette.success.main;
-      case 'down': return theme.palette.error.main;
-      default: return theme.palette.warning.main;
+      case 'up': return '#065f46';
+      case 'down': return '#991b1b';
+      default: return '#212529';
     }
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-            <AssessmentIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+      <div className="rd-container">
+        <div className="rd-header">
+          <h1>
+            <AssessmentIcon className="rd-icon" />
             Custom Reports & Data Exports
-          </Typography>
-          <Button variant="outlined" startIcon={<RefreshIcon />}>
+          </h1>
+          <button className="rd-btn rd-btn-refresh">
+            <RefreshIcon />
             Refresh Data
-          </Button>
-        </Box>
+          </button>
+        </div>
 
-        {/* Summary Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  New Users (30d)
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <TrendsIcon color="primary" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">1,240</Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  ↑ 12% from last month
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Total Revenue (30d)
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <FinanceIcon color="success" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">$375K</Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  ↑ 8% from last month
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  High Risk Users
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <FraudIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">24</Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  ↓ 3 from last week
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Feature Adoption
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <AnalyticsIcon color="info" sx={{ fontSize: 40, mr: 2 }} />
-                  <Typography variant="h4">72%</Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  New features: 85% adoption
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        <div className="rd-cards">
+          <div className="rd-card">
+            <span className="rd-card-title">New Users (30d)</span>
+            <div className="rd-card-content">
+              <TrendsIcon className="rd-icon" />
+              <span className="rd-card-value">1,240</span>
+            </div>
+            <span className="rd-card-footer">↑ 12% from last month</span>
+          </div>
+          <div className="rd-card">
+            <span className="rd-card-title">Total Revenue (30d)</span>
+            <div className="rd-card-content">
+              <FinanceIcon className="rd-icon" />
+              <span className="rd-card-value">$375K</span>
+            </div>
+            <span className="rd-card-footer">↑ 8% from last month</span>
+          </div>
+          <div className="rd-card">
+            <span className="rd-card-title">High Risk Users</span>
+            <div className="rd-card-content">
+              <FraudIcon className="rd-icon" />
+              <span className="rd-card-value">24</span>
+            </div>
+            <span className="rd-card-footer">↓ 3 from last week</span>
+          </div>
+          <div className="rd-card">
+            <span className="rd-card-title">Feature Adoption</span>
+            <div className="rd-card-content">
+              <AnalyticsIcon className="rd-icon" />
+              <span className="rd-card-value">72%</span>
+            </div>
+            <span className="rd-card-footer">New features: 85% adoption</span>
+          </div>
+        </div>
 
-        {/* Main Content */}
-        <Card elevation={3}>
-          {/* Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-              <Tab label="User Growth Trends" icon={<TrendsIcon />} iconPosition="start" />
-              <Tab label="Financial Reports" icon={<FinanceIcon />} iconPosition="start" />
-              <Tab label="Fraud Analysis" icon={<FraudIcon />} iconPosition="start" />
-              <Tab label="Feature Usage" icon={<AnalyticsIcon />} iconPosition="start" />
-            </Tabs>
-          </Box>
+        <div className="rd-main">
+          <div className="rd-tabs">
+            <button className={`rd-tab ${tabValue === 0 ? 'active' : ''}`} onClick={() => handleTabChange(null, 0)}>
+              <TrendsIcon />
+              User Growth Trends
+            </button>
+            <button className={`rd-tab ${tabValue === 1 ? 'active' : ''}`} onClick={() => handleTabChange(null, 1)}>
+              <FinanceIcon />
+              Financial Reports
+            </button>
+            <button className={`rd-tab ${tabValue === 2 ? 'active' : ''}`} onClick={() => handleTabChange(null, 2)}>
+              <FraudIcon />
+              Fraud Analysis
+            </button>
+            <button className={`rd-tab ${tabValue === 3 ? 'active' : ''}`} onClick={() => handleTabChange(null, 3)}>
+              <AnalyticsIcon />
+              Feature Usage
+            </button>
+          </div>
 
-          {/* Filter Bar */}
-          <Box sx={{ p: 2, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-            <TextField
-              size="small"
-              placeholder="Search..."
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ flexGrow: 1, maxWidth: 400 }}
-            />
-            
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <CalendarIcon color="action" />
+          <div className="rd-filter-bar">
+            <div className="rd-search">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="rd-date-range">
+              <CalendarIcon />
               <DatePicker
-                label="From"
+                className="rd-date-picker"
                 value={dateRange[0]}
                 onChange={(newValue) => handleDateChange(newValue, 0)}
-                renderInput={(params) => <TextField {...params} size="small" />}
+                renderInput={(params) => <input {...params.inputProps} />}
               />
-              <Typography>-</Typography>
+              <span>-</span>
               <DatePicker
-                label="To"
+                className="rd-date-picker"
                 value={dateRange[1]}
                 onChange={(newValue) => handleDateChange(newValue, 1)}
-                renderInput={(params) => <TextField {...params} size="small" />}
+                renderInput={(params) => <input {...params.inputProps} />}
               />
-            </Stack>
-            
-            <Button variant="outlined" startIcon={<FilterIcon />}>
+            </div>
+            <button className="rd-btn rd-btn-filter">
+              <FilterIcon />
               Filters
-            </Button>
-
-            <IconButton onClick={handleMenuOpen}>
+            </button>
+            <button className="rd-btn rd-btn-more" onClick={handleMenuOpen}>
               <MoreIcon />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-            >
-              <MenuItem onClick={handleMenuClose}>Export All Data</MenuItem>
-              <MenuItem onClick={handleMenuClose}>Schedule Report</MenuItem>
-              <MenuItem onClick={handleMenuClose}>Custom Report</MenuItem>
-            </Menu>
-          </Box>
+            </button>
+            <div className="rd-menu" style={{ display: anchorEl ? 'block' : 'none' }}>
+              <div className="rd-menu-item" onClick={() => { handleMenuClose(); console.log('Export All Data'); }}>
+                Export All Data
+              </div>
+              <div className="rd-menu-item" onClick={() => { handleMenuClose(); console.log('Schedule Report'); }}>
+                Schedule Report
+              </div>
+              <div className="rd-menu-item" onClick={() => { handleMenuClose(); console.log('Custom Report'); }}>
+                Custom Report
+              </div>
+            </div>
+          </div>
 
-          <Divider />
-
-          {/* Tab Content */}
-          <Box sx={{ p: 2 }}>
-            {/* User Growth Trends Tab */}
+          <div className="rd-content">
             {tabValue === 0 && (
-              <Box>
-                <Box sx={{ height: 400, mb: 4 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={userGrowthData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
+              <div>
+                <div className="rd-chart">
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={userGrowthData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
@@ -320,320 +259,261 @@ const ReportsDashboard = () => {
                       <Line type="monotone" dataKey="returningUsers" stroke="#ffc658" />
                     </LineChart>
                   </ResponsiveContainer>
-                </Box>
-                <TableContainer component={Paper} elevation={0}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Month</TableCell>
-                        <TableCell align="right">New Users</TableCell>
-                        <TableCell align="right">Active Users</TableCell>
-                        <TableCell align="right">Returning Users</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
+                </div>
+                <div className="rd-table-container">
+                  <table className="rd-table">
+                    <thead>
+                      <tr>
+                        <th><span>Month</span></th>
+                        <th><span>New Users</span></th>
+                        <th><span>Active Users</span></th>
+                        <th><span>Returning Users</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {userGrowthData.map((row) => (
-                        <TableRow key={row.month} hover>
-                          <TableCell>{row.month}</TableCell>
-                          <TableCell align="right">{row.newUsers.toLocaleString()}</TableCell>
-                          <TableCell align="right">{row.activeUsers.toLocaleString()}</TableCell>
-                          <TableCell align="right">{row.returningUsers.toLocaleString()}</TableCell>
-                          <TableCell align="right">
-                            <Tooltip title="Export Data">
-                              <IconButton size="small" onClick={() => handleOpenExportDialog({ period: `${row.month} User Growth` })}>
-                                <DownloadIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
+                        <tr key={row.month}>
+                          <td>{row.month}</td>
+                          <td>{row.newUsers.toLocaleString()}</td>
+                          <td>{row.activeUsers.toLocaleString()}</td>
+                          <td>{row.returningUsers.toLocaleString()}</td>
+                          <td>
+                            <button className="rd-btn rd-btn-action" onClick={() => handleOpenExportDialog({ period: `${row.month} User Growth` })}>
+                              <DownloadIcon />
+                            </button>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
 
-            {/* Financial Reports Tab */}
             {tabValue === 1 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Period</TableCell>
-                      <TableCell>Date Range</TableCell>
-                      <TableCell align="right">Revenue</TableCell>
-                      <TableCell align="right">Transactions</TableCell>
-                      <TableCell align="right">Avg. Order</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+              <div className="rd-table-container">
+                <table className="rd-table">
+                  <thead>
+                    <tr>
+                      <th><span>Period</span></th>
+                      <th><span>Date Range</span></th>
+                      <th><span>Revenue</span></th>
+                      <th><span>Transactions</span></th>
+                      <th><span>Avg. Order</span></th>
+                      <th><span>Status</span></th>
+                      <th><span>Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {financialReports.map((report) => (
-                      <TableRow key={report.id} hover>
-                        <TableCell>{report.period}</TableCell>
-                        <TableCell>{report.date}</TableCell>
-                        <TableCell align="right">${report.revenue.toLocaleString()}</TableCell>
-                        <TableCell align="right">{report.transactions.toLocaleString()}</TableCell>
-                        <TableCell align="right">${report.avgOrder.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={report.status} 
-                            color={statusColor(report.status)} 
-                            size="small" 
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          {report.status === 'generated' ? (
-                            <Tooltip title="Download Report">
-                              <IconButton size="small" onClick={() => handleOpenExportDialog(report)}>
-                                <DownloadIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip title="Generate Report">
-                              <IconButton size="small" onClick={() => handleGenerateReport(report.period)}>
-                                <RefreshIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title="View Details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
+                      <tr key={report.id}>
+                        <td>{report.period}</td>
+                        <td>{report.date}</td>
+                        <td>${report.revenue.toLocaleString()}</td>
+                        <td>{report.transactions.toLocaleString()}</td>
+                        <td>${report.avgOrder.toFixed(2)}</td>
+                        <td>
+                          <span className={`rd-status ${statusColor(report.status)}`}>
+                            {report.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="rd-action-btns">
+                            {report.status === 'generated' ? (
+                              <button className="rd-btn rd-btn-action" onClick={() => handleOpenExportDialog(report)}>
+                                <DownloadIcon />
+                              </button>
+                            ) : (
+                              <button className="rd-btn rd-btn-action" onClick={() => handleGenerateReport(report.period)}>
+                                <RefreshIcon />
+                              </button>
+                            )}
+                            <button className="rd-btn rd-btn-action">
+                              <DetailsIcon />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                  </tbody>
+                </table>
+              </div>
             )}
 
-            {/* Fraud Analysis Tab */}
             {tabValue === 2 && (
-              <Box>
-                <Box sx={{ height: 300, mb: 4 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={fraudAnalysis.map(user => ({ 
-                        userId: user.userId, 
-                        riskScore: user.riskScore 
-                      }))}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
+              <div>
+                <div className="rd-chart">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={fraudAnalysis.map(user => ({ userId: 'user123', riskScore: 87 }))} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="userId" />
                       <YAxis domain={[0, 100]} />
                       <ChartTooltip />
                       <Legend />
-                      <Bar 
-                        dataKey="riskScore" 
-                        fill={theme.palette.error.main} 
-                        name="Risk Score"
-                      />
+                      <Bar dataKey="riskScore" fill="#991b1b" name="Risk Score" />
                     </BarChart>
                   </ResponsiveContainer>
-                </Box>
-                <TableContainer component={Paper} elevation={0}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>User ID</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell align="right">Risk Score</TableCell>
-                        <TableCell>Flags</TableCell>
-                        <TableCell>Last Activity</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
+                </div>
+                <div className="rd-table-container">
+                  <table className="rd-table">
+                    <thead>
+                      <tr>
+                        <th><span>User ID</span></th>
+                        <th><span>Email</span></th>
+                        <th><span>Risk Score</span></th>
+                        <th><span>Flags</span></th>
+                        <th><span>Last Activity</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {fraudAnalysis.map((user) => (
-                        <TableRow key={user.id} hover>
-                          <TableCell>{user.userId}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell align="right">
-                            <Chip 
-                              label={user.riskScore} 
-                              sx={{ 
-                                backgroundColor: riskColor(user.riskScore),
-                                color: 'white',
-                                fontWeight: 'bold'
-                              }} 
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {user.flags.map((flag, i) => (
-                              <Chip 
-                                key={i}
-                                label={flag} 
-                                size="small" 
-                                sx={{ mr: 0.5, mb: 0.5 }}
-                              />
-                            ))}
-                          </TableCell>
-                          <TableCell>{user.lastActivity}</TableCell>
-                          <TableCell align="right">
-                            <Tooltip title="Export Data">
-                              <IconButton size="small" onClick={() => handleOpenExportDialog({ period: `Fraud Report - ${user.userId}` })}>
-                                <DownloadIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Investigate">
-                              <IconButton size="small">
-                                <DetailsIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
+                        <tr key={user.id}>
+                          <td>{user.userId}</td>
+                          <td>{user.email}</td>
+                          <td>
+                            <span className="rd-chip" style={{ backgroundColor: riskColor(user.riskScore) }}>
+                              {user.riskScore}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="rd-chip-container">
+                              {user.flags.map((flag, i) => (
+                                <span key={i} className="rd-chip">{flag}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td>{user.lastActivity}</td>
+                          <td>
+                            <div className="rd-action-btns">
+                              <button className="rd-btn rd-btn-action" onClick={() => handleOpenExportDialog({ period: `Fraud Report - ${user.userId}` })}>
+                                <DownloadIcon />
+                              </button>
+                              <button className="rd-btn rd-btn-action">
+                                <DetailsIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
 
-            {/* Feature Usage Tab */}
             {tabValue === 3 && (
-              <TableContainer component={Paper} elevation={0}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Feature</TableCell>
-                      <TableCell align="right">Usage Count</TableCell>
-                      <TableCell align="right">Unique Users</TableCell>
-                      <TableCell align="right">Satisfaction</TableCell>
-                      <TableCell>Trend</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+              <div className="rd-table-container">
+                <table className="rd-table">
+                  <thead>
+                    <tr>
+                      <th><span>Feature</span></th>
+                      <th><span>Usage Count</span></th>
+                      <th><span>Unique Users</span></th>
+                      <th><span>Satisfaction</span></th>
+                      <th><span>Trend</span></th>
+                      <th><span>Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {featureUsage.map((feature) => (
-                      <TableRow key={feature.id} hover>
-                        <TableCell>{feature.feature}</TableCell>
-                        <TableCell align="right">{feature.usageCount.toLocaleString()}</TableCell>
-                        <TableCell align="right">{feature.uniqueUsers.toLocaleString()}</TableCell>
-                        <TableCell align="right">
-                          <Box sx={{ 
-                            display: 'inline-flex', 
-                            alignItems: 'center',
-                            color: feature.satisfaction >= 4 ? theme.palette.success.main : 
-                                  feature.satisfaction >= 3 ? theme.palette.warning.main : 
-                                  theme.palette.error.main
-                          }}>
-                            {feature.satisfaction.toFixed(1)}
-                            <ChartIcon sx={{ ml: 0.5, fontSize: 16 }} />
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography 
-                            sx={{ 
-                              color: trendColor(feature.trend),
-                              fontWeight: 'bold'
-                            }}
-                          >
+                      <tr key={feature.id}>
+                        <td>{feature.feature}</td>
+                        <td>{feature.usageCount.toLocaleString()}</td>
+                        <td>{feature.uniqueUsers.toLocaleString()}</td>
+                        <td>
+                          <div className="rd-satisfaction">
+                            <span>{feature.satisfaction.toFixed(1)}</span>
+                            <ChartIcon />
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ color: trendColor(feature.trend) }}>
                             {trendIcon(feature.trend)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="Export Data">
-                            <IconButton size="small" onClick={() => handleOpenExportDialog({ period: `Feature Usage - ${feature.feature}` })}>
-                              <DownloadIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="View Details">
-                            <IconButton size="small">
-                              <DetailsIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
+                          </span>
+                        </td>
+                        <td>
+                          <div className="rd-action-btns">
+                            <button className="rd-btn rd-btn-action" onClick={() => handleOpenExportDialog({ period: `Feature Usage - ${feature.feature}` })}>
+                              <DownloadIcon />
+                            </button>
+                            <button className="rd-btn rd-btn-action">
+                              <DetailsIcon />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                  </tbody>
+                </table>
+              </div>
             )}
-          </Box>
-        </Card>
+          </div>
 
-        {/* Recent Activity Sidebar */}
-        {!isMobile && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-              Recent Report Activity
-            </Typography>
-            <Paper elevation={3} sx={{ p: 2 }}>
-              <List dense>
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.success.light }}>
-                      <DownloadIcon color="success" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Daily financial report generated"
-                    secondary="2 hours ago - 342 transactions"
-                  />
-                </ListItem>
-                <Divider component="li" />
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.warning.light }}>
-                      <FraudIcon color="warning" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="New high-risk user detected"
-                    secondary="5 hours ago - Risk score: 92"
-                  />
-                </ListItem>
-                <Divider component="li" />
-                <ListItem>
-                  <ListItemIcon>
-                    <Avatar sx={{ bgcolor: theme.palette.info.light }}>
-                      <TrendsIcon color="info" />
-                    </Avatar>
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="User growth report exported"
-                    secondary="Yesterday - CSV format"
-                  />
-                </ListItem>
-              </List>
-            </Paper>
-          </Box>
-        )}
+          <div className="rd-sidebar">
+            <h2>Recent Report Activity</h2>
+            <div className="rd-activity-list">
+              <div className="rd-activity-item">
+                <div className="rd-activity-icon rd-activity-success">
+                  <DownloadIcon />
+                </div>
+                <div className="rd-activity-text">
+                  <span>Daily financial report generated</span>
+                  <span className="rd-text-secondary">2 hours ago - 342 transactions</span>
+                </div>
+              </div>
+              <div className="rd-activity-item">
+                <div className="rd-activity-icon rd-activity-warning">
+                  <FraudIcon />
+                </div>
+                <div className="rd-activity-text">
+                  <span>New high-risk user detected</span>
+                  <span className="rd-text-secondary">5 hours ago - Risk score: 92</span>
+                </div>
+              </div>
+              <div className="rd-activity-item">
+                <div className="rd-activity-icon rd-activity-info">
+                  <TrendsIcon />
+                </div>
+                <div className="rd-activity-text">
+                  <span>User growth report exported</span>
+                  <span className="rd-text-secondary">Yesterday - CSV format</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Export Dialog */}
-        <Dialog open={openExportDialog} onClose={handleCloseExportDialog}>
-          <DialogTitle>Export Report</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Export {selectedReport?.period || 'selected'} data in your preferred format.
-            </DialogContentText>
-            <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel>Format</InputLabel>
-              <Select
+        <div className="rd-dialog" style={{ display: openExportDialog ? 'block' : 'none' }}>
+          <div className="rd-dialog-backdrop" onClick={handleCloseExportDialog}></div>
+          <div className="rd-dialog-content">
+            <h3>Export Report</h3>
+            <p>Export {selectedReport?.period || 'selected'} data in your preferred format.</p>
+            <div className="rd-form-field">
+              <label>Format</label>
+              <select
                 value={exportFormat}
-                label="Format"
                 onChange={(e) => setExportFormat(e.target.value)}
               >
-                <MenuItem value="csv">CSV</MenuItem>
-                <MenuItem value="excel">Excel</MenuItem>
-                <MenuItem value="pdf">PDF</MenuItem>
-                <MenuItem value="json">JSON</MenuItem>
-              </Select>
-            </FormControl>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseExportDialog}>Cancel</Button>
-            <Button onClick={handleExport} variant="contained" startIcon={<DownloadIcon />}>
-              Export
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Container>
+                <option value="csv">CSV</option>
+                <option value="excel">Excel</option>
+                <option value="pdf">PDF</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+            <div className="rd-dialog-actions">
+              <button className="rd-btn rd-btn-cancel" onClick={handleCloseExportDialog}>
+                Cancel
+              </button>
+              <button className="rd-btn rd-btn-confirm" onClick={handleExport}>
+                <DownloadIcon />
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 };

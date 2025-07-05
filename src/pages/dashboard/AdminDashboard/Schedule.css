@@ -1,0 +1,695 @@
+.sch-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 80vh;
+}
+
+.sch-alert {
+    position: relative;
+    width: 100%;
+    padding: 10px 15px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+.sch-alert-success {
+    background-color: #e6fffa;
+    color: #065f46;
+}
+
+.sch-alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.sch-alert-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.sch-alert-close svg {
+    width: 15px;
+    height: 15px;
+}
+
+.sch-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.sch-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #7226FF;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: #f3edff;
+    color: #7226FF;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.sch-badge svg {
+    width: 15px;
+}
+
+.sch-header-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 15px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: all 0.3s ease-in-out;
+}
+
+.sch-btn-primary {
+    background: linear-gradient(135deg, #450CD5 0%, #7226FF 50%, #F042FF 100%);
+    color: #fff;
+}
+
+.sch-btn-primary:hover {
+    background: linear-gradient(135deg, #F042FF 0%, #7226FF 50%, #450CD5 100%);
+}
+
+.sch-btn-secondary {
+    background-color: #f7f5ff;
+    color: #6251a4;
+}
+
+.sch-btn-secondary:hover {
+    background-color: #ece8f9;
+}
+
+.sch-btn-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.sch-btn-error:hover {
+    border-color: #991b1b;
+}
+
+.sch-btn:disabled {
+    background: #ece8f9;
+    color: #6251a4;
+    cursor: not-allowed;
+}
+
+.sch-btn-full {
+    width: 100%;
+}
+
+.sch-btn-icon {
+    padding: 5px;
+    border-radius: 50%;
+}
+
+.sch-btn-expand {
+    padding: 5px;
+    background: none;
+    border: none;
+}
+
+.sch-btn-response {
+    border: 1px solid;
+    padding: 5px 10px;
+    font-size: 10px;
+}
+
+.sch-btn-response svg {
+    width: 15px;
+}
+
+.sch-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #e3defc;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.sch-search {
+    flex: 1;
+    min-width: 200px;
+}
+
+.sch-search-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    padding: 5px 10px;
+}
+
+.sch-search-input svg {
+    width: 17px;
+    color: #6251a4;
+    margin-right: 5px;
+}
+
+.sch-search-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 12px;
+    background: transparent;
+}
+
+.sch-date-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 150px;
+}
+
+.sch-date-picker label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.sch-date-picker input {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+}
+
+.sch-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #6251a4;
+}
+
+.sch-checkbox input {
+    width: 16px;
+    height: 16px;
+}
+
+.sch-loading {
+    width: 100%;
+    height: 4px;
+    overflow: hidden;
+    background-color: #f3f0fd;
+    margin-bottom: 20px;
+}
+
+.sch-progress {
+    width: 100%;
+    height: 100%;
+    background-color: #7226FF;
+    animation: progress 1.5s infinite;
+}
+
+@keyframes progress {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.sch-no-data {
+    text-align: center;
+    padding: 20px;
+    color: #6251a4;
+    font-size: 14px;
+}
+
+.sch-error {
+    color: #991b1b;
+}
+
+.sch-card-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sch-card {
+    background-color: #fff;
+    border: 1px solid #e3defc;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.sch-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.sch-card-title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sch-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sch-card-expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-top: 10px;
+}
+
+.sch-card-expanded p {
+    font-size: 12px;
+    color: #6251a4;
+    white-space: pre-line;
+}
+
+.sch-card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sch-table-container {
+    overflow-x: auto;
+    border: 1px solid #e7e2f7;
+    background-color: #fff;
+    border-radius: 10px;
+}
+
+.sch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.sch-table thead {
+    background-color: #f7f5ff;
+}
+
+.sch-table th {
+    padding: 14px 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.sch-table th span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sch-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sch-table tr:hover {
+    background-color: #f3f6f8;
+    cursor: pointer;
+}
+
+.sch-table tr.expanded {
+    background-color: #f3edff;
+}
+
+.sch-table-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sch-table-cell a {
+    color: #7226FF;
+    text-decoration: none;
+}
+
+.sch-table-cell a:hover {
+    text-decoration: underline;
+}
+
+.sch-table-expanded {
+    padding: 20px;
+    background-color: #f7f5ff;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sch-table-expanded p {
+    font-size: 12px;
+    color: #6251a4;
+    white-space: pre-line;
+}
+
+.sch-icon {
+    width: 17px;
+}
+
+.sch-icon-primary {
+    color: #7226FF;
+}
+
+.sch-icon-error {
+    color: #991b1b;
+}
+
+.sch-icon-google {
+    color: #00897B;
+}
+
+.sch-icon-teams {
+    color: #464EB8;
+}
+
+.sch-icon-zoom {
+    color: #2D8CFF;
+}
+
+.sch-chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.sch-chip {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sch-chip button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.sch-chip button svg {
+    width: 12px;
+}
+
+.sch-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sch-participants,
+.sch-response {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.sch-participants span,
+.sch-response span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.sch-response-btns {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.sch-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.sch-dialog {
+    z-index: 2000;
+}
+
+.sch-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+}
+
+.sch-dialog-content {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    border: 1px solid #e9dcff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 800px;
+    width: 95%;
+    z-index: 2100;
+    box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
+}
+
+.sch-dialog-wide {
+    max-width: 800px;
+}
+
+.sch-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.sch-dialog-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #7226FF;
+}
+
+.sch-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.sch-dialog-close svg {
+    width: 15px;
+    color: #6251a4;
+}
+
+.sch-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sch-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.sch-form-field-full {
+    grid-column: 1 / -1;
+}
+
+.sch-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.sch-form-field input,
+.sch-form-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.sch-form-field input:focus,
+.sch-form-field textarea:focus {
+    border-color: #cfb8fa;
+}
+
+.sch-form-field textarea {
+    resize: vertical;
+}
+
+.sch-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.sch-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+
+.sch-checkbox input {
+    width: 16px;
+    height: 16px;
+}
+
+.sch-autocomplete {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sch-autocomplete-options {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #f7f5ff;
+}
+
+.sch-autocomplete-option {
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sch-autocomplete-option:hover {
+    background-color: #ebe6ff;
+}
+
+.sch-autocomplete-option.selected {
+    background-color: #e6fffa;
+}
+
+.sch-autocomplete-option svg {
+    width: 15px;
+}
+
+.sch-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+.sch-btn-cancel {
+    background-color: #f7f5ff;
+    color: #6251a4;
+}
+
+.sch-btn-cancel:hover {
+    background-color: #ece8f9;
+}
+
+.sch-btn-confirm {
+    background: linear-gradient(135deg, #450CD5 0%, #7226FF 50%, #F042FF 100%);
+    color: #fff;
+}
+
+.sch-btn-confirm:hover {
+    background: linear-gradient(135deg, #F042FF 0%, #7226FF 50%, #450CD5 100%);
+}
+
+.sch-btn-confirm:disabled {
+    background: #ece8f9;
+    color: #6251a4;
+    cursor: not-allowed;
+}
+
+.sch-pagination {
+    margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+    .sch-dialog-content {
+        width: 95vw;
+        padding: 16px;
+    }
+
+    .sch-dialog-header h3 {
+        font-size: 16px;
+    }
+
+    .sch-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sch-card-container {
+        gap: 15px;
+    }
+
+    .sch-card {
+        padding: 10px;
+    }
+
+    .sch-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .sch-card-title {
+        font-size: 12px;
+    }
+
+    .sch-card-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

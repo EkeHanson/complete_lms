@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Flag as FlagIcon, Check as CheckIcon, Close as CloseIcon, Refresh as RefreshIcon,
+  Search as SearchIcon
+} from '@mui/icons-material';
+import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Stack, TablePagination,
   Grid, LinearProgress, useMediaQuery, Chip,MenuItem 
 } from '@mui/material';
-import {
-  Flag as FlagIcon, Check as CheckIcon, Close as CloseIcon, Refresh as RefreshIcon,
-  Search as SearchIcon
-} from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import { moderationAPI } from '../../../config';
+import './ModerationQueue.css';
 
 const ModerationQueue = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const isMobile = useMediaQuery('(max-width:600px)');
   const [moderationItems, setModerationItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,98 +103,89 @@ const ModerationQueue = () => {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const renderDesktopTable = () => (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Content Type</TableCell>
-            <TableCell>Content</TableCell>
-            <TableCell>Reported By</TableCell>
-            <TableCell>Reason</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {moderationItems.map((item) => (
-            <TableRow key={item.id} hover>
-              <TableCell>{item.content_type}</TableCell>
-              <TableCell>{item.content_snippet}</TableCell>
-              <TableCell>{item.reported_by.email}</TableCell>
-              <TableCell>{item.reason}</TableCell>
-              <TableCell>
-                <Chip
-                  label={item.status}
-                  color={item.status === 'pending' ? 'warning' : item.status === 'approved' ? 'success' : 'error'}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <IconButton onClick={() => handleOpenDialog(item)}>
-                    <FlagIcon />
-                  </IconButton>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Moderation Queue
-      </Typography>
+    <div className="mq-container">
+      <h1 className="mq-title">Moderation Queue</h1>
 
-      <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="Search content..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField
-              select
-              fullWidth
-              size="small"
-              label="Status"
+      <div className="mq-filter-container">
+        <div className="mq-filter-grid">
+          <div className="mq-filter-field">
+            <div className="mq-search-input">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search content..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mq-filter-field">
+            <select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
             >
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="approved">Approved</MenuItem>
-              <MenuItem value="rejected">Rejected</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} sx={{ textAlign: 'right' }}>
-            <IconButton onClick={resetFilters}>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div className="mq-filter-field mq-filter-field-right">
+            <button className="mq-btn mq-btn-reset" onClick={resetFilters}>
               <RefreshIcon />
-            </IconButton>
-          </Grid>
-        </Grid>
-      </Paper>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {isLoading ? (
-        <LinearProgress />
+        <div className="mq-loading">
+          <div className="mq-progress"></div>
+        </div>
       ) : error ? (
-        <Typography color="error">{error}</Typography>
+        <div className="mq-error">{error}</div>
       ) : moderationItems.length === 0 ? (
-        <Typography>No items in moderation queue</Typography>
+        <div className="mq-no-data">No items in moderation queue</div>
       ) : (
-        renderDesktopTable()
+        <div className="mq-table-container">
+          <table className="mq-table">
+            <thead>
+              <tr>
+                <th><span>Content Type</span></th>
+                <th><span>Content</span></th>
+                <th><span>Reported By</span></th>
+                <th><span>Reason</span></th>
+                <th><span>Status</span></th>
+                <th><span>Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {moderationItems.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.content_type}</td>
+                  <td>{item.content_snippet}</td>
+                  <td>{item.reported_by.email}</td>
+                  <td>{item.reason}</td>
+                  <td>
+                    <span className={`mq-status ${item.status}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="mq-action-btns">
+                      <button
+                        className="mq-btn mq-btn-action"
+                        onClick={() => handleOpenDialog(item)}
+                      >
+                        <FlagIcon />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <TablePagination
@@ -207,60 +198,61 @@ const ModerationQueue = () => {
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Moderate Content
-          <IconButton
-            onClick={handleCloseDialog}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="subtitle1">Content Details</Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Type: {currentItem?.content_type}<br />
-            Reported By: {currentItem?.reported_by.email}<br />
-            Reason: {currentItem?.reason}
-          </Typography>
-          <TextField
-            label="Content"
-            fullWidth
-            multiline
-            rows={4}
-            value={currentItem?.content || ''}
-            disabled
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Moderation Notes"
-            fullWidth
-            multiline
-            rows={2}
-            value={currentItem?.moderation_notes || ''}
-            onChange={(e) => setCurrentItem({ ...currentItem, moderation_notes: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button
-            onClick={() => handleModerate('approve')}
-            startIcon={<CheckIcon />}
-            color="success"
-          >
-            Approve
-          </Button>
-          <Button
-            onClick={() => handleModerate('reject')}
-            startIcon={<CloseIcon />}
-            color="error"
-          >
-            Reject
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <div className="mq-dialog" style={{ display: openDialog ? 'block' : 'none' }}>
+        <div className="mq-dialog-backdrop" onClick={handleCloseDialog}></div>
+        <div className="mq-dialog-content">
+          <div className="mq-dialog-header">
+            <h3>Moderate Content</h3>
+            <button className="mq-dialog-close" onClick={handleCloseDialog}>
+              <CloseIcon />
+            </button>
+          </div>
+          <div className="mq-dialog-body">
+            <h4>Content Details</h4>
+            <p>
+              Type: {currentItem?.content_type}<br />
+              Reported By: {currentItem?.reported_by.email}<br />
+              Reason: {currentItem?.reason}
+            </p>
+            <div className="mq-form-field">
+              <label>Content</label>
+              <textarea
+                rows="4"
+                value={currentItem?.content || ''}
+                disabled
+              ></textarea>
+            </div>
+            <div className="mq-form-field">
+              <label>Moderation Notes</label>
+              <textarea
+                rows="2"
+                value={currentItem?.moderation_notes || ''}
+                onChange={(e) => setCurrentItem({ ...currentItem, moderation_notes: e.target.value })}
+              ></textarea>
+            </div>
+          </div>
+          <div className="mq-dialog-actions">
+            <button className="mq-btn mq-btn-cancel" onClick={handleCloseDialog}>
+              Cancel
+            </button>
+            <button
+              className="mq-btn mq-btn-approve"
+              onClick={() => handleModerate('approve')}
+            >
+              <CheckIcon />
+              Approve
+            </button>
+            <button
+              className="mq-btn mq-btn-reject"
+              onClick={() => handleModerate('reject')}
+            >
+              <CloseIcon />
+              Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

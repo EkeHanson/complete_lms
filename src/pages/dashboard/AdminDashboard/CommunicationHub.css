@@ -1,0 +1,192 @@
+.chub-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 80vh;
+}
+
+.chub-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #7226FF;
+    margin-bottom: 20px;
+}
+
+.chub-overview {
+    position: relative;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #e7e2f7;
+    background-color: #fff;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.chub-overview-title {
+    font-size: 17px;
+    font-weight: 500;
+    color: #7226FF;
+    margin-bottom: 15px;
+}
+
+.chub-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-gap: 10px;
+}
+
+.chub-card {
+    position: relative;
+    width: 100%;
+    min-height: 70px;
+    border: 1px solid #e7e2f7;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 10px;
+    padding: 8px 15px;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+    user-select: none;
+}
+
+.chub-card:hover {
+    background-color: #ebe6ff;
+    border-color: #7226FF;
+}
+
+.chubWorkbookCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.chub-card-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chub-card-icon svg {
+    width: 17px;
+    color: #7226FF;
+}
+
+.chub-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 8px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 30px;
+    color: #fff;
+}
+
+.chub-badge-error {
+    background-color: #991b1b;
+}
+
+.chub-badge-primary {
+    background-color: #2575FC;
+}
+
+.chub-badge-secondary {
+    background-color: #7226FF;
+}
+
+.chub-badge-warning {
+    background-color: #d97706;
+}
+
+.chub-card h5 {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #6251a4;
+    line-height: 100%;
+}
+
+.chub-card h3 {
+    font-size: 20px;
+    font-weight: 500;
+    color: #7226FF;
+    line-height: 100%;
+}
+
+.chub-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.chub-tab {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 30px;
+    background-color: #f7f5ff;
+    color: #6251a4;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    border: 1px solid #e3defc;
+}
+
+.chub-tab.active {
+    background-color: #ebe6ff;
+    color: #7226FF;
+    border-color: #7226FF;
+}
+
+.chub-tab-content {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.chub-tab-content svg {
+    width: 17px;
+}
+
+.chub-content {
+    position: relative;
+    width: 100%;
+}
+
+@media (max-width: 480px) {
+    .chub-container {
+        padding: 10px;
+    }
+
+    .chub-title {
+        font-size: 20px;
+    }
+
+    .chub-overview {
+        padding: 15px;
+    }
+
+    .chub-overview-title {
+        font-size: 15px;
+    }
+
+    .chub-card {
+        padding: 6px 10px;
+    }
+
+    .chub-card h3 {
+        font-size: 18px;
+    }
+
+    .chub-card h5 {
+        font-size: 8px;
+    }
+}

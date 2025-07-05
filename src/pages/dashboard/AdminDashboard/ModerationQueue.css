@@ -1,0 +1,393 @@
+.mq-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 80vh;
+}
+
+.mq-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #7226FF;
+    margin-bottom: 20px;
+}
+
+.mq-filter-container {
+    background-color: #fff;
+    border: 1px solid #e7e2f7;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.mq-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    align-items: center;
+}
+
+.mq-filter-field {
+    display: flex;
+    align-items: center;
+}
+
+.mq-filter-field-right {
+    justify-content: flex-end;
+}
+
+.mq-search-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    padding: 5px 10px;
+}
+
+.mq-search-input svg {
+    width: 17px;
+    color: #6251a4;
+    margin-right: 5px;
+}
+
+.mq-search-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 12px;
+    background: transparent;
+}
+
+.mq-filter-field select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.mq-filter-field select:focus {
+    border-color: #cfb8fa;
+}
+
+.mq-btn-reset {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ececef;
+    border-radius: 5px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+.mq-btn-reset:hover {
+    background-color: #f3f6f8;
+}
+
+.mq-btn-reset svg {
+    width: 17px;
+    color: #7226FF;
+}
+
+.mq-loading {
+    width: 100%;
+    height: 4px;
+    background-color: #f3f0fd;
+    overflow: hidden;
+}
+
+.mq-progress {
+    width: 100%;
+    height: 100%;
+    background-color: #7226FF;
+    animation: progress 2s linear infinite;
+}
+
+@keyframes progress {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.mq-error {
+    color: #991b1b;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}
+
+.mq-no-data {
+    color: #6251a4;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}
+
+.mq-table-container {
+    overflow-x: auto;
+    border: 1px solid #e7e2f7;
+    background-color: #fff;
+    border-radius: 10px;
+}
+
+.mq-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.mq-table thead {
+    background-color: #f7f5ff;
+}
+
+.mq-table th {
+    padding: 14px 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.mq-table th span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mq-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.mq-status {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    text-transform: uppercase;
+}
+
+.mq-status.pending {
+    background-color: rgba(255, 206, 86, 0.2);
+    color: #212529;
+}
+
+.mq-status.approved {
+    background-color: rgba(75, 192, 192, 0.2);
+    color: #065f46;
+}
+
+.mq-status.rejected {
+    background-color: rgba(255, 99, 132, 0.2);
+    color: #991b1b;
+}
+
+.mq-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mq-btn-action {
+    padding: 5px 10px;
+    border-radius: 30px;
+    border: 1px solid transparent;
+    background-color: #ebe6ff;
+    color: #7226FF;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.mq-btn-action:hover {
+    border-color: #7226FF;
+}
+
+.mq-btn-action svg {
+    width: 17px;
+}
+
+.mq-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+}
+
+.mq-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+}
+
+.mq-dialog-content {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    border: 1px solid #e9dcff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 800px;
+    width: 95%;
+    z-index: 2100;
+    box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
+}
+
+.mq-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.mq-dialog-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #7226FF;
+}
+
+.mq-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.mq-dialog-close svg {
+    width: 15px;
+    color: #6251a4;
+}
+
+.mq-dialog-body {
+    padding: 10px 0;
+}
+
+.mq-dialog-body h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6251a4;
+    margin-bottom: 10px;
+}
+
+.mq-dialog-body p {
+    font-size: 12px;
+    color: #6251a4;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.mq-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.mq-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.mq-form-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+    resize: vertical;
+}
+
+.mq-form-field textarea:disabled {
+    background-color: #f7f5ff;
+    cursor: not-allowed;
+}
+
+.mq-form-field textarea:focus {
+    border-color: #cfb8fa;
+}
+
+.mq-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+.mq-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 15px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: all 0.3s ease-in-out;
+}
+
+.mq-btn-cancel {
+    background-color: #f7f5ff;
+    color: #6251a4;
+}
+
+.mq-btn-cancel:hover {
+    background-color: #ece8f9;
+}
+
+.mq-btn-approve {
+    background-color: #e6fffa;
+    color: #065f46;
+}
+
+.mq-btn-approve:hover {
+    background-color: #d1f5ef;
+}
+
+.mq-btn-reject {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.mq-btn-reject:hover {
+    background-color: #fddbdb;
+}
+
+.mq-btn svg {
+    width: 15px;
+}
+
+@media (max-width: 600px) {
+    .mq-dialog-content {
+        width: 95vw;
+        padding: 16px;
+    }
+
+    .mq-dialog-header h3 {
+        font-size: 16px;
+    }
+
+    .mq-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mq-filter-field-right {
+        justify-content: flex-start;
+    }
+}

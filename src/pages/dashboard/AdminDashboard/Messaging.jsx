@@ -1,38 +1,26 @@
+import { useWebSocket } from '../../../hooks/useWebSocket';
+import { messagingAPI, groupsAPI, userAPI } from '../../../config';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
-  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
-  Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
-  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
-  Collapse, Card, CardContent, CardActions, List, ListItem, 
-  ListItemText, ListItemAvatar, Avatar, TablePagination, Grid,
-  LinearProgress, CircularProgress, Badge
-} from '@mui/material';
-import MuiAlert from '@mui/material/Alert';
 import {
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
+  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Send as SendIcon, Email as EmailIcon, Person as PersonIcon,
   Group as GroupIcon, MoreVert as MoreIcon, ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon, MarkEmailRead as ReadIcon,
   MarkEmailUnread as UnreadIcon, Reply as ReplyIcon,
   Forward as ForwardIcon, Attachment as AttachmentIcon,
   Search as SearchIcon, FilterList as FilterIcon, Refresh as RefreshIcon,
-  Close as CloseIcon
+  Close as CloseIcon, Check as CheckIcon
 } from '@mui/icons-material';
+import { TablePagination } from '@mui/material'; // Added import
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format, parseISO } from 'date-fns';
 import { useSnackbar } from 'notistack';
-import { useWebSocket } from '../../../hooks/useWebSocket';
-import { messagingAPI, groupsAPI, userAPI } from '../../../config';
+
 import MessageTypeManager from './MessageTypeManager';
 import { debounce } from 'lodash';
-
-const Alert = React.forwardRef(function Alert(props, ref) {
-  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
-});
+import './Messaging.css';
 
 const statusOptions = [
   { value: 'sent', label: 'Sent' },
@@ -41,13 +29,11 @@ const statusOptions = [
 
 const Messaging = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const isMobile = useMediaQuery('(max-width:600px)');
   const [messageTypeDialogOpen, setMessageTypeDialogOpen] = useState(false);
-  // State management
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [messageTypes, setMessageTypes] = useState([]); // New state for message types
+  const [messageTypes, setMessageTypes] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(null);
@@ -60,8 +46,6 @@ const Messaging = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const fileInputRef = useRef(null);
-
-  // Pagination state for messages
   const [pagination, setPagination] = useState({
     count: 0,
     next: null,
@@ -71,8 +55,6 @@ const Messaging = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Filters state for messages
   const [filters, setFilters] = useState({
     search: '',
     type: 'all',
@@ -82,12 +64,10 @@ const Messaging = () => {
     readStatus: 'all'
   });
 
-  // WebSocket integration
   const { lastMessage, sendMessage } = useWebSocket(
     `ws://${window.location.host}/ws/messages/`
   );
 
-  // Fetch users with search query
   const fetchUsers = useCallback(async (searchQuery = '') => {
     try {
       const params = {
@@ -102,7 +82,6 @@ const Messaging = () => {
     }
   }, [enqueueSnackbar]);
 
-  // Debounced user search
   const debouncedFetchUsers = useCallback(
     debounce((query) => {
       fetchUsers(query);
@@ -110,22 +89,19 @@ const Messaging = () => {
     [fetchUsers]
   );
 
-  // Handle user search input
   const handleUserSearch = (event, value) => {
     setUserSearchQuery(value);
     debouncedFetchUsers(value);
   };
 
-  // Fetch message types
   const fetchMessageTypes = async () => {
     try {
       const response = await messagingAPI.getMessageTypes();
-      // Ensure response.data is an array; fallback to empty array if not
       setMessageTypes(Array.isArray(response.data.results) ? response.data.results : []);
     } catch (error) {
       enqueueSnackbar('Failed to load message types', { variant: 'error' });
       console.error('Error fetching message types:', error);
-      setMessageTypes([]); // Fallback to empty array on error
+      setMessageTypes([]);
     }
   };
 
@@ -142,29 +118,25 @@ const Messaging = () => {
         ...(filters.dateFrom && { date_from: format(filters.dateFrom, 'yyyy-MM-dd') }),
         ...(filters.dateTo && { date_to: format(filters.dateTo, 'yyyy-MM-dd') })
       };
-  
-      const [messagesRes, groupsRes, unreadRes, messageTypesRes] = await Promise.all([
+      const [messagesRes, groupsRes, unreadRes] = await Promise.all([
         messagingAPI.getMessages(params),
         groupsAPI.getGroups(),
         messagingAPI.getUnreadCount(),
-        messagingAPI.getMessageTypes()
       ]);
+      await fetchMessageTypes();
       setMessages(messagesRes.data.results || []);
       setGroups(groupsRes.data.results || []);
       setUnreadCount(unreadRes.data.count || 0);
-      setMessageTypes(messageTypesRes.data.results || []);
       setPagination({
         count: messagesRes.data.count || 0,
         next: messagesRes.data.next,
         previous: messagesRes.data.previous,
         page: pagination.page
       });
-  
       await fetchUsers();
     } catch (error) {
       setError(error.message);
       enqueueSnackbar('Failed to load data', { variant: 'error' });
-      setMessageTypes([]); // Fallback to empty array on error
     } finally {
       setLoading(false);
     }
@@ -174,7 +146,6 @@ const Messaging = () => {
     fetchData();
   }, [pagination.page, rowsPerPage, filters]);
 
-  // Handle WebSocket messages
   useEffect(() => {
     if (lastMessage) {
       const data = JSON.parse(lastMessage.data);
@@ -202,7 +173,6 @@ const Messaging = () => {
     }
   }, [lastMessage, pagination.page]);
 
-  // Helper functions
   const formatDate = (dateString) => {
     return format(parseISO(dateString), 'MMM d, yyyy - h:mm a');
   };
@@ -210,12 +180,11 @@ const Messaging = () => {
   const handleOpenDialog = (message = null, reply = false, forward = false) => {
     const defaultMessage = { 
       subject: '', 
-      message_type: messageTypes.length > 0 ? messageTypes[0] : { id: null, value: 'personal', label: 'Personal Message' }, 
+      message_type: messageTypes.length > 0 ? messageTypes[0].id : null, 
       content: '',
       status: 'draft',
       attachments: []
     };
-
     if (message) {
       if (reply) {
         setCurrentMessage({
@@ -241,7 +210,10 @@ const Messaging = () => {
         });
         setForwardMode(true);
       } else {
-        setCurrentMessage(message);
+        setCurrentMessage({
+          ...message,
+          message_type: messageTypes.find(t => t.value === message.message_type)?.id || message.message_type
+        });
         setSelectedUsers(message.recipients.filter(r => r.recipient).map(r => ({
           id: r.recipient.id,
           email: r.recipient.email,
@@ -260,7 +232,6 @@ const Messaging = () => {
       setSelectedGroups([]);
       setAttachments([]);
     }
-    
     setOpenDialog(true);
   };
 
@@ -276,55 +247,45 @@ const Messaging = () => {
 
   const handleSendMessage = async () => {
     try {
-        const formData = new FormData();
-        formData.append('subject', currentMessage.subject);
-        formData.append('content', currentMessage.content);
-        
-        // Ensure message_type is the ID
-        formData.append('message_type', currentMessage.message_type.id || currentMessage.message_type);
-        
-        formData.append('status', 'sent');
-        
-        if (currentMessage.parent_message) {
-            formData.append('parent_message', currentMessage.parent_message);
+      const formData = new FormData();
+      formData.append('subject', currentMessage.subject);
+      formData.append('content', currentMessage.content);
+      formData.append('message_type', currentMessage.message_type);
+      formData.append('status', 'sent');
+      if (currentMessage.parent_message) {
+        formData.append('parent_message', currentMessage.parent_message);
+      }
+      if (currentMessage.is_forward) {
+        formData.append('is_forward', 'true');
+      }
+      selectedUsers.forEach(user => 
+        formData.append('recipient_users', user.id)
+      );
+      selectedGroups.forEach(group => 
+        formData.append('recipient_groups', group.id)
+      );
+      attachments.forEach(attachment => {
+        if (attachment.file) {
+          formData.append('attachments', attachment.file);
         }
-        
-        if (currentMessage.is_forward) {
-            formData.append('is_forward', 'true');
-        }
-        
-        selectedUsers.forEach(user => 
-            formData.append('recipient_users', user.id)
-        );
-        
-        selectedGroups.forEach(group => 
-            formData.append('recipient_groups', group.id)
-        );
-        
-        attachments.forEach(attachment => {
-            if (attachment.file) {
-                formData.append('attachments', attachment.file);
-            }
-        });
-        
-        const response = currentMessage.id 
-            ? await messagingAPI.updateMessage(currentMessage.id, formData)
-            : await messagingAPI.createMessage(formData);
-        
-        enqueueSnackbar(
-            replyMode ? 'Reply sent successfully!' : 
-            forwardMode ? 'Message forwarded successfully!' : 
-            'Message sent successfully!',
-            { variant: 'success' }
-        );
-        
-        fetchData();
-        handleCloseDialog();
+      });
+      const response = currentMessage.id 
+        ? await messagingAPI.updateMessage(currentMessage.id, formData)
+        : await messagingAPI.createMessage(formData);
+      enqueueSnackbar(
+        replyMode ? 'Reply sent successfully!' : 
+        forwardMode ? 'Message forwarded successfully!' : 
+        'Message sent successfully!',
+        { variant: 'success' }
+      );
+      fetchData();
+      handleCloseDialog();
     } catch (error) {
-        enqueueSnackbar('Error sending message', { variant: 'error' });
-        console.error('Error sending message:', error);
+      enqueueSnackbar('Error sending message', { variant: 'error' });
+      console.error('Error sending message:', error);
     }
-};
+  };
+
   const handleSaveDraft = async () => {
     try {
       const formData = new FormData();
@@ -332,19 +293,15 @@ const Messaging = () => {
       formData.append('content', currentMessage.content);
       formData.append('message_type', currentMessage.message_type);
       formData.append('status', 'draft');
-      
       selectedUsers.forEach(user => 
         formData.append('recipient_users', user.id)
       );
-      
       selectedGroups.forEach(group => 
         formData.append('recipient_groups', group.id)
       );
-      
       const response = currentMessage.id 
         ? await messagingAPI.updateMessage(currentMessage.id, formData)
         : await messagingAPI.createMessage(formData);
-      
       enqueueSnackbar('Draft saved successfully!', { variant: 'success' });
       fetchData();
       handleCloseDialog();
@@ -422,12 +379,9 @@ const Messaging = () => {
   const handleAddAttachment = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
     setIsUploading(true);
-    
     try {
       const newAttachments = [];
-      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         newAttachments.push({
@@ -437,7 +391,6 @@ const Messaging = () => {
           uploaded_at: new Date().toISOString()
         });
       }
-      
       setAttachments(prev => [...prev, ...newAttachments]);
     } catch (error) {
       enqueueSnackbar('Error adding attachments', { variant: 'error' });
@@ -455,11 +408,11 @@ const Messaging = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'sent':
-        return 'primary';
+        return '#7226FF';
       case 'draft':
-        return 'default';
+        return '#6251a4';
       default:
-        return 'default';
+        return '#6251a4';
     }
   };
 
@@ -472,601 +425,396 @@ const Messaging = () => {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  // console.log("messages")
-  // console.log(messages)
-  // console.log("messages")
-
-  // Mobile view for messages
   const renderMobileMessageCards = () => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div className="msg-card-list">
       {messages.map((message) => (
-        <Card key={message.id} elevation={3}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-                <Typography variant="subtitle1" component="div" sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
-                  {message.subject}
-                </Typography>
-              </Box>
-              <IconButton onClick={() => toggleExpandMessage(message.id)}>
-                {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </IconButton>
-            </Box>
-            <Typography color="text.secondary" gutterBottom>
-              From: {message.sender.email}  • {formatDate(message.sent_at)}
-            </Typography>
-            
-            <Collapse in={expandedMessage === message.id}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
-                  {message.content}
-                </Typography>
-                
+        <div key={message.id} className="msg-card">
+          <div className="msg-card-header">
+            <div className="msg-card-title">
+              {message.is_read ? <ReadIcon /> : <UnreadIcon />}
+              <span className={message.is_read ? '' : 'unread'}>{message.subject}</span>
+            </div>
+            <button
+              className="msg-expand-btn"
+              onClick={() => toggleExpandMessage(message.id)}
+            >
+              {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </button>
+            </div>
+            <div className="msg-card-meta">
+              <span>From: {message.sender.email}</span>
+              <span>{formatDate(message.sent_at)}</span>
+            </div>
+            <div className={`msg-card-content ${expandedMessage === message.id ? 'expanded' : ''}`}>
+              <div className="msg-card-body">
+                <p>{message.content}</p>
                 {message.attachments.length > 0 && (
-                  <>
-                    <Typography variant="subtitle2">Attachments:</Typography>
-                    <List dense>
-                      {message.attachments.map((attachment, index) => (
-                        <ListItem key={index}>
-                          <ListItemAvatar>
-                            <Avatar>
-                              <AttachmentIcon />
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText 
-                            primary={attachment.original_filename} 
-                            secondary={
-                              <Link href={attachment.file} target="_blank" rel="noopener noreferrer">
-                                Download
-                              </Link>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </>
+                  <div className="msg-attachments">
+                    <h4>Attachments:</h4>
+                    {message.attachments.map((attachment, index) => (
+                      <div key={index} className="msg-attachment-item">
+                        <AttachmentIcon />
+                        <a href={attachment.file} target="_blank" rel="noopener noreferrer">
+                          {attachment.original_filename}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                
-                <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                <h4>Recipients:</h4>
+                <div className="msg-chip-container">
                   {message.recipients.map((recipient, i) => (
-                    <Chip 
-                      key={i} 
-                      label={recipient.recipient ? 
+                    <span key={i} className="msg-chip">
+                      {recipient.recipient ? 
                         `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
                         recipient.recipient_group.name}
-                      size="small" 
-                      icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-                    />
+                      {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                    </span>
                   ))}
-                </Box>
-              </Box>
-            </Collapse>
-          </CardContent>
-          <CardActions sx={{ justifyContent: 'space-between' }}>
-            <Box>
-              <Button 
-                size="small" 
-                startIcon={<ReplyIcon />}
-                onClick={() => handleOpenDialog(message, true)}
-                color="secondary"
-              >
-                Reply
-              </Button>
-              <Button 
-                size="small" 
-                startIcon={<ForwardIcon />}
-                onClick={() => handleOpenDialog(message, false, true)}
-                sx={{ ml: 1 }}
-                color="secondary"
-              >
-                Forward
-              </Button>
-            </Box>
-            <Box>
-              {message.status === 'draft' && (
-                <Button 
-                  size="small" 
-                  startIcon={<EditIcon />}
-                  onClick={() => handleOpenDialog(message)}
-                  sx={{ mr: 1 }}
+                </div>
+              </div>
+            </div>
+            <div className="msg-card-actions">
+              <div className="msg-action-group">
+                <button
+                  className="msg-btn msg-btn-secondary"
+                  onClick={() => handleOpenDialog(message, true)}
                 >
-                  Edit
-                </Button>
-              )}
-              <Button 
-                size="small" 
-                startIcon={<DeleteIcon />}
-                onClick={() => handleDeleteMessage(message.id)}
-                color="error"
-              >
-                Delete
-              </Button>
-            </Box>
-          </CardActions>
-        </Card>
-      ))}
-    </Box>
-  );
+                  <ReplyIcon /> Reply
+                </button>
+                <button
+                  className="msg-btn msg-btn-secondary"
+                  onClick={() => handleOpenDialog(message, false, true)}
+                >
+                  <ForwardIcon /> Forward
+                </button>
+              </div>
+              <div className="msg-action-group">
+                {message.status === 'draft' && (
+                  <button
+                    className="msg-btn msg-btn-edit"
+                    onClick={() => handleOpenDialog(message)}
+                  >
+                    <EditIcon /> Edit
+                  </button>
+                )}
+                <button
+                  className="msg-btn msg-btn-delete"
+                  onClick={() => handleDeleteMessage(message.id)}
+                >
+                  <DeleteIcon /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
 
-  // Desktop view for messages
-  // const renderDesktopMessageTable = () => (
-  //   <TableContainer component={Paper}>
-  //     <Table>
-  //       <TableHead>
-  //         <TableRow>
-  //           <TableCell width="40px"></TableCell>
-  //           <TableCell>Subject</TableCell>
-  //           <TableCell>Type</TableCell>
-  //           <TableCell>From</TableCell>
-  //           <TableCell>Date</TableCell>
-  //           <TableCell>Recipients</TableCell>
-  //           <TableCell>Actions</TableCell>
-  //         </TableRow>
-  //       </TableHead>
-  //       <TableBody>
-  //         {messages.map((message) => (
-  //           <TableRow 
-  //             key={message.id} 
-  //             hover 
-  //             sx={{ 
-  //               '&:hover': { cursor: 'pointer' },
-  //               backgroundColor: expandedMessage === message.id ? 'action.hover' : 'inherit'
-  //             }}
-  //             onClick={() => toggleExpandMessage(message.id)}
-  //           >
-  //             <TableCell>
-  //               {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-  //             </TableCell>
-  //             <TableCell>
-  //               <Typography sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
-  //                 {message.subject}
-  //               </Typography>
-  //             </TableCell>
-  //             <TableCell>
-  //               <Chip 
-  //                 label={messageTypes.find(t => t.value === message.message_type)?.label || message.message_type_display}
-  //                 size="small"
-  //                 color={getStatusColor(message.status)}
-  //               />
-  //             </TableCell>
-  //             <TableCell>
-  //               {message.sender.email}
-  //             </TableCell>
-  //             <TableCell>{formatDate(message.sent_at)}</TableCell>
-  //             <TableCell>
-  //               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-  //                 {message.recipients.slice(0, 2).map((recipient, i) => (
-  //                   <Chip 
-  //                     key={i} 
-  //                     label={recipient.recipient ? 
-  //                       `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-  //                       recipient.recipient_group.name}
-  //                     size="small" 
-  //                     icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-  //                   />
-  //                 ))}
-  //                 {message.recipients.length > 2 && (
-  //                   <Chip label={`+${message.recipients.length - 2}`} size="small" />
-  //                 )}
-  //               </Box>
-  //             </TableCell>
-  //             <TableCell>
-  //               <Stack direction="row" spacing={1}>
-  //                 <Tooltip title="Reply">
-  //                   <IconButton 
-  //                     size="small" 
-  //                     onClick={(e) => {
-  //                       e.stopPropagation();
-  //                       handleOpenDialog(message, true);
-  //                     }}
-  //                     color="secondary"
-  //                   >
-  //                     <ReplyIcon />
-  //                   </IconButton>
-  //                 </Tooltip>
-  //                 <Tooltip title="Forward">
-  //                   <IconButton 
-  //                     size="small" 
-  //                     onClick={(e) => {
-  //                       e.stopPropagation();
-  //                       handleOpenDialog(message, false, true);
-  //                     }}
-  //                     color="secondary"
-  //                   >
-  //                     <ForwardIcon />
-  //                   </IconButton>
-  //                 </Tooltip>
-  //                 {message.status === 'draft' && (
-  //                   <Tooltip title="Edit">
-  //                     <IconButton 
-  //                       size="small" 
-  //                       onClick={(e) => {
-  //                         e.stopPropagation();
-  //                         handleOpenDialog(message);
-  //                       }}
-  //                     >
-  //                       <EditIcon />
-  //                     </IconButton>
-  //                   </Tooltip>
-  //                 )}
-  //                 <Tooltip title="Delete">
-  //                   <IconButton 
-  //                     size="small" 
-  //                     onClick={(e) => {
-  //                       e.stopPropagation();
-  //                       handleDeleteMessage(message.id);
-  //                     }}
-  //                     color="error"
-  //                   >
-  //                     <DeleteIcon />
-  //                   </IconButton>
-  //                 </Tooltip>
-  //               </Stack>
-  //             </TableCell>
-  //           </TableRow>
-  //         ))}
-  //       </TableBody>
-  //     </Table>
-  //   </TableContainer>
-  // );
   const renderDesktopMessageTable = () => (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell width="40px"></TableCell>
-            <TableCell>Subject</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>From</TableCell>
-            <TableCell>Date</TableCell>
-            <TableCell>Recipients</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
+    <div className="msg-table-container">
+      <table className="msg-table">
+        <thead>
+          <tr>
+            <th style={{ width: '40px' }}></th>
+            <th><span>Subject</span></th>
+            <th><span>Type</span></th>
+            <th><span>From</span></th>
+            <th><span>Date</span></th>
+            <th><span>Recipients</span></th>
+            <th><span>Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
           {messages.map((message) => (
             <React.Fragment key={message.id}>
-              <TableRow 
-                hover 
-                sx={{ 
-                  '&:hover': { cursor: 'pointer' },
-                  backgroundColor: expandedMessage === message.id ? 'action.hover' : 'inherit'
-                }}
+              <tr
+                className={expandedMessage === message.id ? 'expanded' : ''}
                 onClick={() => toggleExpandMessage(message.id)}
               >
-                <TableCell>
-                  {message.is_read ? <ReadIcon color="action" /> : <UnreadIcon color="primary" />}
-                </TableCell>
-                <TableCell>
-                  <Typography sx={{ fontWeight: message.is_read ? 'normal' : 'bold' }}>
-                    {message.subject}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={messageTypes.find(t => t.value === message.message_type)?.label || message.message_type_display}
-                    size="small"
-                    color={getStatusColor(message.status)}
-                  />
-                </TableCell>
-                <TableCell>
-                  {message.sender.email}
-                </TableCell>
-                <TableCell>{formatDate(message.sent_at)}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <td>
+                  {message.is_read ? <ReadIcon /> : <UnreadIcon />}
+                </td>
+                <td>
+                  <span className={message.is_read ? '' : 'unread'}>{message.subject}</span>
+                </td>
+                <td>
+                  <span
+                    className="msg-chip"
+                    style={{ backgroundColor: getStatusColor(message.status) }}
+                  >
+                    {messageTypes.find(t => t.id === message.message_type)?.label || message.message_type_display}
+                  </span>
+                </td>
+                <td>
+                  <span>{message.sender.email}</span>
+                </td>
+                <td>
+                  <span>{formatDate(message.sent_at)}</span>
+                </td>
+                <td>
+                  <div className="msg-chip-container">
                     {message.recipients.slice(0, 2).map((recipient, i) => (
-                      <Chip 
-                        key={i} 
-                        label={recipient.recipient ? 
+                      <span key={i} className="msg-chip">
+                        {recipient.recipient ? 
                           `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
                           recipient.recipient_group.name}
-                        size="small" 
-                        icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-                      />
+                        {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                      </span>
                     ))}
                     {message.recipients.length > 2 && (
-                      <Chip label={`+${message.recipients.length - 2}`} size="small" />
+                      <span className="msg-chip">+{message.recipients.length - 2}</span>
                     )}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title="Reply">
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDialog(message, true);
-                        }}
-                        color="secondary"
-                      >
-                        <ReplyIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Forward">
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDialog(message, false, true);
-                        }}
-                        color="secondary"
-                      >
-                        <ForwardIcon />
-                      </IconButton>
-                    </Tooltip>
+                  </div>
+                </td>
+                <td>
+                  <div className="msg-action-btns">
+                    <button
+                      className="msg-btn msg-btn-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDialog(message, true);
+                      }}
+                      title="Reply"
+                    >
+                      <ReplyIcon />
+                    </button>
+                    <button
+                      className="msg-btn msg-btn-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDialog(message, false, true);
+                      }}
+                      title="Forward"
+                    >
+                      <ForwardIcon />
+                    </button>
                     {message.status === 'draft' && (
-                      <Tooltip title="Edit">
-                        <IconButton 
-                          size="small" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenDialog(message);
-                          }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="Delete">
-                      <IconButton 
-                        size="small" 
+                      <button
+                        className="msg-btn msg-btn-edit"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteMessage(message.id);
+                          handleOpenDialog(message);
                         }}
-                        color="error"
+                        title="Edit"
                       >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell style={{ padding: 0 }} colSpan={7}>
-                  <Collapse in={expandedMessage === message.id} timeout="auto" unmountOnExit>
-                    <Box sx={{ p: 3, backgroundColor: 'background.paper' }}>
-                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', mb: 2 }}>
-                        {message.content}
-                      </Typography>
-                      
-                      {message.attachments.length > 0 && (
-                        <>
-                          <Typography variant="subtitle2" sx={{ mt: 2 }}>Attachments:</Typography>
-                          <List dense>
-                            {message.attachments.map((attachment, index) => (
-                              <ListItem key={index}>
-                                <ListItemAvatar>
-                                  <Avatar>
-                                    <AttachmentIcon />
-                                  </Avatar>
-                                </ListItemAvatar>
-                                <ListItemText 
-                                  primary={attachment.original_filename} 
-                                  secondary={
-                                    <Link href={attachment.file} target="_blank" rel="noopener noreferrer">
-                                      Download
-                                    </Link>
-                                  }
-                                />
-                              </ListItem>
-                            ))}
-                          </List>
-                        </>
-                      )}
-                      
-                      <Typography variant="subtitle2" sx={{ mt: 2 }}>Recipients:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                        {message.recipients.map((recipient, i) => (
-                          <Chip 
-                            key={i} 
-                            label={recipient.recipient ? 
-                              `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                              recipient.recipient_group.name}
-                            size="small" 
-                            icon={recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-                          />
+                        <EditIcon />
+                      </button>
+                    )}
+                    <button
+                      className="msg-btn msg-btn-delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteMessage(message.id);
+                      }}
+                      title="Delete"
+                    >
+                      <DeleteIcon />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colSpan="7" className="msg-expand-content">
+                  <div className={`msg-expand-body ${expandedMessage === message.id ? 'expanded' : ''}`}>
+                    <p>{message.content}</p>
+                    {message.attachments.length > 0 && (
+                      <div className="msg-attachments">
+                        <h4>Attachments:</h4>
+                        {message.attachments.map((attachment, index) => (
+                          <div key={index} className="msg-attachment-item">
+                            <AttachmentIcon />
+                            <a href={attachment.file} target="_blank" rel="noopener noreferrer">
+                              {attachment.original_filename}
+                            </a>
+                          </div>
                         ))}
-                      </Box>
-                    </Box>
-                  </Collapse>
-                </TableCell>
-              </TableRow>
+                      </div>
+                    )}
+                    <h4>Recipients:</h4>
+                    <div className="msg-chip-container">
+                      {message.recipients.map((recipient, i) => (
+                        <span key={i} className="msg-chip">
+                          {recipient.recipient ? 
+                            `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
+                            recipient.recipient_group.name}
+                          {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </td>
+              </tr>
             </React.Fragment>
           ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </tbody>
+      </table>
+    </div>
   );
-  // User Autocomplete rendering
+
   const renderUserAutocomplete = () => (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        Select Users
-      </Typography>
-      <Autocomplete
-        multiple
-        options={users}
-        getOptionLabel={(option) =>
-          `${option.first_name} ${option.last_name} (${option.email})`
-        }
-        value={selectedUsers}
-        onChange={(event, newValue) => setSelectedUsers(newValue)}
-        onInputChange={handleUserSearch}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Search users"
-            placeholder="Select individual users"
-          />
-        )}
-        renderTags={(value, getTagProps) =>
-          value.map((option, index) => (
-            <Chip
-              {...getTagProps({ index })}
-              key={option.id}
-              label={`${option.first_name} ${option.last_name}`}
-              icon={<PersonIcon />}
-              onDelete={() => handleRemoveRecipient(option)}
-            />
-          ))
-        }
-      />
-    </Box>
+    <div className="msg-form-field msg-form-field-full">
+      <label>Select Users</label>
+      <div className="msg-autocomplete">
+        <input
+          type="text"
+          placeholder="Search users"
+          value={userSearchQuery}
+          onChange={(e) => handleUserSearch(e, e.target.value)}
+        />
+        <div className="msg-autocomplete-options">
+          {users.map(user => (
+            <div
+              key={user.id}
+              className={`msg-autocomplete-option ${selectedUsers.some(u => u.id === user.id) ? 'selected' : ''}`}
+              onClick={() => {
+                if (selectedUsers.some(u => u.id === user.id)) {
+                  setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
+                } else {
+                  setSelectedUsers([...selectedUsers, user]);
+                }
+              }}
+            >
+              <span>{`${user.first_name} ${user.last_name} (${user.email})`}</span>
+              {selectedUsers.some(u => u.id === user.id) && <CheckIcon />}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="msg-chip-container">
+        {selectedUsers.map(user => (
+          <span key={user.id} className="msg-chip">
+            {`${user.first_name} ${user.last_name}`}
+            <button onClick={() => handleRemoveRecipient(user)}>
+              <CloseIcon />
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Typography variant="h4" gutterBottom>
-          Messaging Center
-          <Badge badgeContent={unreadCount} color="error" sx={{ ml: 2 }}>
+      <div className="msg-container">
+        <div className="msg-header">
+          <h1>
+            Messaging Center
+            <span className="msg-unread-count">{unreadCount}</span>
             <EmailIcon />
-          </Badge>
-        </Typography>
-        
-        <Button 
-          variant="contained" 
-          startIcon={<SendIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ mb: 3 }}
-          fullWidth={isMobile}
-        >
-          New Message
-        </Button>
+          </h1>
+          <div className="msg-header-actions">
+            <button
+              className="msg-btn msg-btn-primary"
+              onClick={() => handleOpenDialog()}
+            >
+              <SendIcon /> New Message
+            </button>
+            <button
+              className="msg-btn msg-btn-outline"
+              onClick={() => setMessageTypeDialogOpen(true)}
+            >
+              <EditIcon /> Manage Message Types
+            </button>
+          </div>
+        </div>
 
-        <Button 
-          variant="outlined" 
-          startIcon={<EditIcon />}
-          onClick={() => setMessageTypeDialogOpen(true)}
-          sx={{ mb: 3, ml: 2 }}
-        >
-          Manage Message Types
-        </Button>
-      
-        {/* Filters Section */}
-        <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                size="small"
+        <div className="msg-filters">
+          <div className="msg-filter-item">
+            <div className="msg-search-input">
+              <SearchIcon />
+              <input
+                type="text"
                 placeholder="Search messages..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />
-                }}
               />
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-            <TextField
-              select
-              margin="dense"
-              label="Message Type"
-              fullWidth
-              value={currentMessage?.message_type?.id || ''}
-              onChange={(e) => {
-                const selectedType = messageTypes.find(type => type.id === e.target.value);
-                setCurrentMessage({...currentMessage, message_type: selectedType});
-              }}
-              sx={{ mb: 2 }}
+            </div>
+          </div>
+          <div className="msg-filter-item">
+            <label>Message Type</label>
+            <select
+              value={filters.type}
+              onChange={(e) => handleFilterChange('type', e.target.value)}
               disabled={messageTypes.length === 0}
             >
+              <option value="all">All Types</option>
               {messageTypes.map((type) => (
-                <MenuItem key={type.id} value={type.id}>
+                <option key={type.id} value={type.id}>
                   {type.label}
-                </MenuItem>
+                </option>
               ))}
-            </TextField>
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Status"
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <MenuItem value="all">All Statuses</MenuItem>
-                <MenuItem value="sent">Sent</MenuItem>
-                <MenuItem value="draft">Draft</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Read Status"
-                value={filters.readStatus}
-                onChange={(e) => handleFilterChange('readStatus', e.target.value)}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="read">Read</MenuItem>
-                <MenuItem value="unread">Unread</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={3} md={1}>
-              <DatePicker
-                label="From"
-                value={filters.dateFrom}
-                onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
-                renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    fullWidth 
-                    size="small"
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={6} sm={3} md={1}>
-              <DatePicker
-                label="To"
-                value={filters.dateTo}
-                onChange={(newValue) => handleFilterChange('dateTo', newValue)}
-                renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    fullWidth 
-                    size="small"
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={1} sx={{ textAlign: 'right' }}>
-              <Tooltip title="Reset Filters">
-                <IconButton onClick={resetFilters}>
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Filter Options">
-                <IconButton>
-                  <FilterIcon />
-                </IconButton>
-              </Tooltip>
-            </Grid>
-          </Grid>
-        </Paper>
+            </select>
+          </div>
+          <div className="msg-filter-item">
+            <label>Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="sent">Sent</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+          <div className="msg-filter-item">
+            <label>Read Status</label>
+            <select
+              value={filters.readStatus}
+              onChange={(e) => handleFilterChange('readStatus', e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="read">Read</option>
+              <option value="unread">Unread</option>
+            </select>
+          </div>
+          <div className="msg-filter-item">
+            <label>From</label>
+            <DatePicker
+              value={filters.dateFrom}
+              onChange={(newValue) => handleFilterChange('dateFrom', newValue)}
+              renderInput={(params) => (
+                <input
+                  {...params.inputProps}
+                  className="msg-date-input"
+                  placeholder="Select date"
+                />
+              )}
+            />
+          </div>
+          <div className="msg-filter-item">
+            <label>To</label>
+            <DatePicker
+              value={filters.dateTo}
+              onChange={(newValue) => handleFilterChange('dateTo', newValue)}
+              renderInput={(params) => (
+                <input
+                  {...params.inputProps}
+                  className="msg-date-input"
+                  placeholder="Select date"
+                />
+              )}
+            />
+          </div>
+          <div className="msg-filter-actions">
+            <button className="msg-btn msg-btn-icon" onClick={resetFilters} title="Reset Filters">
+              <RefreshIcon />
+            </button>
+            <button className="msg-btn msg-btn-icon" title="Filter Options">
+              <FilterIcon />
+            </button>
+          </div>
+        </div>
 
         {loading ? (
-          <LinearProgress />
+          <div className="msg-loading">
+            <div className="msg-spinner"></div>
+          </div>
         ) : error ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <Typography color="error">{error}</Typography>
-          </Box>
+          <div className="msg-error">{error}</div>
         ) : messages.length === 0 ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <Typography>No messages found</Typography>
-          </Box>
-        ) : isMobile ? renderMobileMessageCards() : renderDesktopMessageTable()}
+          <div className="msg-no-data">No messages found</div>
+        ) : window.innerWidth <= 600 ? renderMobileMessageCards() : renderDesktopMessageTable()}
 
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
@@ -1078,198 +826,174 @@ const Messaging = () => {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
 
-        {/* Message Dialog */}
-        <Dialog 
-          open={openDialog} 
-          onClose={handleCloseDialog} 
-          maxWidth="md" 
-          fullWidth
-          fullScreen={isMobile}
-        >
-          <DialogTitle>
-            {replyMode ? 'Reply to Message' : forwardMode ? 'Forward Message' : currentMessage?.id ? 'Edit Message' : 'Compose New Message'}
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseDialog}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent dividers>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Subject"
-              fullWidth
-              value={currentMessage?.subject || ''}
-              onChange={(e) => setCurrentMessage({...currentMessage, subject: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              select
-              margin="dense"
-              label="Message Type"
-              fullWidth
-              value={currentMessage?.message_type || (messageTypes.length > 0 ? messageTypes[0].value : '')}
-              onChange={(e) => setCurrentMessage({...currentMessage, message_type: e.target.value})}
-              sx={{ mb: 2 }}
-              disabled={messageTypes.length === 0}
-            >
-              {messageTypes.map((type) => (
-                <MenuItem key={type.value} value={type.id}>
-                  {type.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            
-            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-              Recipients
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-
-            {renderUserAutocomplete()}
-
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>Select Groups</Typography>
-              <Autocomplete
-                multiple
-                options={groups}
-                getOptionLabel={(option) => option.name}
-                value={selectedGroups}
-                onChange={(event, newValue) => setSelectedGroups(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Search groups"
-                    placeholder="Select groups"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option.id}
-                      label={option.name}
-                      icon={<GroupIcon />}
-                      onDelete={() => handleRemoveRecipient(option)}
-                    />
-                  ))
-                }
-              />
-            </Box>
-
-            <TextField
-              margin="dense"
-              label="Message Content"
-              fullWidth
-              multiline
-              rows={8}
-              value={currentMessage?.content || ''}
-              onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-
-            <Box sx={{ mb: 2 }}>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAddAttachment}
-                style={{ display: 'none' }}
-                multiple
-              />
-              <Button 
-                variant="outlined" 
-                startIcon={<AttachmentIcon />}
-                onClick={() => fileInputRef.current.click()}
-                disabled={isUploading}
-              >
-                Add Attachment
-                {isUploading && (
-                  <CircularProgress size={24} sx={{ ml: 1 }} />
-                )}
-              </Button>
-            </Box>
-
-            {attachments.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2">Attachments:</Typography>
-                <List dense>
-                  {attachments.map((attachment) => (
-                    <ListItem 
-                      key={attachment.id}
-                      secondaryAction={
-                        <IconButton 
-                          edge="end" 
+        <div className="msg-dialog" style={{ display: openDialog ? 'block' : 'none' }}>
+          <div className="msg-dialog-backdrop" onClick={handleCloseDialog}></div>
+          <div className="msg-dialog-content">
+            <div className="msg-dialog-header">
+              <h3>
+                {replyMode ? 'Reply to Message' : forwardMode ? 'Forward Message' : currentMessage?.id ? 'Edit Message' : 'Compose New Message'}
+              </h3>
+              <button className="msg-dialog-close" onClick={handleCloseDialog}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="msg-dialog-body">
+              <div className="msg-form-field">
+                <label>Subject</label>
+                <input
+                  type="text"
+                  value={currentMessage?.subject || ''}
+                  onChange={(e) => setCurrentMessage({...currentMessage, subject: e.target.value})}
+                />
+              </div>
+              <div className="msg-form-field">
+                <label>Message Type</label>
+                <select
+                  value={currentMessage?.message_type || ''}
+                  onChange={(e) => setCurrentMessage({...currentMessage, message_type: e.target.value})}
+                  disabled={messageTypes.length === 0}
+                >
+                  {messageTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="msg-form-field msg-form-field-full">
+                <label>Recipients</label>
+                <div className="msg-recipients">
+                  {renderUserAutocomplete()}
+                  <div className="msg-form-field">
+                    <label>Select Groups</label>
+                    <div className="msg-autocomplete">
+                      <input
+                        type="text"
+                        placeholder="Search groups"
+                        onChange={(e) => {
+                          // Placeholder for group search if needed
+                        }}
+                      />
+                      <div className="msg-autocomplete-options">
+                        {groups.map(group => (
+                          <div
+                            key={group.id}
+                            className={`msg-autocomplete-option ${selectedGroups.some(g => g.id === group.id) ? 'selected' : ''}`}
+                            onClick={() => {
+                              if (selectedGroups.some(g => g.id === group.id)) {
+                                setSelectedGroups(selectedGroups.filter(g => g.id !== group.id));
+                              } else {
+                                setSelectedGroups([...selectedGroups, group]);
+                              }
+                            }}
+                          >
+                            <span>{group.name}</span>
+                            {selectedGroups.some(g => g.id === group.id) && <CheckIcon />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="msg-chip-container">
+                      {selectedGroups.map(group => (
+                        <span key={group.id} className="msg-chip">
+                          {group.name}
+                          <button onClick={() => handleRemoveRecipient(group)}>
+                            <CloseIcon />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="msg-form-field msg-form-field-full">
+                <label>Message Content</label>
+                <textarea
+                  rows="8"
+                  value={currentMessage?.content || ''}
+                  onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
+                ></textarea>
+              </div>
+              <div className="msg-form-field msg-form-field-full">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAddAttachment}
+                  style={{ display: 'none' }}
+                  multiple
+                />
+                <button
+                  className="msg-btn msg-btn-outline"
+                  onClick={() => fileInputRef.current.click()}
+                  disabled={isUploading}
+                >
+                  <AttachmentIcon /> Add Attachment
+                  {isUploading && <div className="msg-spinner-small"></div>}
+                </button>
+                {attachments.length > 0 && (
+                  <div className="msg-attachments">
+                    <h4>Attachments:</h4>
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="msg-attachment-item">
+                        <AttachmentIcon />
+                        <span>{attachment.original_filename}</span>
+                        {attachment.file_url && (
+                          <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
+                            Download
+                          </a>
+                        )}
+                        <button
+                          className="msg-btn-icon"
                           onClick={() => handleRemoveAttachment(attachment.id)}
                         >
                           <CloseIcon />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemAvatar>
-                        <Avatar>
-                          <AttachmentIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText 
-                        primary={attachment.original_filename}
-                        secondary={attachment.file_url ? (
-                          <Link href={attachment.file_url} target="_blank" rel="noopener noreferrer">
-                            Download
-                          </Link>
-                        ) : null}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            {!replyMode && !forwardMode && currentMessage?.status === 'draft' && (
-              <Button 
-                onClick={handleSaveDraft} 
-                color="inherit"
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="msg-dialog-actions">
+              {!replyMode && !forwardMode && currentMessage?.status === 'draft' && (
+                <button
+                  className="msg-btn msg-btn-outline"
+                  onClick={handleSaveDraft}
+                  disabled={isUploading}
+                >
+                  Save Draft
+                </button>
+              )}
+              <button
+                className="msg-btn msg-btn-cancel"
+                onClick={handleCloseDialog}
                 disabled={isUploading}
               >
-                Save Draft
-              </Button>
-            )}
-            <Button 
-              onClick={handleCloseDialog} 
-              disabled={isUploading}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSendMessage} 
-              variant="contained" 
-              startIcon={<SendIcon />}
-              disabled={
-                !currentMessage?.subject || 
-                !currentMessage?.content || 
-                !currentMessage?.message_type ||
-                (selectedUsers.length === 0 && selectedGroups.length === 0) ||
-                isUploading
-              }
-            >
-              {replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+                Cancel
+              </button>
+              <button
+                className="msg-btn msg-btn-confirm"
+                onClick={handleSendMessage}
+                disabled={
+                  !currentMessage?.subject || 
+                  !currentMessage?.content || 
+                  !currentMessage?.message_type ||
+                  (selectedUsers.length === 0 && selectedGroups.length === 0) ||
+                  isUploading
+                }
+              >
+                <SendIcon /> {replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message'}
+              </button>
+            </div>
+          </div>
+        </div>
 
         <MessageTypeManager
           open={messageTypeDialogOpen}
           onClose={() => setMessageTypeDialogOpen(false)}
           onUpdate={fetchMessageTypes}
         />
-      </Box>
+      </div>
     </LocalizationProvider>
   );
 };

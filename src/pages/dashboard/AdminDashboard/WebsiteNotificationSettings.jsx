@@ -1,33 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Box, 
-  Tabs, 
-  Tab, 
-  Typography, 
-  Button, 
-  Grid,
-  Card,
-  CardHeader,
-  CardContent,
-  Avatar,
-  IconButton,
-  Divider,
-  Chip,
-  TextField,
-  InputAdornment,
-  Tooltip,
-  Badge,
-  CircularProgress,
-  Paper,
-  Stack,
-  Switch,
-  FormControlLabel,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
 import {
   Settings as SettingsIcon,
   Email as EmailIcon,
@@ -55,101 +26,36 @@ import {
 } from '@mui/icons-material';
 import { Editor } from '@tinymce/tinymce-react';
 import { useDropzone } from 'react-dropzone';
-
-// Styled components
-const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: theme.shape.borderRadius * 3,
-  boxShadow: theme.shadows[1],
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    boxShadow: theme.shadows[4],
-  },
-  border: `1px solid ${theme.palette.divider}`,
-}));
-
-const DropzoneArea = styled(Paper)(({ theme, isDragActive }) => ({
-  border: `2px dashed ${isDragActive ? theme.palette.primary.main : theme.palette.divider}`,
-  borderRadius: theme.shape.borderRadius * 2,
-  padding: theme.spacing(6),
-  textAlign: 'center',
-  backgroundColor: isDragActive ? theme.palette.action.hover : theme.palette.background.default,
-  cursor: 'pointer',
-  marginBottom: theme.spacing(3),
-  transition: 'all 0.3s ease',
-}));
-
-const StatusPill = styled(Chip)(({ status, theme }) => ({
-  backgroundColor: status === 'success' 
-    ? theme.palette.success.light 
-    : status === 'error' 
-      ? theme.palette.error.light 
-      : theme.palette.info.light,
-  color: status === 'success' 
-    ? theme.palette.success.dark 
-    : status === 'error' 
-      ? theme.palette.error.dark 
-      : theme.palette.info.dark,
-  fontWeight: 600,
-  borderRadius: theme.shape.borderRadius,
-}));
-
-const ImagePreview = styled(Paper)(({ theme }) => ({
-  position: 'relative',
-  overflow: 'hidden',
-  borderRadius: theme.shape.borderRadius * 2,
-  '&:hover .image-actions': {
-    opacity: 1,
-  },
-}));
-
-const ImageActions = styled(Box)(({ theme }) => ({
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  backgroundColor: 'rgba(0,0,0,0.7)',
-  padding: theme.spacing(1),
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  opacity: 0,
-  transition: 'opacity 0.3s ease',
-}));
+import './WebsiteNotificationSettings.css';
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
     role="tabpanel"
-    hidden={value !== index}
+    className={`wns-tabpanel ${value === index ? 'active' : ''}`}
     id={`website-tabpanel-${index}`}
     aria-labelledby={`website-tab-${index}`}
     {...other}
   >
     {value === index && (
-      <Box sx={{ p: 3 }}>
+      <div className="wns-tabpanel-content">
         {children}
-      </Box>
+      </div>
     )}
   </div>
 );
 
 const SocialMediaInput = ({ icon, label, value, onChange, prefix, ...props }) => (
-  <TextField
-    fullWidth
-    label={label}
-    value={value}
-    onChange={onChange}
-    InputProps={{
-      startAdornment: (
-        <InputAdornment position="start">
-          {icon}
-          <Typography color="textSecondary" sx={{ ml: 1 }}>
-            {prefix}
-          </Typography>
-        </InputAdornment>
-      ),
-    }}
-    {...props}
-  />
+  <div className="wns-social-input">
+    <span className="wns-social-icon">{icon}</span>
+    <span className="wns-social-prefix">{prefix}</span>
+    <input
+      type="text"
+      placeholder={label}
+      value={value}
+      onChange={onChange}
+      {...props}
+    />
+  </div>
 );
 
 const WebsiteNotificationSettings = () => {
@@ -157,7 +63,7 @@ const WebsiteNotificationSettings = () => {
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [imageNames, setImageNames] = useState({});
-  const api_key = "uecltiwl4q2ez3z029492efueixvfffjwigxatfwgpu6gj43"
+  const api_key = "uecltiwl4q2ez3z029492efueixvfffjwigxatfwgpu6gj43";
   const editorRefs = {
     privacyPolicy: useRef(null),
     aboutUs: useRef(null),
@@ -304,9 +210,7 @@ const WebsiteNotificationSettings = () => {
   const handleSubmit = async () => {
     setLoading(true);
     setSaveStatus(null);
-    
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       setSaveStatus('success');
       console.log('Settings saved:', settings);
@@ -319,604 +223,414 @@ const WebsiteNotificationSettings = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', p: 4, bgcolor: 'background.default' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 2 }}>
-        <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
-          <SettingsIcon fontSize="large" />
-        </Avatar>
-        <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            Website Configuration
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage all aspects of your website content and appearance
-          </Typography>
-        </Box>
-      </Box>
+    <div className="wns-container">
+      <div className="wns-header">
+        <span className="wns-header-icon"><SettingsIcon /></span>
+        <div>
+          <h1>Website Configuration</h1>
+          <p>Manage all aspects of your website content and appearance</p>
+        </div>
+      </div>
 
-      <StyledCard elevation={0}>
-        <CardHeader 
-          title="Website Settings Dashboard" 
-          subheader="Configure your website content, branding, and contact information"
-          avatar={<PublicIcon color="primary" />}
-          sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
-        />
-        
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              '& .MuiTab-root': {
-                minHeight: 64,
-                minWidth: 120,
-              }
-            }}
+      {saveStatus === 'success' && (
+        <div className="wns-alert wns-alert-success">
+          <CheckCircleIcon />
+          <span>Changes saved successfully</span>
+        </div>
+      )}
+      {saveStatus === 'error' && (
+        <div className="wns-alert wns-alert-error">
+          <ErrorIcon />
+          <span>Error saving changes</span>
+        </div>
+      )}
+
+      <div className="wns-card">
+        <div className="wns-card-header">
+          <span className="wns-card-icon"><PublicIcon /></span>
+          <div>
+            <h2>Website Settings Dashboard</h2>
+            <p>Configure your website content, branding, and contact information</p>
+          </div>
+        </div>
+
+        <div className="wns-tabs">
+          <button
+            className={`wns-tab ${tabValue === 0 ? 'active' : ''}`}
+            onClick={() => handleTabChange(null, 0)}
           >
-            <Tab label="Content" icon={<ArticleIcon />} iconPosition="start" />
-            <Tab label="Branding" icon={<PaletteIcon />} iconPosition="start" />
-            <Tab label="Contact" icon={<ContactMailIcon />} iconPosition="start" />
-            <Tab label="Media" icon={<BrandingIcon />} iconPosition="start" />
-          </Tabs>
-        </Box>
+            <ArticleIcon />
+            Content
+          </button>
+          <button
+            className={`wns-tab ${tabValue === 1 ? 'active' : ''}`}
+            onClick={() => handleTabChange(null, 1)}
+          >
+            <PaletteIcon />
+            Branding
+          </button>
+          <button
+            className={`wns-tab ${tabValue === 2 ? 'active' : ''}`}
+            onClick={() => handleTabChange(null, 2)}
+          >
+            <ContactMailIcon />
+            Contact
+          </button>
+          <button
+            className={`wns-tab ${tabValue === 3 ? 'active' : ''}`}
+            onClick={() => handleTabChange(null, 3)}
+          >
+            <BrandingIcon />
+            Media
+          </button>
+        </div>
 
-        {/* Content Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <InfoIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                About Us Page
-              </Typography>
-
-              <Editor
-                apiKey={api_key}
-                onInit={(evt, editor) => editorRefs.aboutUs.current = editor}
-                value={settings.aboutUs}
-                onEditorChange={(content) => handleEditorChange(content, 'aboutUs')}
-                init={{
-                  height: 400,
-                  menubar: true,
-                  plugins: [
-                    'advlist autolink lists link image charmap preview anchor',
-                    'searchreplace visualblocks code fullscreen',
-                    'insertdatetime media table paste code help wordcount'
-                  ],
-                  toolbar: 'undo redo | formatselect | bold italic underline strikethrough | ' +
-                    'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | ' +
-                    'link image media table | forecolor backcolor | code | help',
-                  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px }',
-                  skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
-                  content_css: settings.branding.darkMode ? 'dark' : 'default',
-                }}
-              />
-
-
-              
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button 
-                  variant="outlined" 
-                  startIcon={<VisibilityIcon />}
-                  sx={{ mr: 2 }}
-                >
-                  Preview
-                </Button>
-                <Button variant="contained" startIcon={<EditIcon />}>
-                  Edit SEO Settings
-                </Button>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <InfoIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Privacy Policy
-              </Typography>
-              <Editor
-                apiKey={api_key}
-                onInit={(evt, editor) => editorRefs.privacyPolicy.current = editor}
-                value={settings.privacyPolicy}
-                onEditorChange={(content) => handleEditorChange(content, 'privacyPolicy')}
-                init={{
-                  height: 400,
-                  menubar: false,
-                  plugins: ['lists link image charmap', 'wordcount'],
-                  toolbar: 'undo redo | bold italic underline | bullist numlist | link image',
-                  skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
-                  content_css: settings.branding.darkMode ? 'dark' : 'default',
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <InfoIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Terms & Conditions
-              </Typography>
-              <Editor
-                apiKey={api_key}
-                onInit={(evt, editor) => editorRefs.termsConditions.current = editor}
-                value={settings.termsConditions}
-                onEditorChange={(content) => handleEditorChange(content, 'termsConditions')}
-                init={{
-                  height: 300,
-                  menubar: false,
-                  plugins: ['lists link', 'wordcount'],
-                  toolbar: 'undo redo | bold italic | bullist numlist',
-                  skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
-                  content_css: settings.branding.darkMode ? 'dark' : 'default',
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <InfoIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Refund Policy
-              </Typography>
-              <Editor
-                apiKey={api_key}
-                onInit={(evt, editor) => editorRefs.refundPolicy.current = editor}
-                value={settings.refundPolicy}
-                onEditorChange={(content) => handleEditorChange(content, 'refundPolicy')}
-                init={{
-                  height: 300,
-                  menubar: false,
-                  plugins: ['lists link', 'wordcount'],
-                  toolbar: 'undo redo | bold italic | bullist numlist',
-                  skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
-                  content_css: settings.branding.darkMode ? 'dark' : 'default',
-                }}
-              />
-            </Grid>
-          </Grid>
+          <div className="wns-grid">
+            <div className="wns-section">
+              <h3><InfoIcon /> About Us Page</h3>
+              <div className="wns-editor">
+                <Editor
+                  apiKey={api_key}
+                  onInit={(evt, editor) => editorRefs.aboutUs.current = editor}
+                  value={settings.aboutUs}
+                  onEditorChange={(content) => handleEditorChange(content, 'aboutUs')}
+                  init={{
+                    height: 400,
+                    menubar: true,
+                    plugins: [
+                      'advlist autolink lists link image charmap preview anchor',
+                      'searchreplace visualblocks code fullscreen',
+                      'insertdatetime media table paste code help wordcount'
+                    ],
+                    toolbar: 'undo redo | formatselect | bold italic underline strikethrough | ' +
+                      'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | ' +
+                      'link image media table | forecolor backcolor | code | help',
+                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px }',
+                    skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
+                    content_css: settings.branding.darkMode ? 'dark' : 'default',
+                  }}
+                />
+              </div>
+              <div className="wns-section-actions">
+                <button className="wns-btn wns-btn-secondary"><VisibilityIcon /> Preview</button>
+                <button className="wns-btn wns-btn-primary"><EditIcon /> Edit SEO Settings</button>
+              </div>
+            </div>
+            <div className="wns-section">
+              <h3><InfoIcon /> Privacy Policy</h3>
+              <div className="wns-editor">
+                <Editor
+                  apiKey={api_key}
+                  onInit={(evt, editor) => editorRefs.privacyPolicy.current = editor}
+                  value={settings.privacyPolicy}
+                  onEditorChange={(content) => handleEditorChange(content, 'privacyPolicy')}
+                  init={{
+                    height: 400,
+                    menubar: false,
+                    plugins: ['lists link image charmap', 'wordcount'],
+                    toolbar: 'undo redo | bold italic underline | bullist numlist | link image',
+                    skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
+                    content_css: settings.branding.darkMode ? 'dark' : 'default',
+                  }}
+                />
+              </div>
+            </div>
+            <div className="wns-section">
+              <h3><InfoIcon /> Terms & Conditions</h3>
+              <div className="wns-editor">
+                <Editor
+                  apiKey={api_key}
+                  onInit={(evt, editor) => editorRefs.termsConditions.current = editor}
+                  value={settings.termsConditions}
+                  onEditorChange={(content) => handleEditorChange(content, 'termsConditions')}
+                  init={{
+                    height: 300,
+                    menubar: false,
+                    plugins: ['lists link', 'wordcount'],
+                    toolbar: 'undo redo | bold italic | bullist numlist',
+                    skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
+                    content_css: settings.branding.darkMode ? 'dark' : 'default',
+                  }}
+                />
+              </div>
+            </div>
+            <div className="wns-section">
+              <h3><InfoIcon /> Refund Policy</h3>
+              <div className="wns-editor">
+                <Editor
+                  apiKey={api_key}
+                  onInit={(evt, editor) => editorRefs.refundPolicy.current = editor}
+                  value={settings.refundPolicy}
+                  onEditorChange={(content) => handleEditorChange(content, 'refundPolicy')}
+                  init={{
+                    height: 300,
+                    menubar: false,
+                    plugins: ['lists link', 'wordcount'],
+                    toolbar: 'undo redo | bold italic | bullist numlist',
+                    skin: settings.branding.darkMode ? 'oxide-dark' : 'oxide',
+                    content_css: settings.branding.darkMode ? 'dark' : 'default',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </TabPanel>
 
-        {/* Branding Tab */}
         <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <PaletteIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Color Scheme
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Primary Color"
-                    type="color"
-                    value={settings.branding.primaryColor}
-                    onChange={handleBrandingChange('primaryColor')}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Box sx={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '4px',
-                            backgroundColor: settings.branding.primaryColor,
-                            border: '1px solid',
-                            borderColor: 'divider'
-                          }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Secondary Color"
-                    type="color"
-                    value={settings.branding.secondaryColor}
-                    onChange={handleBrandingChange('secondaryColor')}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Box sx={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '4px',
-                            backgroundColor: settings.branding.secondaryColor,
-                            border: '1px solid',
-                            borderColor: 'divider'
-                          }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-              </Grid>
-              
-              <FormControl fullWidth sx={{ mt: 3 }}>
-                <InputLabel>Font Family</InputLabel>
-                <Select
+          <div className="wns-grid">
+            <div className="wns-section">
+              <h3><PaletteIcon /> Color Scheme</h3>
+              <div className="wns-color-grid">
+                <div className="wns-form-field">
+                  <label>Primary Color</label>
+                  <div className="wns-color-input">
+                    <span style={{ backgroundColor: settings.branding.primaryColor }}></span>
+                    <input
+                      type="color"
+                      value={settings.branding.primaryColor}
+                      onChange={handleBrandingChange('primaryColor')}
+                    />
+                  </div>
+                </div>
+                <div className="wns-form-field">
+                  <label>Secondary Color</label>
+                  <div className="wns-color-input">
+                    <span style={{ backgroundColor: settings.branding.secondaryColor }}></span>
+                    <input
+                      type="color"
+                      value={settings.branding.secondaryColor}
+                      onChange={handleBrandingChange('secondaryColor')}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wns-form-field">
+                <label>Font Family</label>
+                <select
                   value={settings.branding.fontFamily}
-                  label="Font Family"
                   onChange={handleBrandingChange('fontFamily')}
                 >
-                  <MenuItem value="Inter">Inter</MenuItem>
-                  <MenuItem value="Roboto">Roboto</MenuItem>
-                  <MenuItem value="Open Sans">Open Sans</MenuItem>
-                  <MenuItem value="Montserrat">Montserrat</MenuItem>
-                  <MenuItem value="Poppins">Poppins</MenuItem>
-                </Select>
-              </FormControl>
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.branding.darkMode}
-                    onChange={handleToggleDarkMode}
-                    color="primary"
-                  />
-                }
-                label="Enable Dark Mode"
-                sx={{ mt: 3 }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <ImageIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Logo & Favicon
-              </Typography>
-              <Box {...getRootProps()}>
+                  <option value="Inter">Inter</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Poppins">Poppins</option>
+                </select>
+              </div>
+              <label className="wns-checkbox">
+                <input
+                  type="checkbox"
+                  checked={settings.branding.darkMode}
+                  onChange={handleToggleDarkMode}
+                />
+                <span>Enable Dark Mode</span>
+              </label>
+            </div>
+            <div className="wns-section">
+              <h3><ImageIcon /> Logo & Favicon</h3>
+              <div {...getRootProps()} className={`wns-dropzone ${isDragActive ? 'active' : ''}`}>
                 <input {...getInputProps()} />
-                <DropzoneArea isDragActive={isDragActive}>
-                  <UploadIcon color="primary" fontSize="large" />
-                  <Typography variant="h6" gutterBottom>
-                    {isDragActive ? 'Drop branding assets here' : 'Drag & drop images here, or click to select'}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Supports PNG, JPG, SVG and ICO files (Max 5MB)
-                  </Typography>
-                </DropzoneArea>
-              </Box>
-              
-              <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 3, mb: 2 }}>
-                Current Brand Assets
-              </Typography>
-              
-              <Grid container spacing={2}>
+                <UploadIcon />
+                <h4>{isDragActive ? 'Drop branding assets here' : 'Drag & drop images here, or click to select'}</h4>
+                <p>Supports PNG, JPG, SVG and ICO files (Max 5MB)</p>
+              </div>
+              <h4>Current Brand Assets</h4>
+              <div className="wns-image-grid">
                 {settings.images.map((image) => (
-                  <Grid item xs={12} sm={6} key={image.id}>
-                    <ImagePreview elevation={2}>
-                      <img
-                        src={image.url}
-                        alt={image.name}
-                        style={{
-                          width: '100%',
-                          height: '120px',
-                          objectFit: 'contain',
-                          backgroundColor: '#f5f5f5'
-                        }}
+                  <div key={image.id} className="wns-image-preview">
+                    <img src={image.url} alt={image.name} />
+                    <div className="wns-image-actions">
+                      <input
+                        type="text"
+                        defaultValue={image.name}
+                        onChange={(e) => handleImageNameChange(image.id, e.target.value)}
                       />
-                      <ImageActions className="image-actions">
-                        <TextField
-                          size="small"
-                          defaultValue={image.name}
-                          onChange={(e) => handleImageNameChange(image.id, e.target.value)}
-                          sx={{
-                            backgroundColor: 'background.paper',
-                            borderRadius: 1,
-                            '& .MuiInputBase-root': {
-                              color: 'common.white',
-                            },
-                            '& .MuiInputBase-input': {
-                              py: 0.5,
-                              px: 1,
-                            },
-                          }}
-                        />
-                        <Box>
-                          <Tooltip title={image.isPrimary ? 'Primary logo' : 'Set as primary'}>
-                            <IconButton
-                              size="small"
-                              color={image.isPrimary ? 'primary' : 'inherit'}
-                              onClick={() => handleSetPrimaryImage(image.id)}
-                              disabled={image.isPrimary}
-                              sx={{ 
-                                color: image.isPrimary ? 'primary.main' : 'common.white',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255,255,255,0.1)'
-                                }
-                              }}
-                            >
-                              <CheckCircleIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Remove">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleRemoveImage(image.id)}
-                              sx={{ 
-                                color: 'error.light',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(255,255,255,0.1)'
-                                }
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </ImageActions>
-                    </ImagePreview>
-                  </Grid>
-                ))}
-              </Grid>
-              <Button 
-                variant="contained" 
-                onClick={handleSaveImageNames}
-                sx={{ mt: 2 }}
-              >
-                Save Image Names
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        {/* Contact Tab */}
-        <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <LocationIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Business Information
-              </Typography>
-              
-              <TextField
-                fullWidth
-                label="Business Address"
-                value={settings.contact.address}
-                onChange={handleContactChange('address')}
-                multiline
-                rows={4}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LocationIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              
-              <TextField
-                fullWidth
-                label="Opening Hours"
-                value={settings.contact.openingHours}
-                onChange={handleContactChange('openingHours')}
-                multiline
-                rows={4}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ScheduleIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" gutterBottom fontWeight="bold">
-                <EmailIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Contact Details
-              </Typography>
-              
-              <TextField
-                fullWidth
-                label="Contact Email"
-                value={settings.contact.email}
-                onChange={handleContactChange('email')}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              
-              <TextField
-                fullWidth
-                label="Phone Number"
-                value={settings.contact.phone}
-                onChange={handleContactChange('phone')}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PhoneIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              
-              <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mt: 4 }}>
-                <PublicIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Social Media Links
-              </Typography>
-              
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <SocialMediaInput
-                    icon={<FacebookIcon color="primary" />}
-                    label="Facebook"
-                    value={settings.socialMedia.facebook}
-                    onChange={handleSocialMediaChange('facebook')}
-                    prefix="facebook.com/"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <SocialMediaInput
-                    icon={<TwitterIcon color="primary" />}
-                    label="Twitter"
-                    value={settings.socialMedia.twitter}
-                    onChange={handleSocialMediaChange('twitter')}
-                    prefix="twitter.com/"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <SocialMediaInput
-                    icon={<InstagramIcon color="primary" />}
-                    label="Instagram"
-                    value={settings.socialMedia.instagram}
-                    onChange={handleSocialMediaChange('instagram')}
-                    prefix="instagram.com/"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <SocialMediaInput
-                    icon={<LinkedInIcon color="primary" />}
-                    label="LinkedIn"
-                    value={settings.socialMedia.linkedin}
-                    onChange={handleSocialMediaChange('linkedin')}
-                    prefix="linkedin.com/company/"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <SocialMediaInput
-                    icon={<YouTubeIcon color="primary" />}
-                    label="YouTube"
-                    value={settings.socialMedia.youtube}
-                    onChange={handleSocialMediaChange('youtube')}
-                    prefix="youtube.com/"
-                  />
-                </Grid>
-              </Grid>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        {/* Media Tab */}
-        <TabPanel value={tabValue} index={3}>
-          <Typography variant="h6" gutterBottom fontWeight="bold">
-            <ImageIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Media Library
-          </Typography>
-          
-          <Box {...getRootProps()}>
-            <input {...getInputProps()} />
-            <DropzoneArea isDragActive={isDragActive}>
-              <UploadIcon color="primary" fontSize="large" />
-              <Typography variant="h6" gutterBottom>
-                {isDragActive ? 'Drop media files here' : 'Drag & drop files here, or click to select'}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Supports images, videos and documents (Max 10MB per file)
-              </Typography>
-            </DropzoneArea>
-          </Box>
-          
-          <Typography variant="subtitle1" fontWeight="medium" sx={{ mt: 3, mb: 2 }}>
-            Uploaded Media Files
-          </Typography>
-          
-          <Grid container spacing={2}>
-            {settings.images.map((image) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={image.id}>
-                <ImagePreview elevation={2}>
-                  <img
-                    src={image.url}
-                    alt={image.name}
-                    style={{
-                      width: '100%',
-                      height: '150px',
-                      objectFit: 'cover',
-                    }}
-                  />
-                  <ImageActions className="image-actions">
-                    <Typography variant="body2" color="common.white" noWrap>
-                      {image.name}
-                    </Typography>
-                    <Box>
-                      <Tooltip title="Rename">
-                        <IconButton size="small" sx={{ color: 'common.white' }}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton 
-                          size="small" 
-                          sx={{ color: 'error.light' }}
-                          onClick={() => handleRemoveImage(image.id)}
+                      <div>
+                        <button
+                          className={`wns-btn wns-btn-icon ${image.isPrimary ? 'primary' : ''}`}
+                          onClick={() => handleSetPrimaryImage(image.id)}
+                          disabled={image.isPrimary}
+                          title={image.isPrimary ? 'Primary logo' : 'Set as primary'}
                         >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </ImageActions>
-                </ImagePreview>
-              </Grid>
-            ))}
-          </Grid>
+                          <CheckCircleIcon />
+                        </button>
+                        <button
+                          className="wns-btn wns-btn-icon wns-btn-error"
+                          onClick={() => handleRemoveImage(image.id)}
+                          title="Remove"
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="wns-btn wns-btn-primary" onClick={handleSaveImageNames}>
+                Save Image Names
+              </button>
+            </div>
+          </div>
         </TabPanel>
-        
-        <Divider />
-        
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          p: 3,
-          gap: 2,
-          bgcolor: 'background.paper',
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16,
-        }}>
-          <Box>
+
+        <TabPanel value={tabValue} index={2}>
+          <div className="wns-grid">
+            <div className="wns-section">
+              <h3><LocationIcon /> Business Information</h3>
+              <div className="wns-form-field">
+                <label>Business Address</label>
+                <div className="wns-input-group">
+                  <LocationIcon />
+                  <textarea
+                    rows="4"
+                    value={settings.contact.address}
+                    onChange={handleContactChange('address')}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="wns-form-field">
+                <label>Opening Hours</label>
+                <div className="wns-input-group">
+                  <ScheduleIcon />
+                  <textarea
+                    rows="4"
+                    value={settings.contact.openingHours}
+                    onChange={handleContactChange('openingHours')}
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div className="wns-section">
+              <h3><EmailIcon /> Contact Details</h3>
+              <div className="wns-form-field">
+                <label>Contact Email</label>
+                <div className="wns-input-group">
+                  <EmailIcon />
+                  <input
+                    type="text"
+                    value={settings.contact.email}
+                    onChange={handleContactChange('email')}
+                  />
+                </div>
+              </div>
+              <div className="wns-form-field">
+                <label>Phone Number</label>
+                <div className="wns-input-group">
+                  <PhoneIcon />
+                  <input
+                    type="text"
+                    value={settings.contact.phone}
+                    onChange={handleContactChange('phone')}
+                  />
+                </div>
+              </div>
+              <h3><PublicIcon /> Social Media Links</h3>
+              <div className="wns-social-grid">
+                <SocialMediaInput
+                  icon={<FacebookIcon />}
+                  label="Facebook"
+                  value={settings.socialMedia.facebook}
+                  onChange={handleSocialMediaChange('facebook')}
+                  prefix="facebook.com/"
+                />
+                <SocialMediaInput
+                  icon={<TwitterIcon />}
+                  label="Twitter"
+                  value={settings.socialMedia.twitter}
+                  onChange={handleSocialMediaChange('twitter')}
+                  prefix="twitter.com/"
+                />
+                <SocialMediaInput
+                  icon={<InstagramIcon />}
+                  label="Instagram"
+                  value={settings.socialMedia.instagram}
+                  onChange={handleSocialMediaChange('instagram')}
+                  prefix="instagram.com/"
+                />
+                <SocialMediaInput
+                  icon={<LinkedInIcon />}
+                  label="LinkedIn"
+                  value={settings.socialMedia.linkedin}
+                  onChange={handleSocialMediaChange('linkedin')}
+                  prefix="linkedin.com/company/"
+                />
+                <SocialMediaInput
+                  icon={<YouTubeIcon />}
+                  label="YouTube"
+                  value={settings.socialMedia.youtube}
+                  onChange={handleSocialMediaChange('youtube')}
+                  prefix="youtube.com/"
+                />
+              </div>
+            </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <div className="wns-section">
+            <h3><ImageIcon /> Media Library</h3>
+            <div {...getRootProps()} className={`wns-dropzone ${isDragActive ? 'active' : ''}`}>
+              <input {...getInputProps()} />
+              <UploadIcon />
+              <h4>{isDragActive ? 'Drop media files here' : 'Drag & drop files here, or click to select'}</h4>
+              <p>Supports images, videos and documents (Max 10MB per file)</p>
+            </div>
+            <h4>Uploaded Media Files</h4>
+            <div className="wns-image-grid">
+              {settings.images.map((image) => (
+                <div key={image.id} className="wns-image-preview">
+                  <img src={image.url} alt={image.name} />
+                  <div className="wns-image-actions">
+                    <span>{image.name}</span>
+                    <div>
+                      <button className="wns-btn wns-btn-icon" title="Rename">
+                        <EditIcon />
+                      </button>
+                      <button
+                        className="wns-btn wns-btn-icon wns-btn-error"
+                        onClick={() => handleRemoveImage(image.id)}
+                        title="Delete"
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabPanel>
+
+        <div className="wns-footer">
+          <div>
             {saveStatus === 'success' && (
-              <StatusPill 
-                icon={<CheckCircleIcon fontSize="small" />}
-                label="Changes saved successfully"
-                status="success"
-              />
+              <span className="wns-status success">
+                <CheckCircleIcon />
+                Changes saved successfully
+              </span>
             )}
             {saveStatus === 'error' && (
-              <StatusPill 
-                icon={<ErrorIcon fontSize="small" />}
-                label="Error saving changes"
-                status="error"
-              />
+              <span className="wns-status error">
+                <ErrorIcon />
+                Error saving changes
+              </span>
             )}
-          </Box>
-          
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              color="inherit"
-            >
-              Discard Changes
-            </Button>
-            <Button
-              variant="contained"
+          </div>
+          <div className="wns-footer-actions">
+            <button className="wns-btn wns-btn-secondary">Discard Changes</button>
+            <button
+              className="wns-btn wns-btn-primary"
               onClick={handleSubmit}
               disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-              sx={{ minWidth: 150 }}
             >
-              {loading ? 'Saving...' : 'Save All Changes'}
-            </Button>
-          </Stack>
-        </Box>
-      </StyledCard>
-    </Box>
+              {loading ? <div className="wns-spinner"></div> : 'Save All Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default WebsiteNotificationSettings; ;
+export default WebsiteNotificationSettings;
