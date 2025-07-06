@@ -44,6 +44,8 @@ const Login = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    console.log("Your session has expired. Please log in again.")
     if (params.get('session_expired') === '1') {
       setErrors({
         general: 'Your session has expired. Please log in again.',
@@ -117,31 +119,38 @@ const Login = () => {
     return valid;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    setLoading(true);
-    try {
-      await login(formData);
-    } catch (error) {
-      console.error('Login error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        stack: error.stack,
-      });
-      setErrors({
-        general: error.response?.data?.detail || 'Login failed. Please try again.',
-      });
-      if (error.response?.data?.remaining_attempts) {
-        setRemainingAttempts(error.response.data.remaining_attempts);
-      }
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await login(formData); // Expect full response
+    console.log('Login response:', response.data);
+    console.log('Login response headers:', response.headers);
+    console.log('Cookies after login:', document.cookie); // Note: HttpOnly cookies won't appear
+    // Verify authentication with a follow-up request
+    const validateResponse = await authAPI.verifyToken();
+    console.log('Token validation response:', validateResponse.data);
+    // Navigation will be handled by useEffect in AuthContext
+  } catch (error) {
+    console.error('Login error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      cookies: document.cookie,
+    });
+    setErrors({
+      general: error.response?.data?.detail || 'Login failed. Please try again.',
+    });
+    if (error.response?.data?.remaining_attempts) {
+      setRemainingAttempts(error.response.data.remaining_attempts);
     }
-  };
-
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <Box className="login-container">
       <Box className="wave wave-1" />

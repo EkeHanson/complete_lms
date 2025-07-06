@@ -300,6 +300,8 @@ function Admin() {
     </Box>
   );
 
+  alert("Ready")
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
       <CssBaseline />

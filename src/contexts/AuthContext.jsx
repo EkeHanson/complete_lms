@@ -29,7 +29,35 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
-// src/contexts/AuthContext.jsx
+
+
+const login = async (credentials) => {
+  try {
+    setLoading(true);
+    const response = await authAPI.login(credentials);
+    if (!response.data?.user) {
+      throw new Error('Invalid credentials');
+    }
+    console.log('Login response:', response);
+    // Wait briefly to ensure cookies are set
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const transformedUser = transformUserData(response.data.user);
+    setUser(transformedUser);
+    setError(null);
+    return response; // Return full response
+  } catch (err) {
+    console.error('Login error:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+    });
+    setError(err.message);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
+
 const fetchUser = useCallback(async () => {
   if (['/login', '/signup', '/forgot-password'].includes(location.pathname)) {
     setLoading(false);
@@ -43,15 +71,21 @@ const fetchUser = useCallback(async () => {
 
   setLoading(true);
   try {
+    if (!document.cookie.includes('access_token') || !document.cookie.includes('refresh_token')) {
+      console.warn('No tokens found in cookies, skipping user fetch');
+      setUser(null);
+      setError('No authentication tokens found');
+      setLoading(false);
+      return;
+    }
+
     const response = await authAPI.getCurrentUser();
     console.log('Fetch user response:', response.data);
-    alert('Fetch user response:', response.data);
-    if (!response.data) {
+    if (!response.data?.user) {
       throw new Error('No user data returned');
     }
-    const userData = transformUserData(response.data);
+    const userData = transformUserData(response.data.user);
     setUser(userData);
-    // Set tenant schema in API calls
     api.defaults.headers['X-Tenant-Schema'] = response.data.tenant_schema;
     setError(null);
   } catch (err) {
@@ -59,39 +93,17 @@ const fetchUser = useCallback(async () => {
       message: err.message,
       response: err.response?.data,
       status: err.response?.status,
+      cookies: document.cookie,
     });
     setError(err.message);
     setUser(null);
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login?session_expired=1';
+    }
   } finally {
     setLoading(false);
   }
 }, [location.pathname, user]);
-
-const login = async (credentials) => {
-  try {
-    setLoading(true);
-    const response = await authAPI.login(credentials);
-    if (!response.data?.user) {
-      throw new Error('Invalid credentials');
-    }
-    console.log('Login response:', response.data); // Debug log
-    alert('Login response:', response.data); // Debug log
-    const transformedUser = transformUserData(response.data.user);
-    setUser(transformedUser);
-    setError(null);
-    return transformedUser;
-  } catch (err) {
-    console.error('Login error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-    });
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
   // Initialize auth on mount
   useEffect(() => {
     fetchUser();
@@ -123,7 +135,7 @@ const getDashboardRoute = () => {
     return '/login';
   }
   const role = user.role?.toLowerCase();
-  console.log('User role in getDashboardRoute:', role); // Debug log
+   console.log('User role in getDashboardRoute:', role); // Debug log
   switch (role) {
     case 'admin':
     case 'super_admin':
