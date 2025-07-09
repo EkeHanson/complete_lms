@@ -1,0 +1,410 @@
+.ModuleForm {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  margin-bottom: 15px;
+}
+
+.ModuleForm.expanded {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.ModuleForm-Header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #f7f5ff;
+  border-bottom: 1px solid #e3defc;
+}
+
+.ModuleForm-Header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  flex-grow: 1;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.delete-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #b91c1c;
+}
+
+.delete-btn:hover {
+  background: #f8d7da;
+  border-radius: 50%;
+}
+
+.ModuleForm-Content {
+  padding: 20px;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+  background-color: #f7f5ff;
+  font-size: 12px;
+  color: #372580;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.error-text {
+  color: #b91c1c;
+  font-size: 10px;
+  margin-top: 5px;
+  display: block;
+}
+
+.switch-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.switch {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.lessons-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #e3defc;
+}
+
+.lessons-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  font-size: 12px;
+  color: #5d5677;
+  padding: 20px;
+}
+
+.lessons-list {
+  list-style: none;
+  padding: 0;
+}
+
+.lesson-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-bottom: 1px solid #e3defc;
+}
+
+.lesson-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lesson-content {
+  flex-grow: 1;
+  max-width: 70%;
+}
+
+.lesson-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.lesson-details {
+  font-size: 10px;
+  color: #5d5677;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.action-btn:hover {
+  background-color: #decdfd;
+}
+
+.action-btn.active {
+  background-color: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary {
+  background-color: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background-color: #450CD5;
+}
+
+.action-btn.danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.action-btn.danger:hover {
+  background-color: #f8d7da;
+}
+
+.action-btn.small svg {
+  width: 14px;
+  height: 14px;
+}
+
+.action-btn.upload {
+  width: 100%;
+  justify-content: center;
+}
+
+.file-info {
+  font-size: 10px;
+  color: #5d5677;
+  margin-top: 5px;
+  display: block;
+}
+
+.ModuleForm-Preview {
+  padding: 15px;
+  background: #f7f5ff;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+}
+
+.ModuleForm-Preview h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.ModuleForm-Preview p {
+  font-size: 12px;
+  color: #5d5677;
+  margin-bottom: 10px;
+}
+
+.lessons-preview span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lessons-preview ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+}
+
+.lessons-preview li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  padding: 5px 0;
+}
+
+.LessonDialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.LessonDialog.open {
+  display: flex;
+}
+
+.LessonDialog-Content {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 500px;
+  padding: 20px;
+  position: relative;
+}
+
+.LessonDialog-Content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.close-btn svg {
+  width: 20px;
+  height: 20px;
+  color: #5d5677;
+}
+
+.close-btn:hover {
+  background: #f4f1ff;
+  border-radius: 50%;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #7226FF;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: absolute;
+  right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.DraggableModule.dragging {
+  opacity: 0.5;
+}
+
+.DraggableModule.selected {
+  border: 2px solid #7226FF;
+}
+
+@media (max-width: 768px) {
+  .ModuleForm {
+    padding: 10px;
+  }
+
+  .ModuleForm-Header {
+    padding: 8px 15px;
+  }
+
+  .ModuleForm-Header h3 {
+    font-size: 12px;
+  }
+
+  .ModuleForm-Content {
+    padding: 15px;
+  }
+
+  .LessonDialog-Content {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .action-btn {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+
+  .lesson-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lesson-content {
+    max-width: 100%;
+  }
+
+  .lesson-actions {
+    margin-top: 5px;
+  }
+}

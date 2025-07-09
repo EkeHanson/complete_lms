@@ -1,17 +1,9 @@
 import React, { useState, useRef } from 'react';
-import {
-  Box, Typography, TextField, Button, Paper, Divider,
-  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
-  FormControl, InputLabel, Select, MenuItem, useTheme,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  ListItemIcon, Accordion, AccordionSummary, AccordionDetails,
-  FormControlLabel, Switch, Checkbox, Alert, CircularProgress,
-  useMediaQuery
-} from '@mui/material';
+import './ModuleForm.css';
 import {
   ExpandMore, AddCircle, Delete, Edit,
   VideoLibrary, InsertDriveFile, Link as LinkIcon,
-  CloudUpload, Visibility, VisibilityOff
+  CloudUpload, Visibility, VisibilityOff, CheckCircle
 } from '@mui/icons-material';
 import { useDrag, useDrop } from 'react-dnd';
 import { coursesAPI } from '../../../../config';
@@ -24,8 +16,6 @@ const lessonTypes = [
 
 const DraggableModule = ({ module, index, moveModule, selectedModules, toggleModuleSelection, ...props }) => {
   const ref = useRef(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [{ isDragging }, drag] = useDrag({
     type: 'MODULE',
@@ -60,38 +50,30 @@ const DraggableModule = ({ module, index, moveModule, selectedModules, toggleMod
   drag(drop(ref));
 
   return (
-    <div 
+    <div
       ref={ref}
-      style={{ 
-        opacity: isDragging ? 0.5 : 1,
-        border: selectedModules.includes(module.id) ? `1px solid ${theme.palette.primary.main}` : 'none',
-        borderRadius: '4px',
-        marginBottom: isMobile ? '4px' : '8px'
-      }}
+      className={`DraggableModule ${isDragging ? 'dragging' : ''} ${selectedModules.includes(module.id) ? 'selected' : ''}`}
     >
-      <ModuleForm 
-        module={module} 
+      <ModuleForm
+        module={module}
         index={index}
         selected={selectedModules.includes(module.id)}
         onToggleSelect={() => toggleModuleSelection(module.id)}
-        isMobile={isMobile}
         {...props}
       />
     </div>
   );
 };
 
-const ModuleForm = ({ 
-  module, 
-  index, 
-  onChange, 
-  onDelete, 
-  isMobile, 
+const ModuleForm = ({
+  module,
+  index,
+  onChange,
+  onDelete,
   courseId,
   selected,
   onToggleSelect
 }) => {
-  const theme = useTheme();
   const [expanded, setExpanded] = useState(true);
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
@@ -126,7 +108,7 @@ const ModuleForm = ({
 
   const handleModuleSave = async (field, value) => {
     if (!module.id || !courseId || isNaN(module.id)) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         module: 'Module not saved yet. Please save the module first.'
       }));
@@ -140,10 +122,10 @@ const ModuleForm = ({
       onChange(module.id, updatedModule);
     } catch (error) {
       console.error('Error updating module:', error);
-      const errorMessage = error.response?.status === 404 
-        ? 'Module not found. It may have been deleted.' 
+      const errorMessage = error.response?.status === 404
+        ? 'Module not found. It may have been deleted.'
         : error.response?.data?.detail || 'Failed to update module';
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         module: errorMessage
       }));
@@ -161,7 +143,7 @@ const ModuleForm = ({
       onDelete(module.id);
     } catch (error) {
       console.error('Error deleting module:', error);
-      setErrors(prev => ({ ...prev, module: error.response?.data || 'Failed to delete module' }));
+      setErrors((prev) => ({ ...prev, module: error.response?.data || 'Failed to delete module' }));
     } finally {
       setLoading(false);
     }
@@ -169,18 +151,18 @@ const ModuleForm = ({
 
   const handleLessonChange = (e) => {
     const { name, value } = e.target;
-    setNewLesson(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    setNewLesson((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleLessonFileChange = (e) => {
-    setNewLesson(prev => ({ ...prev, content_file: e.target.files[0] }));
-    setErrors(prev => ({ ...prev, content_file: '' }));
+    setNewLesson((prev) => ({ ...prev, content_file: e.target.files[0] }));
+    setErrors((prev) => ({ ...prev, content_file: '' }));
   };
 
   const addLesson = async () => {
     if (!validateLesson()) return;
-  
+
     const formData = new FormData();
     formData.append('title', newLesson.title.trim());
     formData.append('lesson_type', newLesson.lesson_type);
@@ -192,7 +174,7 @@ const ModuleForm = ({
     } else if (newLesson.content_file) {
       formData.append('content_file', newLesson.content_file);
     }
-  
+
     try {
       setLoading(true);
       const response = await coursesAPI.createLesson(courseId, module.id, formData);
@@ -211,15 +193,15 @@ const ModuleForm = ({
       setErrors({});
     } catch (error) {
       console.error('Error creating lesson:', error);
-      setErrors(prev => ({ ...prev, submit: error.response?.data || 'Failed to create lesson' }));
+      setErrors((prev) => ({ ...prev, submit: error.response?.data || 'Failed to create lesson' }));
     } finally {
       setLoading(false);
     }
   };
-  
+
   const updateLesson = async () => {
     if (!validateLesson()) return;
-  
+
     const formData = new FormData();
     formData.append('title', newLesson.title.trim());
     formData.append('lesson_type', newLesson.lesson_type);
@@ -229,11 +211,11 @@ const ModuleForm = ({
     } else if (newLesson.content_file) {
       formData.append('content_file', newLesson.content_file);
     }
-  
+
     try {
       setLoading(true);
       const response = await coursesAPI.updateLesson(courseId, module.id, editingLesson.id, formData);
-      const updatedLessons = module.lessons.map(lesson =>
+      const updatedLessons = module.lessons.map((lesson) =>
         lesson.id === editingLesson.id ? response.data : lesson
       );
       onChange(module.id, {
@@ -252,23 +234,23 @@ const ModuleForm = ({
       setErrors({});
     } catch (error) {
       console.error('Error updating lesson:', error);
-      setErrors(prev => ({ ...prev, submit: error.response?.data || 'Failed to update lesson' }));
+      setErrors((prev) => ({ ...prev, submit: error.response?.data || 'Failed to update lesson' }));
     } finally {
       setLoading(false);
     }
   };
-  
+
   const deleteLesson = async (lessonId) => {
     try {
       setLoading(true);
       await coursesAPI.deleteLesson(courseId, module.id, lessonId);
       onChange(module.id, {
         ...module,
-        lessons: module.lessons.filter(l => l.id !== lessonId)
+        lessons: module.lessons.filter((l) => l.id !== lessonId)
       });
     } catch (error) {
       console.error('Error deleting lesson:', error);
-      setErrors(prev => ({ ...prev, lesson: error.response?.data || 'Failed to delete lesson' }));
+      setErrors((prev) => ({ ...prev, lesson: error.response?.data || 'Failed to delete lesson' }));
     } finally {
       setLoading(false);
     }
@@ -287,194 +269,111 @@ const ModuleForm = ({
   };
 
   const getLessonIcon = (type) => {
-    const lessonType = lessonTypes.find(t => t.value === type);
+    const lessonType = lessonTypes.find((t) => t.value === type);
     return lessonType ? lessonType.icon : <InsertDriveFile />;
   };
 
   return (
     <>
-      <Accordion
-        expanded={expanded}
-        onChange={() => setExpanded(!expanded)}
-        sx={{ 
-          mb: isMobile ? 1 : 2, 
-          boxShadow: 3,
-          '& .MuiAccordionSummary-root': {
-            padding: isMobile ? '0 8px' : '0 16px'
-          }
-        }}
-      >
-        <AccordionSummary
-          expandIcon={<ExpandMore />}
-          sx={{ 
-            bgcolor: theme.palette.grey[100],
-            position: 'relative',
-            minHeight: isMobile ? 48 : 56
-          }}
-        >
-          {loading && (
-            <CircularProgress 
-              size={isMobile ? 20 : 24} 
-              sx={{ position: 'absolute', right: 8, top: isMobile ? 6 : 8 }} 
-            />
-          )}
-          <Checkbox
-            edge="start"
+      <div className={`ModuleForm ${expanded ? 'expanded' : ''}`}>
+        <div className="ModuleForm-Header">
+          {loading && <div className="loading-spinner" />}
+          <input
+            type="checkbox"
             checked={selected}
             onChange={onToggleSelect}
-            onClick={(e) => e.stopPropagation()}
-            sx={{ mr: isMobile ? 0.5 : 1, padding: isMobile ? '4px' : '9px' }}
+            className="checkbox"
           />
-          <Typography 
-            sx={{ flexGrow: 1, fontWeight: 600 }}
-            variant={isMobile ? 'body2' : 'body1'}
+          <h3>Module {index + 1}: {module.title || 'Untitled Module'}</h3>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="toggle-btn"
           >
-            Module {index + 1}: {module.title || 'Untitled Module'}
-          </Typography>
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteModule();
-            }}
-            sx={{ mr: isMobile ? 0 : 1 }}
-            size="small"
+            <ExpandMore />
+          </button>
+          <button
+            onClick={handleDeleteModule}
+            className="delete-btn"
           >
-            <Delete color="error" fontSize={isMobile ? 'small' : 'medium'} />
-          </IconButton>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box sx={{ p: isMobile ? 1 : 2 }}>
+            <Delete />
+          </button>
+        </div>
+        {expanded && (
+          <div className="ModuleForm-Content">
             {errors.module && (
-              <Alert severity="error" sx={{ mb: isMobile ? 1 : 2, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-                {typeof errors.module === 'string' ? errors.module : 
-                 Object.entries(errors.module).map(([key, val]) => (
-                   <div key={key}>{key}: {val}</div>
-                 ))}
-              </Alert>
+              <div className="error-message">
+                {typeof errors.module === 'string' ? errors.module :
+                  Object.entries(errors.module).map(([key, val]) => (
+                    <div key={key}>{key}: {val}</div>
+                  ))}
+              </div>
             )}
 
-            <Button
-              variant="outlined"
+            <button
+              className={`action-btn ${previewMode ? 'active' : ''}`}
               onClick={() => setPreviewMode(!previewMode)}
-              sx={{ mb: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}
-              size="small"
-              startIcon={previewMode ? <Edit /> : <Visibility />}
             >
+              {previewMode ? <Edit /> : <Visibility />}
               {previewMode ? 'Edit Mode' : 'Preview Mode'}
-            </Button>
+            </button>
 
             {previewMode ? (
-              <Box sx={{ 
-                border: '1px solid #eee', 
-                borderRadius: 1, 
-                p: isMobile ? 1 : 2,
-                mb: isMobile ? 1 : 2
-              }}>
-                <Typography 
-                  variant={isMobile ? 'subtitle2' : 'h6'} 
-                  sx={{ mb: isMobile ? 0.5 : 1 }}
-                >
-                  {module.title}
-                </Typography>
-                <Typography 
-                  variant={isMobile ? 'body2' : 'body1'}
-                >
-                  {module.description || 'No description provided.'}
-                </Typography>
+              <div className="ModuleForm-Preview">
+                <h4>{module.title}</h4>
+                <p>{module.description || 'No description provided.'}</p>
                 {module.lessons.length > 0 && (
-                  <Box sx={{ mt: isMobile ? 1 : 2 }}>
-                    <Typography 
-                      variant={isMobile ? 'caption' : 'subtitle1'} 
-                      sx={{ mb: isMobile ? 0.5 : 1 }}
-                    >
-                      Lessons:
-                    </Typography>
-                    <List dense>
-                      {module.lessons.map(lesson => (
-                        <ListItem key={lesson.id}>
-                          <ListItemIcon>
-                            {getLessonIcon(lesson.lesson_type)}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={lesson.title}
-                            primaryTypographyProps={{ variant: isMobile ? 'body2' : 'body1' }}
-                          />
-                        </ListItem>
+                  <div className="lessons-preview">
+                    <span>Lessons:</span>
+                    <ul>
+                      {module.lessons.map((lesson) => (
+                        <li key={lesson.id}>
+                          <span className="lesson-icon">{getLessonIcon(lesson.lesson_type)}</span>
+                          <span>{lesson.title}</span>
+                        </li>
                       ))}
-                    </List>
-                  </Box>
+                    </ul>
+                  </div>
                 )}
-              </Box>
+              </div>
             ) : (
               <>
-                <TextField
-                  fullWidth
-                  label="Module Title"
+                <label className="label">Module Title</label>
+                <input
+                  className="input"
                   value={module.title}
                   onChange={(e) => handleModuleChange('title', e.target.value)}
                   onBlur={(e) => handleModuleSave('title', e.target.value)}
-                  sx={{ mb: isMobile ? 1 : 2 }}
-                  size="small"
-                  error={!!errors.title}
-                  helperText={errors.title}
+                  placeholder="Enter module title"
+                />
+                {errors.title && <span className="error-text">{errors.title}</span>}
+
+                <label className="label">Description</label>
+                <textarea
+                  className="textarea"
+                  value={module.description || ''}
+                  onChange={(e) => handleModuleChange('description', e.target.value)}
+                  onBlur={(e) => handleModuleSave('description', e.target.value)}
+                  placeholder="Enter module description"
+                  rows={4}
                 />
 
-                <Box sx={{ mb: isMobile ? 1 : 2 }}>
-                  <Typography 
-                    variant={isMobile ? 'caption' : 'subtitle2'} 
-                    sx={{ mb: isMobile ? 0.5 : 1 }}
-                  >
-                    Description
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={isMobile ? 3 : 4}
-                    value={module.description || ''}
-                    onChange={(e) => handleModuleChange('description', e.target.value)}
-                    onBlur={(e) => handleModuleSave('description', e.target.value)}
-                    placeholder="Enter module description"
-                    size="small"
+                <label className="switch-label">
+                  <input
+                    type="checkbox"
+                    checked={module.is_published}
+                    onChange={(e) => {
+                      handleModuleChange('is_published', e.target.checked);
+                      handleModuleSave('is_published', e.target.checked);
+                    }}
+                    className="switch"
                   />
-                </Box>
+                  Published
+                </label>
 
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={module.is_published}
-                      onChange={(e) => {
-                        handleModuleChange('is_published', e.target.checked);
-                        handleModuleSave('is_published', e.target.checked);
-                      }}
-                      color="primary"
-                      size="small"
-                    />
-                  }
-                  label="Published"
-                  sx={{ mb: isMobile ? 1 : 2 }}
-                />
-
-                <Divider sx={{ my: isMobile ? 1 : 2 }} />
-
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    flexDirection: isMobile ? 'column' : 'row',
-                    justifyContent: 'space-between', 
-                    alignItems: isMobile ? 'stretch' : 'center', 
-                    mb: isMobile ? 1 : 2,
-                    gap: isMobile ? 1 : 0
-                  }}
-                >
-                  <Typography 
-                    variant={isMobile ? 'subtitle2' : 'subtitle1'} 
-                    sx={{ fontWeight: 600 }}
-                  >
-                    Lessons
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddCircle />}
+                <div className="lessons-header">
+                  <h4>Lessons</h4>
+                  <button
+                    className="action-btn"
                     onClick={() => {
                       setEditingLesson(null);
                       setNewLesson({
@@ -486,208 +385,54 @@ const ModuleForm = ({
                       });
                       setLessonDialogOpen(true);
                     }}
-                    size="small"
-                    sx={{ width: isMobile ? '100%' : 'auto' }}
                   >
-                    Add Lesson
-                  </Button>
-                </Box>
+                    <AddCircle /> Add Lesson
+                  </button>
+                </div>
 
                 {module.lessons.length === 0 && (
-                  <Typography 
-                    color="text.secondary" 
-                    sx={{ mb: isMobile ? 1 : 2, textAlign: 'center' }}
-                    variant={isMobile ? 'caption' : 'body2'}
-                  >
-                    No lessons added to this module yet
-                  </Typography>
+                  <div className="empty-state">No lessons added to this module yet</div>
                 )}
 
-                <List dense>
+                <ul className="lessons-list">
                   {module.lessons.map((lesson) => (
-                    <ListItem 
-                      key={lesson.id} 
-                      divider
-                      sx={{ 
-                        alignItems: 'flex-start',
-                        paddingRight: isMobile ? 6 : 8 // Extra padding for actions
-                      }}
-                    >
-                      <ListItemIcon>
-                        {getLessonIcon(lesson.lesson_type)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={lesson.title}
-                        secondary={
-                          <>
-                            {lesson.lesson_type === 'link' ? lesson.content_url : (lesson.content_file?.name || lesson.content_file || 'No file selected')}
-                            {lesson.duration && ` • Duration: ${lesson.duration}`}
-                          </>
-                        }
-                        primaryTypographyProps={{ variant: isMobile ? 'body2' : 'body1' }}
-                        secondaryTypographyProps={{ 
-                          variant: isMobile ? 'caption' : 'body2',
-                          sx: { 
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            whiteSpace: 'nowrap'
-                          }
-                        }}
-                        sx={{ maxWidth: isMobile ? '60%' : '70%' }} // Limit text width
-                      />
-                      <ListItemSecondaryAction sx={{ right: isMobile ? 8 : 16 }}>
-                        <IconButton
+                    <li key={lesson.id} className="lesson-item">
+                      <span className="lesson-icon">{getLessonIcon(lesson.lesson_type)}</span>
+                      <div className="lesson-content">
+                        <span className="lesson-title">{lesson.title}</span>
+                        <span className="lesson-details">
+                          {lesson.lesson_type === 'link' ? lesson.content_url : (lesson.content_file?.name || lesson.content_file || 'No file selected')}
+                          {lesson.duration && ` • Duration: ${lesson.duration}`}
+                        </span>
+                      </div>
+                      <div className="lesson-actions">
+                        <button
+                          className="action-btn small"
                           onClick={() => editLesson(lesson)}
-                          size="small"
                         >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
+                          <Edit />
+                        </button>
+                        <button
+                          className="action-btn small danger"
                           onClick={() => deleteLesson(lesson.id)}
-                          size="small"
                         >
-                          <Delete color="error" fontSize="small" />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
+                          <Delete />
+                        </button>
+                      </div>
+                    </li>
                   ))}
-                </List>
+                </ul>
               </>
             )}
-          </Box>
-        </AccordionDetails>
-      </Accordion>
+          </div>
+        )}
+      </div>
 
-      <Dialog
-        open={lessonDialogOpen}
-        onClose={() => {
-          setLessonDialogOpen(false);
-          setEditingLesson(null);
-          setNewLesson({
-            title: '',
-            lesson_type: 'video',
-            content_url: '',
-            content_file: null,
-            duration: ''
-          });
-          setErrors({});
-        }}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobile}
-        PaperProps={{
-          sx: { padding: isMobile ? 1 : 2 }
-        }}
-      >
-        <DialogTitle sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}>
-          {editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Lesson Title"
-            name="title"
-            value={newLesson.title}
-            onChange={handleLessonChange}
-            sx={{ mb: isMobile ? 1 : 2, mt: isMobile ? 0.5 : 1 }}
-            size="small"
-            error={!!errors.title}
-            helperText={errors.title}
-          />
-
-          <FormControl fullWidth sx={{ mb: isMobile ? 1 : 2 }} size="small">
-            <InputLabel>Lesson Type</InputLabel>
-            <Select
-              name="lesson_type"
-              value={newLesson.lesson_type}
-              onChange={handleLessonChange}
-              label="Lesson Type"
-            >
-              {lessonTypes.map(type => (
-                <MenuItem key={type.value} value={type.value}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {type.icon}
-                    {type.label}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {newLesson.lesson_type === 'link' && (
-            <TextField
-              fullWidth
-              label="Content URL"
-              name="content_url"
-              value={newLesson.content_url}
-              onChange={handleLessonChange}
-              sx={{ mb: isMobile ? 1 : 2 }}
-              size="small"
-              error={!!errors.content_url}
-              helperText={errors.content_url}
-            />
-          )}
-
-          {(newLesson.lesson_type === 'video' || newLesson.lesson_type === 'file') && (
-            <Box sx={{ mb: isMobile ? 1 : 2 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                component="label"
-                startIcon={<CloudUpload />}
-                size="small"
-              >
-                Upload {newLesson.lesson_type === 'video' ? 'Video' : 'File'}
-                <input
-                  type="file"
-                  hidden
-                  onChange={handleLessonFileChange}
-                  accept={newLesson.lesson_type === 'video' ? 'video/*' : '*'}
-                />
-              </Button>
-              {newLesson.content_file && (
-                <Typography 
-                  variant={isMobile ? 'caption' : 'body2'} 
-                  sx={{ mt: isMobile ? 0.5 : 1 }}
-                >
-                  Selected: {newLesson.content_file.name}
-                </Typography>
-              )}
-              {errors.content_file && (
-                <Typography 
-                  variant="caption" 
-                  color="error" 
-                  sx={{ mt: isMobile ? 0.5 : 1 }}
-                >
-                  {errors.content_file}
-                </Typography>
-              )}
-            </Box>
-          )}
-
-          <TextField
-            fullWidth
-            label="Duration (e.g., 15 min)"
-            name="duration"
-            value={newLesson.duration}
-            onChange={handleLessonChange}
-            sx={{ mb: isMobile ? 1 : 2 }}
-            size="small"
-          />
-
-          {errors.submit && (
-            <Typography 
-              variant="caption" 
-              color="error" 
-              sx={{ mb: isMobile ? 1 : 2, display: 'block' }}
-            >
-              {errors.submit}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 1 : 0 }}>
-          <Button
+      <div className={`LessonDialog ${lessonDialogOpen ? 'open' : ''}`}>
+        <div className="LessonDialog-Content">
+          <h3>{editingLesson ? 'Edit Lesson' : 'Add New Lesson'}</h3>
+          <button
+            className="close-btn"
             onClick={() => {
               setLessonDialogOpen(false);
               setEditingLesson(null);
@@ -700,22 +445,111 @@ const ModuleForm = ({
               });
               setErrors({});
             }}
-            size="small"
-            sx={{ width: isMobile ? '100%' : 'auto' }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={editingLesson ? updateLesson : addLesson}
-            variant="contained"
-            disabled={!newLesson.title.trim() || loading}
-            size="small"
-            sx={{ width: isMobile ? '100%' : 'auto' }}
-          >
-            {loading ? <CircularProgress size={20} /> : (editingLesson ? 'Update' : 'Add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <CloseIcon />
+          </button>
+          <div className="form-group">
+            <label className="label">Lesson Title</label>
+            <input
+              className="input"
+              name="title"
+              value={newLesson.title}
+              onChange={handleLessonChange}
+              placeholder="Enter lesson title"
+            />
+            {errors.title && <span className="error-text">{errors.title}</span>}
+          </div>
+
+          <div className="form-group">
+            <label className="label">Lesson Type</label>
+            <select
+              className="select"
+              name="lesson_type"
+              value={newLesson.lesson_type}
+              onChange={handleLessonChange}
+            >
+              {lessonTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {newLesson.lesson_type === 'link' && (
+            <div className="form-group">
+              <label className="label">Content URL</label>
+              <input
+                className="input"
+                name="content_url"
+                value={newLesson.content_url}
+                onChange={handleLessonChange}
+                placeholder="Enter content URL"
+              />
+              {errors.content_url && <span className="error-text">{errors.content_url}</span>}
+            </div>
+          )}
+
+          {(newLesson.lesson_type === 'video' || newLesson.lesson_type === 'file') && (
+            <div className="form-group">
+              <label className="label">Upload {newLesson.lesson_type === 'video' ? 'Video' : 'File'}</label>
+              <button className="action-btn upload" component="label">
+                <CloudUpload /> Upload {newLesson.lesson_type === 'video' ? 'Video' : 'File'}
+                <input
+                  type="file"
+                  hidden
+                  onChange={handleLessonFileChange}
+                  accept={newLesson.lesson_type === 'video' ? 'video/*' : '*'}
+                />
+              </button>
+              {newLesson.content_file && (
+                <span className="file-info">Selected: {newLesson.content_file.name}</span>
+              )}
+              {errors.content_file && <span className="error-text">{errors.content_file}</span>}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="label">Duration (e.g., 15 min)</label>
+            <input
+              className="input"
+              name="duration"
+              value={newLesson.duration}
+              onChange={handleLessonChange}
+              placeholder="Enter duration"
+            />
+          </div>
+
+          {errors.submit && <span className="error-text">{errors.submit}</span>}
+
+          <div className="dialog-actions">
+            <button
+              className="action-btn"
+              onClick={() => {
+                setLessonDialogOpen(false);
+                setEditingLesson(null);
+                setNewLesson({
+                  title: '',
+                  lesson_type: 'video',
+                  content_url: '',
+                  content_file: null,
+                  duration: ''
+                });
+                setErrors({});
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={editingLesson ? updateLesson : addLesson}
+              disabled={!newLesson.title.trim() || loading}
+            >
+              {loading ? <div className="loading-spinner" /> : (editingLesson ? 'Update' : 'Add')}
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   );
 };
