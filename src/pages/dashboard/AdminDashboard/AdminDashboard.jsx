@@ -56,7 +56,7 @@ const RoleChip = ({ role }) => {
     owner: { color: 'info', label: 'Owner' }
   };
 
-  alert("Already Here")
+
 
   return (
     <span className={`ad-chip ad-chip-${roleMap[role]?.color || 'default'}`}>

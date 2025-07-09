@@ -1,20 +1,15 @@
 import { coursesAPI } from '../../../../config';
 import React, { useState, useEffect } from 'react';
+import './LearningPaths.css';
+
 import {
-  Box, Typography, Button, Paper, List, ListItem,
-  ListItemText, ListItemSecondaryAction, IconButton,
-  TextField, Chip, useTheme, Grid, useMediaQuery,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Alert, Checkbox
-} from '@mui/material';
-import {
-  Add, Delete, DragHandle, School, Edit
+  Add, Delete, DragHandle, School, Edit, CheckCircle
 } from '@mui/icons-material';
+
+
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
-const LearningPaths = ({ courseId, isMobile }) => {
-  const theme = useTheme();
-  const isMobileView = useMediaQuery(theme.breakpoints.down('sm'));
+const LearningPaths = ({ courseId }) => {
   const [paths, setPaths] = useState([]);
   const [courses, setCourses] = useState([]);
   const [newPath, setNewPath] = useState({ title: '', description: '', courses: [] });
@@ -45,45 +40,6 @@ const LearningPaths = ({ courseId, isMobile }) => {
       });
   }, []);
 
-  // const handleAddPath = async () => {
-  //   if (!newPath.title.trim()) {
-  //     setError('Title is required');
-  //     return;
-  //   }
-    
-  //   if (newPath.courses.length === 0) {
-  //     setError('At least one course is required');
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   try {
-  //     const pathData = {
-  //       title: newPath.title,
-  //       description: newPath.description,
-  //       course_ids: newPath.courses.map(c => typeof c === 'object' ? c.id : c)
-  //     };
-      
-  //     const response = await coursesAPI.createLearningPath(pathData);
-  //     setPaths([...paths, response.data]);
-  //     setNewPath({ title: '', description: '', courses: [] });
-  //     setSelectedCourses([]);
-  //     setError('');
-  //   } catch (err) {
-  //     const errorData = err.response?.data;
-  //     if (errorData) {
-  //       const errorMessages = [];
-  //       if (errorData.title) errorMessages.push(errorData.title.join(' '));
-  //       if (errorData.course_ids) errorMessages.push(errorData.course_ids.join(' '));
-  //       setError(errorMessages.join(' ') || 'Failed to create learning path');
-  //     } else {
-  //       setError(err.message || 'Failed to create learning path');
-  //     }
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleAddPath = async () => {
     if (!newPath.title.trim()) {
       setError("Title is required");
@@ -102,7 +58,6 @@ const LearningPaths = ({ courseId, isMobile }) => {
         description: newPath.description,
         course_ids: newPath.courses.map((c) => c.id),
       };
-      console.log("Sending pathData:", pathData);
       const response = await coursesAPI.createLearningPath(pathData);
       setPaths([...paths, response.data]);
       setNewPath({ title: "", description: "", courses: [] });
@@ -123,7 +78,7 @@ const LearningPaths = ({ courseId, isMobile }) => {
       setLoading(false);
     }
   };
-  
+
   const handleDeletePath = async (id) => {
     setLoading(true);
     try {
@@ -200,360 +155,256 @@ const LearningPaths = ({ courseId, isMobile }) => {
   };
 
   return (
-    <Box sx={{ 
-      p: isMobileView ? 2 : 3,
-      maxWidth: '100%',
-      overflowX: 'hidden'
-    }}>
+    <div className="LearningPaths">
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
+        <div className="error-notification">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="close-btn">
+            <CheckCircle className="icon" />
+          </button>
+        </div>
       )}
 
-      <Typography variant={isMobileView ? "h5" : "h4"} sx={{ 
-        mb: 3, 
-        fontWeight: 600,
-        wordBreak: 'break-word'
-      }}>
-        Learning Paths
-      </Typography>
-      
-      <Paper sx={{ 
-        p: isMobileView ? 2 : 3, 
-        mb: 3,
-        overflow: 'hidden'
-      }}>
-        <Typography variant="h6" sx={{ 
-          mb: 2, 
-          fontWeight: 600,
-          fontSize: isMobileView ? '1.1rem' : '1.25rem'
-        }}>
-          {editingPath ? 'Edit Learning Path' : 'Create New Learning Path'}
-        </Typography>
-        
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Path Title"
+      <div className="LearningPaths-Top">
+        <div className="LearningPaths-Top-Grid">
+          <div className="LearningPaths-Top-1">
+            <h2>
+              <School className="icon" /> Learning Paths
+            </h2>
+          </div>
+          <div className="LearningPaths-Top-2">
+            <span>Course ID: {courseId}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="LearningPaths-Create">
+        <h3>{editingPath ? 'Edit Learning Path' : 'Create New Learning Path'}</h3>
+        <div className="LearningPaths-Form">
+          <div className="form-group">
+            <label className="label">Path Title</label>
+            <input
+              type="text"
+              className="input"
               value={newPath.title}
               onChange={(e) => setNewPath({...newPath, title: e.target.value})}
-              sx={{ mb: 2 }}
-              size={isMobileView ? "small" : "medium"}
+              placeholder="Enter path title"
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Description"
+          </div>
+          <div className="form-group">
+            <label className="label">Description</label>
+            <input
+              type="text"
+              className="input"
               value={newPath.description}
               onChange={(e) => setNewPath({...newPath, description: e.target.value})}
-              sx={{ mb: 2 }}
-              size={isMobileView ? "small" : "medium"}
+              placeholder="Enter description"
             />
-          </Grid>
-        </Grid>
-        
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Selected Courses: {newPath.courses.length}
-          </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<Add />}
-            onClick={() => setCourseDialogOpen(true)}
-            size={isMobileView ? "small" : "medium"}
-          >
-            Select Courses
-          </Button>
-        </Box>
-        
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end',
-          gap: 1,
-          flexWrap: 'wrap'
-        }}>
-          {editingPath ? (
-            <>
-              <Button 
-                variant="outlined" 
-                onClick={() => {
-                  setEditingPath(null);
-                  setNewPath({ title: '', description: '', courses: [] });
-                  setSelectedCourses([]);
-                }}
-                size={isMobileView ? "small" : "medium"}
-                sx={{ minWidth: isMobileView ? 'auto' : 100 }}
+          </div>
+          <div className="form-group">
+            <label className="label">Selected Courses: {newPath.courses.length}</label>
+            <button
+              className="action-btn"
+              onClick={() => setCourseDialogOpen(true)}
+            >
+              <Add className="icon" /> Select Courses
+            </button>
+          </div>
+          <div className="action-buttons">
+            {editingPath ? (
+              <>
+                <button
+                  className="action-btn"
+                  onClick={() => {
+                    setEditingPath(null);
+                    setNewPath({ title: '', description: '', courses: [] });
+                    setSelectedCourses([]);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="action-btn primary"
+                  onClick={handleUpdatePath}
+                  disabled={loading || !newPath.title.trim()}
+                >
+                  {loading ? <div className="spinner"></div> : 'Update'}
+                </button>
+              </>
+            ) : (
+              <button
+                className="action-btn primary"
+                onClick={handleAddPath}
+                disabled={loading || !newPath.title.trim()}
+              >
+                <Add className="icon" /> {loading ? <div className="spinner"></div> : 'Add Path'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="LearningPaths-List">
+        <h3>Existing Learning Paths</h3>
+        {loading ? (
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+        ) : (paths || []).length === 0 ? (
+          <div className="empty-state">
+            <School className="empty-icon" />
+            <span>No learning paths created yet</span>
+            <p>Create learning paths to sequence courses for different learner journeys</p>
+          </div>
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="learningPaths">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="path-list"
+                >
+                  {paths.map((path, index) => (
+                    <Draggable key={path.id} draggableId={path.id} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className="path-item"
+                        >
+                          <div className="path-header">
+                            <div className="drag-handle" {...provided.dragHandleProps}>
+                              <DragHandle className="icon" />
+                            </div>
+                            <div className="path-info">
+                              <h4>{path.title}</h4>
+                              {path.description && <p>{path.description}</p>}
+                            </div>
+                            <div className="path-actions">
+                              <button
+                                className="icon-btn"
+                                onClick={() => handleEditPath(path)}
+                              >
+                                <Edit className="icon" />
+                              </button>
+                              <button
+                                className="icon-btn delete"
+                                onClick={() => handleDeletePath(path.id)}
+                              >
+                                <Delete className="icon" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="path-courses">
+                            <span className="label">Courses in this path:</span>
+                            {path.courses.length > 0 ? (
+                              <div className="course-chips">
+                                {path.courses.map(course => (
+                                  <div key={course.id} className="chip">
+                                    <span>{course.title}</span>
+                                    <button
+                                      className="chip-delete"
+                                      onClick={() => {
+                                        setNewPath(prev => ({
+                                          ...prev,
+                                          courses: prev.courses.filter(c => c.id !== course.id)
+                                        }));
+                                        setSelectedCourses(prev => prev.filter(id => id !== course.id));
+                                      }}
+                                    >
+                                      <Delete className="icon" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="no-courses">No courses added to this path yet</p>
+                            )}
+                            <button
+                              className="action-btn"
+                              onClick={() => handleEditPath(path)}
+                            >
+                              <Add className="icon" /> Add Courses
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
+      </div>
+
+      {courseDialogOpen && (
+        <div className="CourseDialog">
+          <div className="CourseDialog-Body" onClick={() => setCourseDialogOpen(false)}></div>
+          <div className="CourseDialog-Main">
+            <button
+              className="CourseDialog-Close"
+              onClick={() => setCourseDialogOpen(false)}
+            >
+              <CheckCircle className="icon" />
+            </button>
+            <div className="CourseDialog-Header">
+              <h3>Select Courses</h3>
+            </div>
+            <div className="CourseDialog-Content">
+              {loading ? (
+                <div className="loading">
+                  <div className="spinner"></div>
+                </div>
+              ) : (
+                <ul className="course-list">
+                  {Array.isArray(courses) && courses.length > 0 ? (
+                    courses.map(course => (
+                      <li
+                        key={course.id}
+                        className="course-item"
+                        onClick={() => toggleCourseSelection(course.id)}
+                      >
+                        <div className="course-info">
+                          <span>{course.title}</span>
+                          <p>{course.description}</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={selectedCourses.includes(course.id)}
+                          onChange={() => toggleCourseSelection(course.id)}
+                          className="checkbox"
+                        />
+                      </li>
+                    ))
+                  ) : (
+                    <li className="empty-state">
+                      <span>No courses available</span>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+            <div className="CourseDialog-Actions">
+              <button
+                className="action-btn"
+                onClick={() => setCourseDialogOpen(false)}
               >
                 Cancel
-              </Button>
-              <Button 
-                variant="contained" 
-                onClick={handleUpdatePath}
-                disabled={loading || !newPath.title.trim()}
-                size={isMobileView ? "small" : "medium"}
-                sx={{ minWidth: isMobileView ? 'auto' : 120 }}
+              </button>
+              <button
+                className="action-btn primary"
+                onClick={saveSelectedCourses}
               >
-                {loading ? <CircularProgress size={24} /> : 'Update'}
-              </Button>
-            </>
-          ) : (
-            <Button 
-              variant="contained" 
-              onClick={handleAddPath}
-              disabled={loading || !newPath.title.trim()}
-              startIcon={<Add />}
-              size={isMobileView ? "small" : "medium"}
-              fullWidth={isMobileView}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Add Path'}
-            </Button>
-          )}
-        </Box>
-      </Paper>
-      
-      <Typography variant="h6" sx={{ 
-        mb: 2, 
-        fontWeight: 600,
-        fontSize: isMobileView ? '1.1rem' : '1.25rem'
-      }}>
-        Existing Learning Paths
-      </Typography>
-      
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (paths || []).length === 0 ? (
-        <Paper sx={{ 
-          p: 3, 
-          textAlign: 'center',
-          mb: 2
-        }}>
-          <School sx={{ 
-            fontSize: 60, 
-            color: 'text.disabled', 
-            mb: 2 
-          }} />
-          <Typography variant="h6" color="text.secondary">
-            No learning paths created yet
-          </Typography>
-          <Typography color="text.secondary">
-            Create learning paths to sequence courses for different learner journeys
-          </Typography>
-        </Paper>
-      ) : (
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="learningPaths">
-            {(provided) => (
-              <List 
-                {...provided.droppableProps} 
-                ref={provided.innerRef} 
-                sx={{ 
-                  p: 0,
-                  '& .MuiListItem-root': {
-                    p: 0
-                  }
-                }}
-              >
-                {paths.map((path, index) => (
-                  <Draggable key={path.id} draggableId={path.id} index={index}>
-                    {(provided) => (
-                      <Paper 
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        sx={{ 
-                          mb: 2,
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Box sx={{ p: isMobileView ? 1.5 : 2 }}>
-                          <Box sx={{ 
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 1,
-                            mb: 1
-                          }}>
-                            <Box 
-                              {...provided.dragHandleProps} 
-                              sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                height: '100%',
-                                cursor: 'grab',
-                                pt: isMobileView ? 0.5 : 0
-                              }}
-                            >
-                              <DragHandle fontSize={isMobileView ? "small" : "medium"} />
-                            </Box>
-                            
-                            <Box sx={{ 
-                              flex: 1,
-                              minWidth: 0,
-                              mr: 1
-                            }}>
-                              <Typography 
-                                variant="subtitle1" 
-                                sx={{ 
-                                  fontWeight: 500,
-                                  wordBreak: 'break-word'
-                                }}
-                              >
-                                {path.title}
-                              </Typography>
-                              {path.description && (
-                                <Typography 
-                                  variant="body2" 
-                                  color="text.secondary"
-                                  sx={{
-                                    wordBreak: 'break-word'
-                                  }}
-                                >
-                                  {path.description}
-                                </Typography>
-                              )}
-                            </Box>
-                            
-                            <Box sx={{ 
-                              display: 'flex',
-                              flexShrink: 0
-                            }}>
-                              <IconButton 
-                                onClick={() => handleEditPath(path)} 
-                                size="small"
-                                sx={{ p: isMobileView ? 0.5 : 1 }}
-                              >
-                                <Edit fontSize={isMobileView ? "small" : "medium"} />
-                              </IconButton>
-                              <IconButton 
-                                onClick={() => handleDeletePath(path.id)} 
-                                size="small"
-                                sx={{ p: isMobileView ? 0.5 : 1 }}
-                              >
-                                <Delete fontSize={isMobileView ? "small" : "medium"} color="error" />
-                              </IconButton>
-                            </Box>
-                          </Box>
-                          
-                          <Box sx={{ 
-                            pl: isMobileView ? 3 : 4,
-                            pt: 1
-                          }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                              Courses in this path:
-                            </Typography>
-                            
-                            {path.courses.length > 0 ? (
-                              <Box sx={{ 
-                                display: 'flex', 
-                                flexWrap: 'wrap', 
-                                gap: 1,
-                                mb: 1
-                              }}>
-                                {path.courses.map(course => (
-                                  <Chip 
-                                    key={course.id} 
-                                    label={course.title} 
-                                    onDelete={() => {
-                                      setNewPath(prev => ({
-                                        ...prev,
-                                        courses: prev.courses.filter(c => c.id !== course.id)
-                                      }));
-                                      setSelectedCourses(prev => prev.filter(id => id !== course.id));
-                                    }}
-                                    size={isMobileView ? "small" : "medium"}
-                                  />
-                                ))}
-                              </Box>
-                            ) : (
-                              <Typography 
-                                variant="body2" 
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
-                                No courses added to this path yet
-                              </Typography>
-                            )}
-                            
-                            <Button 
-                              size={isMobileView ? "small" : "medium"}
-                              startIcon={<Add />}
-                              onClick={() => setCourseDialogOpen(true)}
-                            >
-                              Add Courses
-                            </Button>
-                          </Box>
-                        </Box>
-                      </Paper>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </List>
-            )}
-          </Droppable>
-        </DragDropContext>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-
-      <Dialog 
-        open={courseDialogOpen} 
-        onClose={() => setCourseDialogOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobileView}
-      >
-        <DialogTitle>Select Courses</DialogTitle>
-        <DialogContent>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <List sx={{ maxHeight: isMobileView ? '40vh' : 300, overflow: 'auto' }}>
-              {Array.isArray(courses) && courses.length > 0 ? (
-                courses.map(course => (
-                  <ListItem 
-                    key={course.id} 
-                    button 
-                    onClick={() => toggleCourseSelection(course.id)}
-                  >
-                    <ListItemText 
-                      primary={course.title} 
-                      secondary={course.description} 
-                      primaryTypographyProps={{ variant: isMobileView ? 'body2' : 'body1' }}
-                      secondaryTypographyProps={{ variant: isMobileView ? 'caption' : 'body2' }}
-                    />
-                    <Checkbox
-                      edge="end"
-                      checked={selectedCourses.includes(course.id)}
-                      size={isMobileView ? 'small' : 'medium'}
-                    />
-                  </ListItem>
-                ))
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-                  No courses available
-                </Typography>
-              )}
-            </List>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCourseDialogOpen(false)} size={isMobileView ? 'small' : 'medium'}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={saveSelectedCourses}
-            variant="contained"
-            size={isMobileView ? 'small' : 'medium'}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </div>
   );
 };
 

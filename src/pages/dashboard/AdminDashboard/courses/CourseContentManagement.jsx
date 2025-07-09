@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box, Container, Typography, Grid, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TablePagination, Button, IconButton,
-  TextField, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions,
-  Tabs, Tab, Autocomplete, Chip, Snackbar, Alert, useTheme, useMediaQuery,
-  CircularProgress, Divider
-} from '@mui/material';
+import './CourseContentManagement.css';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Assignment as AssignmentIcon,
   Quiz as QuizIcon, Grading as GradingIcon, QuestionAnswer as QuestionIcon, QuestionAnswer as QuestionAnswerIcon,
-  Save as SaveIcon, Close as CloseIcon, Search as SearchIcon, Reorder as ReorderIcon
+  Save as SaveIcon, Close as CloseIcon, Reorder as ReorderIcon
 } from '@mui/icons-material';
+import { CircularProgress } from '@mui/material'; // Import CircularProgress from @mui/material
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL, coursesAPI } from '../../../../config';
+import { coursesAPI } from '../../../../config';
 
 const CourseContentManagement = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const [activeTab, setActiveTab] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [courses, setCourses] = useState([]);
@@ -85,9 +77,7 @@ const CourseContentManagement = () => {
 
     setLoading(true);
     try {
-      const response = await coursesAPI.getModules(selectedCourseId, {
-        page_size: 100,
-      });
+      const response = await coursesAPI.getModules(selectedCourseId, { page_size: 100 });
       setModules(response.data.results || []);
       if (response.data.results?.length > 0) {
         setSelectedModuleId(response.data.results[0].id);
@@ -194,15 +184,12 @@ const CourseContentManagement = () => {
         page: faqPagination.currentPage,
         page_size: faqPagination.rowsPerPage
       });
-      //console.log('Fetched FAQs:', response.data);
-      const results = response.data.results || [];
-      setFaqs(results);
+      setFaqs(response.data.results || []);
       setFaqPagination(prev => ({
         ...prev,
         count: response.data.count || 0
       }));
     } catch (err) {
-      console.error('Failed to fetch FAQs:', err);
       setFaqError('Failed to fetch FAQs');
       setFaqs([]);
       setSnackbar({ open: true, message: 'Failed to fetch FAQs', severity: 'error' });
@@ -376,313 +363,400 @@ const CourseContentManagement = () => {
 
   // Render tab content
   const renderQuestionBanks = () => (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Question Banks</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setQuestionBankDialog({ open: true, mode: 'create', data: {}, error: '' })}>
-          Add Question Bank
-        </Button>
-      </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Title</TableCell>
-              <TableCell>Course</TableCell>
-              <TableCell>Questions</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3><QuestionIcon className="icon" /> Question Banks</h3>
+        <button
+          className="action-btn primary"
+          onClick={() => setQuestionBankDialog({ open: true, mode: 'create', data: {}, error: '' })}
+        >
+          <AddIcon className="icon" /> Add Question Bank
+        </button>
+      </div>
+      <div className="table-container">
+        <table className="content-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Questions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state"><CircularProgress /></td></tr>
             ) : questionBankError ? (
-              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{questionBankError}</Typography></TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state error">{questionBankError}</td></tr>
             ) : questionBanks.length === 0 ? (
-              <TableRow><TableCell colSpan={4} align="center">No question banks found</TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state">No question banks found</td></tr>
             ) : (
               questionBanks.map(bank => (
-                <TableRow key={bank.id}>
-                  <TableCell>{bank.title}</TableCell>
-                  <TableCell>{bank.course?.title || 'N/A'}</TableCell>
-                  <TableCell>{bank.questions?.length || 0}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setQuestionBankDialog({ open: true, mode: 'edit', data: bank, error: '' })}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleQuestionBankDelete(bank.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <tr key={bank.id}>
+                  <td>{bank.title}</td>
+                  <td>{bank.course?.title || 'N/A'}</td>
+                  <td>{bank.questions?.length || 0}</td>
+                  <td>
+                    <button
+                      className="action-btn"
+                      onClick={() => setQuestionBankDialog({ open: true, mode: 'edit', data: bank, error: '' })}
+                    >
+                      <EditIcon className="icon" />
+                    </button>
+                    <button
+                      className="action-btn danger"
+                      onClick={() => handleQuestionBankDelete(bank.id)}
+                    >
+                      <DeleteIcon className="icon" />
+                    </button>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={questionBankPagination.count}
-          rowsPerPage={questionBankPagination.rowsPerPage}
-          page={questionBankPagination.currentPage - 1}
-          onPageChange={handlePageChange(questionBankPagination, setQuestionBankPagination)}
-          onRowsPerPageChange={handleRowsPerPageChange(questionBankPagination, setQuestionBankPagination)}
-        />
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+        <div className="pagination">
+          <div className="pagination-options">
+            <span>Rows per page:</span>
+            <select
+              value={questionBankPagination.rowsPerPage}
+              onChange={handleRowsPerPageChange(questionBankPagination, setQuestionBankPagination)}
+            >
+              {[5, 10, 25].map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="pagination-controls">
+            <button
+              disabled={questionBankPagination.currentPage === 1}
+              onClick={() => setQuestionBankPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+            >
+              Previous
+            </button>
+            <span>{questionBankPagination.currentPage} of {Math.ceil(questionBankPagination.count / questionBankPagination.rowsPerPage)}</span>
+            <button
+              disabled={questionBankPagination.currentPage === Math.ceil(questionBankPagination.count / questionBankPagination.rowsPerPage)}
+              onClick={() => setQuestionBankPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   const renderAssessments = () => (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Quizzes & Assignments</Typography>
-        <Box>
-          <Autocomplete
-            options={courses}
-            getOptionLabel={(option) => option.title}
-            value={courses.find((c) => c.id === selectedCourseId) || null}
-            onChange={(event, newValue) => {
-              setSelectedCourseId(newValue?.id || null);
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3><QuizIcon className="icon" /> Quizzes & Assignments</h3>
+        <div className="tab-header-controls">
+          <select
+            className="select"
+            value={selectedCourseId || ''}
+            onChange={(e) => {
+              setSelectedCourseId(e.target.value || null);
               setSelectedModuleId(null);
             }}
-            sx={{ width: 300, mr: 2, display: 'inline-flex' }}
-            renderInput={(params) => (
-              <TextField {...params} label="Select Course" variant="outlined" />
-            )}
-          />
-          <Autocomplete
-            options={modules}
-            getOptionLabel={(option) => option.title}
-            value={modules.find((m) => m.id === selectedModuleId) || null}
-            onChange={(event, newValue) => {
-              setSelectedModuleId(newValue?.id || null);
-            }}
-            sx={{ width: 300, mr: 2, display: 'inline-flex' }}
-            renderInput={(params) => (
-              <TextField {...params} label="Select Module" variant="outlined" />
-            )}
-          />
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() =>
-              setAssessmentDialog({ open: true, mode: 'create', data: { course_id: selectedCourseId, module_id: selectedModuleId } })
-            }
+          >
+            <option value="">Select Course</option>
+            {courses.map(course => (
+              <option key={course.id} value={course.id}>{course.title}</option>
+            ))}
+          </select>
+          <select
+            className="select"
+            value={selectedModuleId || ''}
+            onChange={(e) => setSelectedModuleId(e.target.value || null)}
+          >
+            <option value="">Select Module</option>
+            {modules.map(module => (
+              <option key={module.id} value={module.id}>{module.title}</option>
+            ))}
+          </select>
+          <button
+            className="action-btn primary"
+            onClick={() => setAssessmentDialog({ open: true, mode: 'create', data: { course_id: selectedCourseId, module_id: selectedModuleId } })}
             disabled={!selectedCourseId || !selectedModuleId}
           >
-            Add Assessment
-          </Button>
-        </Box>
-      </Box>
+            <AddIcon className="icon" /> Add Assessment
+          </button>
+        </div>
+      </div>
       {!selectedCourseId || !selectedModuleId ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body1" color="textSecondary">
-            Please select a course and module to view assessments
-          </Typography>
-        </Box>
+        <div className="empty-state">Please select a course and module to view assessments</div>
       ) : loading ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <CircularProgress />
-        </Box>
+        <div className="empty-state"><CircularProgress /></div>
       ) : assessmentError ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="error">{assessmentError}</Typography>
-        </Box>
+        <div className="empty-state error">{assessmentError}</div>
       ) : assessments.length === 0 ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography>No assessments found for this module</Typography>
-        </Box>
+        <div className="empty-state">No assessments found for this module</div>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Course</TableCell>
-                <TableCell>Module</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+        <div className="table-container">
+          <table className="content-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Course</th>
+                <th>Module</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {assessments.map((assessment) => (
-                <TableRow key={assessment.id}>
-                  <TableCell>{assessment.title}</TableCell>
-                  <TableCell>
-                    <Chip label={assessment.lesson_type} color={assessment.lesson_type === 'quiz' ? 'primary' : 'secondary'} />
-                  </TableCell>
-                  <TableCell>{assessment.module?.course?.title || 'N/A'}</TableCell>
-                  <TableCell>{assessment.module?.title || 'N/A'}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setAssessmentDialog({ open: true, mode: 'edit', data: assessment })}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleAssessmentDelete(assessment)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <tr key={assessment.id}>
+                  <td>{assessment.title}</td>
+                  <td>
+                    <span className={`status-badge ${assessment.lesson_type}`}>
+                      {assessment.lesson_type}
+                    </span>
+                  </td>
+                  <td>{assessment.module?.course?.title || 'N/A'}</td>
+                  <td>{assessment.module?.title || 'N/A'}</td>
+                  <td>
+                    <button
+                      className="action-btn"
+                      onClick={() => setAssessmentDialog({ open: true, mode: 'edit', data: assessment })}
+                    >
+                      <EditIcon className="icon" />
+                    </button>
+                    <button
+                      className="action-btn danger"
+                      onClick={() => handleAssessmentDelete(assessment)}
+                    >
+                      <DeleteIcon className="icon" />
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={assessmentPagination.count}
-            rowsPerPage={assessmentPagination.rowsPerPage}
-            page={assessmentPagination.currentPage - 1}
-            onPageChange={handlePageChange(assessmentPagination, setAssessmentPagination)}
-            onRowsPerPageChange={handleRowsPerPageChange(assessmentPagination, setAssessmentPagination)}
-          />
-        </TableContainer>
+            </tbody>
+          </table>
+          <div className="pagination">
+            <div className="pagination-options">
+              <span>Rows per page:</span>
+              <select
+                value={assessmentPagination.rowsPerPage}
+                onChange={handleRowsPerPageChange(assessmentPagination, setAssessmentPagination)}
+              >
+                {[5, 10, 25].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="pagination-controls">
+              <button
+                disabled={assessmentPagination.currentPage === 1}
+                onClick={() => setAssessmentPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+              >
+                Previous
+              </button>
+              <span>{assessmentPagination.currentPage} of {Math.ceil(assessmentPagination.count / assessmentPagination.rowsPerPage)}</span>
+              <button
+                disabled={assessmentPagination.currentPage === Math.ceil(assessmentPagination.count / assessmentPagination.rowsPerPage)}
+                onClick={() => setAssessmentPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </Box>
+    </div>
   );
 
   const renderRubrics = () => (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Grading Rubrics</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setRubricDialog({ open: true, mode: 'create', data: {}, error: '' })}>
-          Add Rubric
-        </Button>
-      </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Title</TableCell>
-              <TableCell>Course</TableCell>
-              <TableCell>Total Points</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3><GradingIcon className="icon" /> Grading Rubrics</h3>
+        <button
+          className="action-btn primary"
+          onClick={() => setRubricDialog({ open: true, mode: 'create', data: {}, error: '' })}
+        >
+          <AddIcon className="icon" /> Add Rubric
+        </button>
+      </div>
+      <div className="table-container">
+        <table className="content-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Total Points</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state"><CircularProgress /></td></tr>
             ) : rubricError ? (
-              <TableRow><TableCell colSpan={4} align="center"><Typography color="error">{rubricError}</Typography></TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state error">{rubricError}</td></tr>
             ) : rubrics.length === 0 ? (
-              <TableRow><TableCell colSpan={4} align="center">No rubrics found</TableCell></TableRow>
+              <tr><td colSpan={4} className="empty-state">No rubrics found</td></tr>
             ) : (
               rubrics.map(rubric => (
-                <TableRow key={rubric.id}>
-                  <TableCell>{rubric.title}</TableCell>
-                  <TableCell>{rubric.course?.title || 'N/A'}</TableCell>
-                  <TableCell>{rubric.total_points || 0}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setRubricDialog({ open: true, mode: 'edit', data: rubric, error: '' })}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleRubricDelete(rubric.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <tr key={rubric.id}>
+                  <td>{rubric.title}</td>
+                  <td>{rubric.course?.title || 'N/A'}</td>
+                  <td>{rubric.total_points || 0}</td>
+                  <td>
+                    <button
+                      className="action-btn"
+                      onClick={() => setRubricDialog({ open: true, mode: 'edit', data: rubric, error: '' })}
+                    >
+                      <EditIcon className="icon" />
+                    </button>
+                    <button
+                      className="action-btn danger"
+                      onClick={() => handleRubricDelete(rubric.id)}
+                    >
+                      <DeleteIcon className="icon" />
+                    </button>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={rubricPagination.count}
-          rowsPerPage={rubricPagination.rowsPerPage}
-          page={rubricPagination.currentPage - 1}
-          onPageChange={handlePageChange(rubricPagination, setRubricPagination)}
-          onRowsPerPageChange={handleRowsPerPageChange(rubricPagination, setRubricPagination)}
-        />
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+        <div className="pagination">
+          <div className="pagination-options">
+            <span>Rows per page:</span>
+            <select
+              value={rubricPagination.rowsPerPage}
+              onChange={handleRowsPerPageChange(rubricPagination, setRubricPagination)}
+            >
+              {[5, 10, 25].map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="pagination-controls">
+            <button
+              disabled={rubricPagination.currentPage === 1}
+              onClick={() => setRubricPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+            >
+              Previous
+            </button>
+            <span>{rubricPagination.currentPage} of {Math.ceil(rubricPagination.count / rubricPagination.rowsPerPage)}</span>
+            <button
+              disabled={rubricPagination.currentPage === Math.ceil(rubricPagination.count / rubricPagination.rowsPerPage)}
+              onClick={() => setRubricPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   const renderModeration = () => (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Assessment Moderation</Typography>
-      </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>User</TableCell>
-              <TableCell>Assessment</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Grade</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3><AssignmentIcon className="icon" /> Assessment Moderation</h3>
+      </div>
+      <div className="table-container">
+        <table className="content-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Assessment</th>
+              <th>Status</th>
+              <th>Grade</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} align="center"><CircularProgress /></TableCell></TableRow>
+              <tr><td colSpan={5} className="empty-state"><CircularProgress /></td></tr>
             ) : submissionError ? (
-              <TableRow><TableCell colSpan={5} align="center"><Typography color="error">{submissionError}</Typography></TableCell></TableRow>
+              <tr><td colSpan={5} className="empty-state error">{submissionError}</td></tr>
             ) : submissions.length === 0 ? (
-              <TableRow><TableCell colSpan={5} align="center">No submissions found</TableCell></TableRow>
+              <tr><td colSpan={5} className="empty-state">No submissions found</td></tr>
             ) : (
               submissions.map(submission => (
-                <TableRow key={submission.id}>
-                  <TableCell>{submission.user?.email || 'N/A'}</TableCell>
-                  <TableCell>{submission.lesson?.title || 'N/A'}</TableCell>
-                  <TableCell><Chip label={submission.status} color={submission.status === 'submitted' ? 'warning' : 'success'} /></TableCell>
-                  <TableCell>{submission.grade || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      size="small"
+                <tr key={submission.id}>
+                  <td>{submission.user?.email || 'N/A'}</td>
+                  <td>{submission.lesson?.title || 'N/A'}</td>
+                  <td>
+                    <span className={`status-badge ${submission.status}`}>
+                      {submission.status}
+                    </span>
+                  </td>
+                  <td>{submission.grade || 'N/A'}</td>
+                  <td>
+                    <button
+                      className="action-btn"
                       onClick={() => setModerationDialog({ open: true, data: submission })}
                     >
                       Moderate
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                    </button>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={submissionPagination.count}
-          rowsPerPage={submissionPagination.rowsPerPage}
-          page={submissionPagination.currentPage - 1}
-          onPageChange={handlePageChange(submissionPagination, setSubmissionPagination)}
-          onRowsPerPageChange={handleRowsPerPageChange(submissionPagination, setSubmissionPagination)}
-        />
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+        <div className="pagination">
+          <div className="pagination-options">
+            <span>Rows per page:</span>
+            <select
+              value={submissionPagination.rowsPerPage}
+              onChange={handleRowsPerPageChange(submissionPagination, setSubmissionPagination)}
+            >
+              {[5, 10, 25].map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="pagination-controls">
+            <button
+              disabled={submissionPagination.currentPage === 1}
+              onClick={() => setSubmissionPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+            >
+              Previous
+            </button>
+            <span>{submissionPagination.currentPage} of {Math.ceil(submissionPagination.count / submissionPagination.rowsPerPage)}</span>
+            <button
+              disabled={submissionPagination.currentPage === Math.ceil(submissionPagination.count / submissionPagination.rowsPerPage)}
+              onClick={() => setSubmissionPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   const renderFAQs = () => (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6">Frequently Asked Questions</Typography>
-        <Box>
-          <Autocomplete
-            options={courses}
-            getOptionLabel={(option) => option.title}
-            value={courses.find(c => c.id === selectedCourseId) || null}
-            onChange={(event, newValue) => {
-              setSelectedCourseId(newValue?.id || null);
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3><QuestionAnswerIcon className="icon" /> Frequently Asked Questions</h3>
+        <div className="tab-header-controls">
+          <select
+            className="select"
+            value={selectedCourseId || ''}
+            onChange={(e) => {
+              setSelectedCourseId(e.target.value || null);
               setFaqPagination(prev => ({ ...prev, currentPage: 1 }));
             }}
-            sx={{ width: 300, mr: 2 }}
-            renderInput={(params) => (
-              <TextField {...params} label="Select Course" variant="outlined" />
-            )}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<ReorderIcon />}
+          >
+            <option value="">Select Course</option>
+            {courses.map(course => (
+              <option key={course.id} value={course.id}>{course.title}</option>
+            ))}
+          </select>
+          <button
+            className="action-btn"
             onClick={handleFaqReorder}
-            sx={{ mr: 2 }}
             disabled={!selectedCourseId || faqs.length === 0}
           >
-            Reorder
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
+            <ReorderIcon className="icon" /> Reorder
+          </button>
+          <button
+            className="action-btn primary"
             onClick={() => setFaqDialog({ 
               open: true, 
               mode: 'create', 
@@ -694,87 +768,99 @@ const CourseContentManagement = () => {
             })}
             disabled={!selectedCourseId}
           >
-            Add FAQ
-          </Button>
-        </Box>
-      </Box>
-      
+            <AddIcon className="icon" /> Add FAQ
+          </button>
+        </div>
+      </div>
       {!selectedCourseId ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="body1" color="textSecondary">
-            Please select a course to view its FAQs
-          </Typography>
-        </Box>
+        <div className="empty-state">Please select a course to view its FAQs</div>
       ) : loading ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <CircularProgress />
-        </Box>
+        <div className="empty-state"><CircularProgress /></div>
       ) : faqError ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="error">{faqError}</Typography>
-        </Box>
+        <div className="empty-state error">{faqError}</div>
       ) : faqs.length === 0 ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography>No FAQs found for this course</Typography>
-        </Box>
+        <div className="empty-state">No FAQs found for this course</div>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Question</TableCell>
-                <TableCell>Answer</TableCell>
-                <TableCell>Order</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+        <div className="table-container">
+          <table className="content-table">
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>Order</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {faqs.map(faq => (
-                <TableRow key={faq.id}>
-                  <TableCell>{faq.question}</TableCell>
-                  <TableCell>{faq.answer}</TableCell>
-                  <TableCell>{faq.order}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={faq.is_active ? 'Active' : 'Inactive'}
-                      color={faq.is_active ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setFaqDialog({ open: true, mode: 'edit', data: faq })}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleFaqDelete(faq.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <tr key={faq.id}>
+                  <td>{faq.question}</td>
+                  <td>{faq.answer}</td>
+                  <td>{faq.order}</td>
+                  <td>
+                    <span className={`status-badge ${faq.is_active ? 'active' : 'inactive'}`}>
+                      {faq.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="action-btn"
+                      onClick={() => setFaqDialog({ open: true, mode: 'edit', data: faq })}
+                    >
+                      <EditIcon className="icon" />
+                    </button>
+                    <button
+                      className="action-btn danger"
+                      onClick={() => handleFaqDelete(faq.id)}
+                    >
+                      <DeleteIcon className="icon" />
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={faqPagination.count}
-            rowsPerPage={faqPagination.rowsPerPage}
-            page={faqPagination.currentPage - 1}
-            onPageChange={(e, newPage) => setFaqPagination(prev => ({ ...prev, currentPage: newPage + 1 }))}
-            onRowsPerPageChange={(e) => setFaqPagination(prev => ({ 
-              ...prev, 
-              rowsPerPage: parseInt(e.target.value, 10), 
-              currentPage: 1 
-            }))}
-          />
-        </TableContainer>
+            </tbody>
+          </table>
+          <div className="pagination">
+            <div className="pagination-options">
+              <span>Rows per page:</span>
+              <select
+                value={faqPagination.rowsPerPage}
+                onChange={(e) => setFaqPagination(prev => ({ 
+                  ...prev, 
+                  rowsPerPage: parseInt(e.target.value, 10), 
+                  currentPage: 1 
+                }))}
+              >
+                {[5, 10, 25].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="pagination-controls">
+              <button
+                disabled={faqPagination.currentPage === 1}
+                onClick={() => setFaqPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+              >
+                Previous
+              </button>
+              <span>{faqPagination.currentPage} of {Math.ceil(faqPagination.count / faqPagination.rowsPerPage)}</span>
+              <button
+                disabled={faqPagination.currentPage === Math.ceil(faqPagination.count / faqPagination.rowsPerPage)}
+                onClick={() => setFaqPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </Box>
+    </div>
   );
 
   useEffect(() => {
     fetchCourses();
     fetchModules();
-    // Clear all error states when switching tabs
     setQuestionBankError(null);
     setAssessmentError(null);
     setRubricError(null);
@@ -810,285 +896,362 @@ const CourseContentManagement = () => {
   }, [activeTab, selectedCourseId, selectedModuleId, assessmentPagination.currentPage, assessmentPagination.rowsPerPage]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
-        Course Content Management
-      </Typography>
-
-      <Paper sx={{ mb: 4 }}>
-        <Tabs value={activeTab} onChange={(e, newVal) => setActiveTab(newVal)} variant="scrollable" scrollButtons="auto">
-          <Tab label="Question Banks" icon={<QuestionIcon />} />
-          <Tab label="Quizzes & Assignments" icon={<QuizIcon />} />
-          <Tab label="Grading Rubrics" icon={<GradingIcon />} />
-          <Tab label="Moderation" icon={<AssignmentIcon />} />
-          <Tab label="FAQs" icon={<QuestionAnswerIcon />} />
-        </Tabs>
-        <Divider />
-        <Box sx={{ p: 3 }}>
+    <div className="CourseContentManagement">
+      <div className="CourseContentManagement-Top">
+        <h2>Course Content Management</h2>
+      </div>
+      <div className="CourseContentManagement-Content">
+        <div className="tabs">
+          <div className={`tab ${activeTab === 0 ? 'active' : ''}`} onClick={() => setActiveTab(0)}>
+            <QuestionIcon className="icon" /> Question Banks
+          </div>
+          <div className={`tab ${activeTab === 1 ? 'active' : ''}`} onClick={() => setActiveTab(1)}>
+            <QuizIcon className="icon" /> Quizzes & Assignments
+          </div>
+          <div className={`tab ${activeTab === 2 ? 'active' : ''}`} onClick={() => setActiveTab(2)}>
+            <GradingIcon className="icon" /> Grading Rubrics
+          </div>
+          <div className={`tab ${activeTab === 3 ? 'active' : ''}`} onClick={() => setActiveTab(3)}>
+            <AssignmentIcon className="icon" /> Moderation
+          </div>
+          <div className={`tab ${activeTab === 4 ? 'active' : ''}`} onClick={() => setActiveTab(4)}>
+            <QuestionAnswerIcon className="icon" /> FAQs
+          </div>
+        </div>
+        <div className="tab-content-wrapper">
           {activeTab === 0 && renderQuestionBanks()}
           {activeTab === 1 && renderAssessments()}
           {activeTab === 2 && renderRubrics()}
           {activeTab === 3 && renderModeration()}
           {activeTab === 4 && renderFAQs()}
-        </Box>
-      </Paper>
-
-      {/* Question Bank Dialog */}
-      <Dialog open={questionBankDialog.open} onClose={() => setQuestionBankDialog({ open: false, mode: 'create', data: {}, error: '' })} maxWidth="md" fullWidth>
-        <DialogTitle>{questionBankDialog.mode === 'create' ? 'Create Question Bank' : 'Edit Question Bank'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Title"
-            value={questionBankDialog.data.title || ''}
-            onChange={e => setQuestionBankDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value }, error: '' }))}
-            sx={{ mt: 2 }}
-          />
-          <Autocomplete
-            options={courses}
-            getOptionLabel={option => option.title}
-            value={courses.find(c => c.id === questionBankDialog.data.course_id) || null}
-            onChange={(e, newValue) => setQuestionBankDialog(prev => ({ ...prev, data: { ...prev.data, course_id: newValue?.id }, error: '' }))}
-            renderInput={params => <TextField {...params} label="Course" sx={{ mt: 2 }} />}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Questions (JSON)"
-            value={questionBankDialog.data.questions ? JSON.stringify(questionBankDialog.data.questions, null, 2) : ''}
-            onChange={e => {
-              try {
-                const parsedQuestions = JSON.parse(e.target.value);
-                setQuestionBankDialog(prev => ({
-                  ...prev,
-                  data: { ...prev.data, questions: parsedQuestions },
-                  error: ''
-                }));
-              } catch (err) {
-                setQuestionBankDialog(prev => ({
-                  ...prev,
-                  error: 'Invalid JSON format'
-                }));
-              }
-            }}
-            error={!!questionBankDialog.error}
-            helperText={questionBankDialog.error}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setQuestionBankDialog({ open: false, mode: 'create', data: {}, error: '' })}>Cancel</Button>
-          <Button onClick={handleQuestionBankSave} variant="contained" disabled={!!questionBankDialog.error}>Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Assessment Dialog */}
-      <Dialog open={assessmentDialog.open} onClose={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })} maxWidth="md" fullWidth>
-        <DialogTitle>{assessmentDialog.mode === 'create' ? 'Create Assessment' : 'Edit Assessment'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Title"
-            value={assessmentDialog.data.title || ''}
-            onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value } }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            select
-            fullWidth
-            label="Type"
-            value={assessmentDialog.data.lesson_type || 'quiz'}
-            onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, lesson_type: e.target.value } }))}
-            sx={{ mt: 2 }}
-          >
-            <MenuItem value="quiz">Quiz</MenuItem>
-            <MenuItem value="assignment">Assignment</MenuItem>
-          </TextField>
-          <Autocomplete
-            options={courses}
-            getOptionLabel={option => option.title}
-            value={courses.find(c => c.id === assessmentDialog.data.course_id) || null}
-            onChange={(e, newValue) => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, course_id: newValue?.id } }))}
-            renderInput={params => <TextField {...params} label="Course" sx={{ mt: 2 }} />}
-          />
-          <TextField
-            fullWidth
-            label="Module ID"
-            value={assessmentDialog.data.module_id || ''}
-            onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, module_id: e.target.value } }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Description"
-            value={assessmentDialog.data.description || ''}
-            onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, description: e.target.value } }))}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}>Cancel</Button>
-          <Button onClick={handleAssessmentSave} variant="contained">Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Rubric Dialog */}
-      <Dialog open={rubricDialog.open} onClose={() => setRubricDialog({ open: false, mode: 'create', data: {}, error: '' })} maxWidth="md" fullWidth>
-        <DialogTitle>{rubricDialog.mode === 'create' ? 'Create Rubric' : 'Edit Rubric'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Title"
-            value={rubricDialog.data.title || ''}
-            onChange={e => setRubricDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value }, error: '' }))}
-            sx={{ mt: 2 }}
-          />
-          <Autocomplete
-            options={courses}
-            getOptionLabel={option => option.title}
-            value={courses.find(c => c.id === rubricDialog.data.course_id) || null}
-            onChange={(e, newValue) => setRubricDialog(prev => ({ ...prev, data: { ...prev.data, course_id: newValue?.id }, error: '' }))}
-            renderInput={params => <TextField {...params} label="Course" sx={{ mt: 2 }} />}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Criteria (JSON)"
-            value={rubricDialog.data.criteria ? JSON.stringify(rubricDialog.data.criteria, null, 2) : ''}
-            onChange={e => {
-              try {
-                const parsedCriteria = JSON.parse(e.target.value);
-                setRubricDialog(prev => ({
-                  ...prev,
-                  data: { ...prev.data, criteria: parsedCriteria },
-                  error: ''
-                }));
-              } catch (err) {
-                setRubricDialog(prev => ({
-                  ...prev,
-                  error: 'Invalid JSON format'
-                }));
-              }
-            }}
-            error={!!rubricDialog.error}
-            helperText={rubricDialog.error}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRubricDialog({ open: false, mode: 'create', data: {}, error: '' })}>Cancel</Button>
-          <Button onClick={handleRubricSave} variant="contained" disabled={!!rubricDialog.error}>Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Moderation Dialog */}
-      <Dialog open={moderationDialog.open} onClose={() => setModerationDialog({ open: false, data: {} })} maxWidth="md" fullWidth>
-        <DialogTitle>Moderate Submission</DialogTitle>
-        <DialogContent>
-          <Typography><strong>User:</strong> {moderationDialog.data.user?.email || 'N/A'}</Typography>
-          <Typography><strong>Assessment:</strong> {moderationDialog.data.lesson?.title || 'N/A'}</Typography>
-          <Typography><strong>Status:</strong> {moderationDialog.data.status || 'N/A'}</Typography>
-          <TextField
-            fullWidth
-            label="Grade"
-            type="number"
-            value={moderationDialog.data.grade || ''}
-            onChange={e => setModerationDialog(prev => ({ ...prev, data: { ...prev.data, grade: e.target.value } }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Feedback"
-            value={moderationDialog.data.feedback || ''}
-            onChange={e => setModerationDialog(prev => ({ ...prev, data: { ...prev.data, feedback: e.target.value } }))}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModerationDialog({ open: false, data: {} })}>Cancel</Button>
-          <Button onClick={handleSubmissionSave} variant="contained">Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* FAQ Dialog */}
-      <Dialog open={faqDialog.open} onClose={() => setFaqDialog({ open: false, mode: 'create', data: {} })} maxWidth="md" fullWidth>
-        <DialogTitle>{faqDialog.mode === 'create' ? 'Create FAQ' : 'Edit FAQ'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Question"
-            value={faqDialog.data.question || ''}
-            onChange={e => setFaqDialog(prev => ({
-              ...prev,
-              data: { ...prev.data, question: e.target.value }
-            }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Answer"
-            value={faqDialog.data.answer || ''}
-            onChange={e => setFaqDialog(prev => ({
-              ...prev,
-              data: { ...prev.data, answer: e.target.value }
-            }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            type="number"
-            label="Order"
-            value={faqDialog.data.order || 0}
-            onChange={e => setFaqDialog(prev => ({
-              ...prev,
-              data: { ...prev.data, order: parseInt(e.target.value) || 0 }
-            }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            select
-            fullWidth
-            label="Status"
-            value={faqDialog.data.is_active !== undefined ? faqDialog.data.is_active : true}
-            onChange={e => setFaqDialog(prev => ({
-              ...prev,
-              data: { ...prev.data, is_active: e.target.value === 'true' }
-            }))}
-            sx={{ mt: 2 }}
-          >
-            <MenuItem value={true}>Active</MenuItem>
-            <MenuItem value={false}>Inactive</MenuItem>
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFaqDialog({ open: false, mode: 'create', data: {} })}>
-            Cancel
-          </Button>
-          <Button onClick={handleFaqSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+        </div>
+      </div>
+      <div className={`modal ${questionBankDialog.open ? 'open' : ''}`}>
+        <div className="modal-overlay" onClick={() => setQuestionBankDialog({ open: false, mode: 'create', data: {}, error: '' })}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>{questionBankDialog.mode === 'create' ? 'Create Question Bank' : 'Edit Question Bank'}</h3>
+            <button
+              className="close-btn"
+              onClick={() => setQuestionBankDialog({ open: false, mode: 'create', data: {}, error: '' })}
+            >
+              <CloseIcon className="icon" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <label className="label">Title</label>
+            <input
+              className="input"
+              value={questionBankDialog.data.title || ''}
+              onChange={e => setQuestionBankDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value }, error: '' }))}
+            />
+            <label className="label">Course</label>
+            <select
+              className="select"
+              value={questionBankDialog.data.course_id || ''}
+              onChange={e => setQuestionBankDialog(prev => ({ ...prev, data: { ...prev.data, course_id: e.target.value }, error: '' }))}
+            >
+              <option value="">Select Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+            <label className="label">Questions (JSON)</label>
+            <textarea
+              className="textarea"
+              value={questionBankDialog.data.questions ? JSON.stringify(questionBankDialog.data.questions, null, 2) : ''}
+              onChange={e => {
+                try {
+                  const parsedQuestions = JSON.parse(e.target.value);
+                  setQuestionBankDialog(prev => ({
+                    ...prev,
+                    data: { ...prev.data, questions: parsedQuestions },
+                    error: ''
+                  }));
+                } catch (err) {
+                  setQuestionBankDialog(prev => ({
+                    ...prev,
+                    error: 'Invalid JSON format'
+                  }));
+                }
+              }}
+            />
+            {questionBankDialog.error && <div className="error">{questionBankDialog.error}</div>}
+          </div>
+          <div className="modal-footer">
+            <button
+              className="action-btn"
+              onClick={() => setQuestionBankDialog({ open: false, mode: 'create', data: {}, error: '' })}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleQuestionBankSave}
+              disabled={!!questionBankDialog.error}
+            >
+              <SaveIcon className="icon" /> Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`modal ${assessmentDialog.open ? 'open' : ''}`}>
+        <div className="modal-overlay" onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>{assessmentDialog.mode === 'create' ? 'Create Assessment' : 'Edit Assessment'}</h3>
+            <button
+              className="close-btn"
+              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}
+            >
+              <CloseIcon className="icon" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <label className="label">Title</label>
+            <input
+              className="input"
+              value={assessmentDialog.data.title || ''}
+              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value } }))}
+            />
+            <label className="label">Type</label>
+            <select
+              className="select"
+              value={assessmentDialog.data.lesson_type || 'quiz'}
+              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, lesson_type: e.target.value } }))}
+            >
+              <option value="quiz">Quiz</option>
+              <option value="assignment">Assignment</option>
+            </select>
+            <label className="label">Course</label>
+            <select
+              className="select"
+              value={assessmentDialog.data.course_id || ''}
+              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, course_id: e.target.value } }))}
+            >
+              <option value="">Select Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+            <label className="label">Module ID</label>
+            <input
+              className="input"
+              value={assessmentDialog.data.module_id || ''}
+              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, module_id: e.target.value } }))}
+            />
+            <label className="label">Description</label>
+            <textarea
+              className="textarea"
+              value={assessmentDialog.data.description || ''}
+              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, description: e.target.value } }))}
+            />
+          </div>
+          <div className="modal-footer">
+            <button
+              className="action-btn"
+              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleAssessmentSave}
+            >
+              <SaveIcon className="icon" /> Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`modal ${rubricDialog.open ? 'open' : ''}`}>
+        <div className="modal-overlay" onClick={() => setRubricDialog({ open: false, mode: 'create', data: {}, error: '' })}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>{rubricDialog.mode === 'create' ? 'Create Rubric' : 'Edit Rubric'}</h3>
+            <button
+              className="close-btn"
+              onClick={() => setRubricDialog({ open: false, mode: 'create', data: {}, error: '' })}
+            >
+              <CloseIcon className="icon" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <label className="label">Title</label>
+            <input
+              className="input"
+              value={rubricDialog.data.title || ''}
+              onChange={e => setRubricDialog(prev => ({ ...prev, data: { ...prev.data, title: e.target.value }, error: '' }))}
+            />
+            <label className="label">Course</label>
+            <select
+              className="select"
+              value={rubricDialog.data.course_id || ''}
+              onChange={e => setRubricDialog(prev => ({ ...prev, data: { ...prev.data, course_id: e.target.value }, error: '' }))}
+            >
+              <option value="">Select Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+            <label className="label">Criteria (JSON)</label>
+            <textarea
+              className="textarea"
+              value={rubricDialog.data.criteria ? JSON.stringify(rubricDialog.data.criteria, null, 2) : ''}
+              onChange={e => {
+                try {
+                  const parsedCriteria = JSON.parse(e.target.value);
+                  setRubricDialog(prev => ({
+                    ...prev,
+                    data: { ...prev.data, criteria: parsedCriteria },
+                    error: ''
+                  }));
+                } catch (err) {
+                  setRubricDialog(prev => ({
+                    ...prev,
+                    error: 'Invalid JSON format'
+                  }));
+                }
+              }}
+            />
+            {rubricDialog.error && <div className="error">{rubricDialog.error}</div>}
+          </div>
+          <div className="modal-footer">
+            <button
+              className="action-btn"
+              onClick={() => setRubricDialog({ open: false, mode: 'create', data: {}, error: '' })}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleRubricSave}
+              disabled={!!rubricDialog.error}
+            >
+              <SaveIcon className="icon" /> Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`modal ${moderationDialog.open ? 'open' : ''}`}>
+        <div className="modal-overlay" onClick={() => setModerationDialog({ open: false, data: {} })}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>Moderate Submission</h3>
+            <button
+              className="close-btn"
+              onClick={() => setModerationDialog({ open: false, data: {} })}
+            >
+              <CloseIcon className="icon" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <div className="info-item"><span>User:</span> <strong>{moderationDialog.data.user?.email || 'N/A'}</strong></div>
+            <div className="info-item"><span>Assessment:</span> <strong>{moderationDialog.data.lesson?.title || 'N/A'}</strong></div>
+            <div className="info-item"><span>Status:</span> <strong>{moderationDialog.data.status || 'N/A'}</strong></div>
+            <label className="label">Grade</label>
+            <input
+              className="input"
+              type="number"
+              value={moderationDialog.data.grade || ''}
+              onChange={e => setModerationDialog(prev => ({ ...prev, data: { ...prev.data, grade: e.target.value } }))}
+            />
+            <label className="label">Feedback</label>
+            <textarea
+              className="textarea"
+              value={moderationDialog.data.feedback || ''}
+              onChange={e => setModerationDialog(prev => ({ ...prev, data: { ...prev.data, feedback: e.target.value } }))}
+            />
+          </div>
+          <div className="modal-footer">
+            <button
+              className="action-btn"
+              onClick={() => setModerationDialog({ open: false, data: {} })}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleSubmissionSave}
+            >
+              <SaveIcon className="icon" /> Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`modal ${faqDialog.open ? 'open' : ''}`}>
+        <div className="modal-overlay" onClick={() => setFaqDialog({ open: false, mode: 'create', data: {} })}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>{faqDialog.mode === 'create' ? 'Create FAQ' : 'Edit FAQ'}</h3>
+            <button
+              className="close-btn"
+              onClick={() => setFaqDialog({ open: false, mode: 'create', data: {} })}
+            >
+              <CloseIcon className="icon" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <label className="label">Question</label>
+            <input
+              className="input"
+              value={faqDialog.data.question || ''}
+              onChange={e => setFaqDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, question: e.target.value }
+              }))}
+            />
+            <label className="label">Answer</label>
+            <textarea
+              className="textarea"
+              value={faqDialog.data.answer || ''}
+              onChange={e => setFaqDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, answer: e.target.value }
+              }))}
+            />
+            <label className="label">Order</label>
+            <input
+              className="input"
+              type="number"
+              value={faqDialog.data.order || 0}
+              onChange={e => setFaqDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, order: parseInt(e.target.value) || 0 }
+              }))}
+            />
+            <label className="label">Status</label>
+            <select
+              className="select"
+              value={faqDialog.data.is_active !== undefined ? faqDialog.data.is_active : true}
+              onChange={e => setFaqDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, is_active: e.target.value === 'true' }
+              }))}
+            >
+              <option value={true}>Active</option>
+              <option value={false}>Inactive</option>
+            </select>
+          </div>
+          <div className="modal-footer">
+            <button
+              className="action-btn"
+              onClick={() => setFaqDialog({ open: false, mode: 'create', data: {} })}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleFaqSave}
+            >
+              <SaveIcon className="icon" /> Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className={`notification ${snackbar.open ? 'open' : ''} ${snackbar.severity}`}>
+        {snackbar.message}
+      </div>
+    </div>
   );
 };
 

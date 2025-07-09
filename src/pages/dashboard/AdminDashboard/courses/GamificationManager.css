@@ -1,0 +1,402 @@
+.GamificationManager {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 15px;
+}
+
+.error-notification {
+  position: relative;
+  width: 100%;
+  padding: 13px 25px;
+  border-radius: 8px;
+  background-color: #f8d7da;
+  color: #721c24;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.error-notification .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.error-notification .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.GamificationManager-Top {
+  position: relative;
+  width: 100%;
+  height: auto;
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.GamificationManager-Top-Grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.GamificationManager-Top-1 h2 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.GamificationManager-Top-1 .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.GamificationManager-Top-2 .label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.GamificationManager-Section {
+  position: relative;
+  width: 100%;
+  height: auto;
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.GamificationManager-Section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.GamificationManager-Grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .GamificationManager-Grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.GamificationManager-Field {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+  font-size: 12px;
+  background-color: #f7f5ff;
+  color: #372580;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.upload-btn:hover {
+  background-color: #decdfd;
+}
+
+.upload-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.file-preview {
+  font-size: 10px;
+  color: #5d5677;
+  margin-top: 8px;
+  display: block;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.action-btn:hover {
+  background-color: #decdfd;
+}
+
+.action-btn.primary {
+  background-color: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background-color: #450CD5;
+}
+
+.action-btn.danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.action-btn.danger:hover {
+  background-color: #f8d7da;
+}
+
+.action-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.empty-state .empty-icon {
+  width: 40px;
+  height: 40px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.empty-state span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.badge-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.badge-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  border-bottom: 1px solid #e3defc;
+}
+
+.badge-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.badge-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-criteria {
+  font-size: 10px;
+  color: #5d5677;
+}
+
+.badge-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin: 0 10px;
+}
+
+.badge-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.table-container {
+  margin-top: 20px;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 10px;
+  font-size: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e3defc;
+}
+
+.leaderboard-table th:last-child,
+.leaderboard-table td:last-child {
+  text-align: right;
+}
+
+.empty-text {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.badge-dialog {
+  display: none;
+}
+
+.badge-dialog.open {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.badge-dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.badge-dialog-content {
+  background-color: #fff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  z-index: 1001;
+  overflow: hidden;
+}
+
+.badge-dialog-header {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge-dialog-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.badge-dialog-header .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.badge-dialog-header .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.badge-dialog-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.badge-dialog-actions {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .GamificationManager {
+    padding: 10px;
+  }
+
+  .GamificationManager-Top {
+    padding: 10px;
+  }
+
+  .GamificationManager-Top-1 h2 {
+    font-size: 14px;
+  }
+
+  .GamificationManager-Section {
+    padding: 15px;
+  }
+
+  .badge-dialog-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}

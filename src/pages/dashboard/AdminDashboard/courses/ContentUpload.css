@@ -1,0 +1,98 @@
+.ContentUpload {
+  position: relative;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+  color: #372580;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  width: 100%;
+  justify-content: center;
+}
+
+.upload-btn:hover {
+  background-color: #decdfd;
+}
+
+.upload-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.file-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 15px;
+  border: 1px dashed #ece8fa;
+  border-radius: 8px;
+  background-color: #f7f5ff;
+}
+
+.file-name {
+  flex-grow: 1;
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 30px;
+  border: 1px solid #b91c1c;
+  background-color: transparent;
+  color: #b91c1c;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.remove-btn:hover {
+  background-color: #f8d7da;
+}
+
+.remove-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 768px) {
+  .ContentUpload {
+    margin-bottom: 15px;
+  }
+
+  .label {
+    font-size: 9px;
+  }
+
+  .upload-btn,
+  .remove-btn {
+    padding: 6px 12px;
+    font-size: 10px;
+  }
+
+  .file-name {
+    font-size: 11px;
+  }
+}

@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Button, 
-  Typography, 
-  IconButton,
-  useTheme
-} from '@mui/material';
-import { CloudUpload, Delete } from '@mui/icons-material';
+import './ContentUpload.css';
+import { UploadIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 const ContentUpload = ({ label, onFileChange }) => {
-  const theme = useTheme();
   const [file, setFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -26,43 +19,27 @@ const ContentUpload = ({ label, onFileChange }) => {
   };
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-        {label}
-      </Typography>
-      
+    <div className="ContentUpload">
+      <label className="label">{label}</label>
       {file ? (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          p: 1, 
-          border: `1px dashed ${theme.palette.divider}`,
-          borderRadius: 1
-        }}>
-          <Typography variant="body2" sx={{ flexGrow: 1 }}>
-            {file.name}
-          </Typography>
-          <IconButton onClick={handleRemove} size="small">
-            <Delete fontSize="small" />
-          </IconButton>
-        </Box>
+        <div className="file-preview">
+          <span className="file-name">{file.name}</span>
+          <button onClick={handleRemove} className="remove-btn">
+            <XCircleIcon className="icon" /> Remove
+          </button>
+        </div>
       ) : (
-        <Button
-          component="label"
-          variant="outlined"
-          fullWidth
-          startIcon={<CloudUpload />}
-        >
-          Upload File
+        <button className="upload-btn" component="label">
+          <UploadIcon className="icon" /> Upload File
           <input
             type="file"
             hidden
             onChange={handleFileChange}
             accept="image/*"
           />
-        </Button>
+        </button>
       )}
-    </Box>
+    </div>
   );
 };
 

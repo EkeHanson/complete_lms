@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box, Typography, IconButton, Collapse, TextField, Button,
-  useTheme, useMediaQuery, Divider, Chip, FormControl,
-  InputLabel, Select, MenuItem, Snackbar, Alert
-} from '@mui/material';
+import './LessonItem.css';
 import {
   ExpandMore, ExpandLess, Delete, Edit, Save, Cancel,
   CloudUpload, DragHandle, VideoLibrary, PictureAsPdf,
@@ -19,8 +15,6 @@ const resourceTypes = [
 ];
 
 const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isMobile }) => {
-  const theme = useTheme();
-  const isMobileScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(!lesson.id); // Auto-edit for new lessons
   const [editedLesson, setEditedLesson] = useState({
@@ -122,200 +116,159 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
   };
 
   return (
-    <Box sx={{ 
-      mb: 1, 
-      border: '1px solid', 
-      borderColor: 'divider', 
-      borderRadius: 1,
-      overflow: 'hidden'
-    }}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        p: isMobileScreen ? 1 : 2,
-        backgroundColor: theme.palette.background.default
-      }}>
-        <DragHandle sx={{ mr: 1, cursor: 'grab' }} fontSize={isMobileScreen ? 'small' : 'medium'} />
-        <Typography 
-          variant={isMobileScreen ? 'body2' : 'body1'} 
-          sx={{ flex: 1, fontWeight: 500 }}
-        >
-          {lesson.title || `Lesson ${index + 1}`}
-        </Typography>
-        <IconButton 
-          onClick={handleToggleExpand} 
-          size={isMobileScreen ? 'small' : 'medium'}
-        >
-          {expanded ? <ExpandLess /> : <ExpandMore />}
-        </IconButton>
-        {!isEditing && (
-          <IconButton 
-            onClick={handleEditToggle} 
-            size={isMobileScreen ? 'small' : 'medium'}
-          >
-            <Edit />
-          </IconButton>
-        )}
-        <IconButton 
-          onClick={handleDelete} 
-          size={isMobileScreen ? 'small' : 'medium'}
-          disabled={loading}
-        >
-          <Delete color="error" />
-        </IconButton>
-      </Box>
+    <div className="LessonItem">
+      <div className="LessonItem-Header">
+        <DragHandle className="icon" />
+        <span className="title">{lesson.title || `Lesson ${index + 1}`}</span>
+        <div className="header-actions">
+          <button className="icon-btn" onClick={handleToggleExpand}>
+            {expanded ? <ExpandLess className="icon" /> : <ExpandMore className="icon" />}
+          </button>
+          {!isEditing && (
+            <button className="icon-btn" onClick={handleEditToggle}>
+              <Edit className="icon" />
+            </button>
+          )}
+          <button className="icon-btn delete" onClick={handleDelete} disabled={loading}>
+            <Delete className="icon" />
+          </button>
+        </div>
+      </div>
 
-      <Collapse in={expanded || isEditing}>
-        <Box sx={{ p: isMobileScreen ? 1 : 2 }}>
+      {(expanded || isEditing) && (
+        <div className="LessonItem-Content">
           {isEditing ? (
             <>
-              <TextField
-                fullWidth
-                label="Lesson Title"
+              <label className="label">Lesson Title</label>
+              <input
+                className={`input ${error && !editedLesson.title.trim() ? 'error' : ''}`}
                 name="title"
                 value={editedLesson.title}
                 onChange={handleChange}
-                sx={{ mb: 2 }}
-                size={isMobileScreen ? 'small' : 'medium'}
-                error={!!error && !editedLesson.title.trim()}
-                helperText={error && !editedLesson.title.trim() ? 'Title is required' : ''}
+                placeholder="Enter lesson title"
               />
-              <TextField
-                fullWidth
-                label="Description"
+              {error && !editedLesson.title.trim() && (
+                <span className="error-text">Title is required</span>
+              )}
+
+              <label className="label">Description</label>
+              <textarea
+                className="textarea"
                 name="description"
                 value={editedLesson.description}
                 onChange={handleChange}
-                multiline
                 rows={2}
-                sx={{ mb: 2 }}
-                size={isMobileScreen ? 'small' : 'medium'}
+                placeholder="Enter description"
               />
-              <FormControl fullWidth sx={{ mb: 2 }} size={isMobileScreen ? 'small' : 'medium'}>
-                <InputLabel>Content Type</InputLabel>
-                <Select
-                  name="content_type"
-                  value={editedLesson.content_type}
-                  onChange={handleChange}
-                  label="Content Type"
-                >
-                  {resourceTypes.map(type => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+
+              <label className="label">Content Type</label>
+              <select
+                className="select"
+                name="content_type"
+                value={editedLesson.content_type}
+                onChange={handleChange}
+              >
+                {resourceTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+
               {editedLesson.content_type === 'link' ? (
-                <TextField
-                  fullWidth
-                  label="Content URL"
-                  name="content_url"
-                  value={editedLesson.content_url}
-                  onChange={handleChange}
-                  sx={{ mb: 2 }}
-                  size={isMobileScreen ? 'small' : 'medium'}
-                />
-              ) : (
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  sx={{ mb: 2 }}
-                  size={isMobileScreen ? 'small' : 'medium'}
-                >
-                  Upload Content
+                <>
+                  <label className="label">Content URL</label>
                   <input
-                    type="file"
-                    hidden
-                    onChange={handleFileChange}
-                    accept={
-                      editedLesson.content_type === 'pdf' ? 'application/pdf' :
-                      editedLesson.content_type === 'video' ? 'video/*' : '*'
-                    }
+                    className="input"
+                    name="content_url"
+                    value={editedLesson.content_url}
+                    onChange={handleChange}
+                    placeholder="Enter URL"
                   />
-                </Button>
+                </>
+              ) : (
+                <>
+                  <label className="label">Upload Content</label>
+                  <button className="upload-btn" component="label">
+                    <CloudUpload className="icon" /> Upload Content
+                    <input
+                      type="file"
+                      hidden
+                      onChange={handleFileChange}
+                      accept={
+                        editedLesson.content_type === 'pdf' ? 'application/pdf' :
+                        editedLesson.content_type === 'video' ? 'video/*' : '*'
+                      }
+                    />
+                  </button>
+                </>
               )}
               {editedLesson.content_file && (
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  Selected: {editedLesson.content_file.name}
-                </Typography>
+                <span className="file-info">Selected: {editedLesson.content_file.name}</span>
               )}
-              <TextField
-                fullWidth
-                label="Duration (e.g., 30 min)"
+
+              <label className="label">Duration</label>
+              <input
+                className="input"
                 name="duration"
                 value={editedLesson.duration}
                 onChange={handleChange}
-                sx={{ mb: 2 }}
-                size={isMobileScreen ? 'small' : 'medium'}
+                placeholder="e.g., 30 min"
               />
-              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<Cancel />}
+
+              <div className="action-buttons">
+                <button
+                  className="action-btn"
                   onClick={() => lesson.id ? setIsEditing(false) : onDelete(lesson.tempId)}
-                  size={isMobileScreen ? 'small' : 'medium'}
                   disabled={loading}
                 >
-                  Cancel
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<Save />}
+                  <Cancel className="icon" /> Cancel
+                </button>
+                <button
+                  className="action-btn primary"
                   onClick={handleSave}
                   disabled={loading || !editedLesson.title.trim()}
-                  size={isMobileScreen ? 'small' : 'medium'}
                 >
-                  Save
-                </Button>
-              </Box>
+                  <Save className="icon" /> Save
+                </button>
+              </div>
             </>
           ) : (
-            <>
-              <Typography variant="body2" sx={{ mb: 1 }}>
+            <div className="content-details">
+              <p>
                 <strong>Description:</strong> {lesson.description || 'No description'}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>Content Type:</strong> {lesson.content_type}
-              </Typography>
+              </p>
+              <p>
+                <strong>Content Type:</strong> {getContentIcon()} {lesson.content_type}
+              </p>
               {lesson.content_type === 'link' ? (
-                <Typography variant="body2" sx={{ mb: 1 }}>
+                <p>
                   <strong>URL:</strong> {lesson.content_url}
-                </Typography>
+                </p>
               ) : (
-                <Typography variant="body2" sx={{ mb: 1 }}>
+                <p>
                   <strong>File:</strong> {lesson.content_file?.name || 'Uploaded content'}
-                </Typography>
+                </p>
               )}
-              <Typography variant="body2">
+              <p>
                 <strong>Duration:</strong> {lesson.duration || 'Not specified'}
-              </Typography>
-            </>
+              </p>
+            </div>
           )}
-        </Box>
-      </Collapse>
+        </div>
+      )}
 
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError(null)}
-      >
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+      {error && (
+        <div className="notification error">
           {error}
-        </Alert>
-      </Snackbar>
-      <Snackbar
-        open={!!success}
-        autoHideDuration={6000}
-        onClose={() => setSuccess(null)}
-      >
-        <Alert onClose={() => setSuccess(null)} severity="success" sx={{ width: '100%' }}>
+        </div>
+      )}
+      {success && (
+        <div className="notification success">
           {success}
-        </Alert>
-      </Snackbar>
-    </Box>
+        </div>
+      )}
+    </div>
   );
 };
 

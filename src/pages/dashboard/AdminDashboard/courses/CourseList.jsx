@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box, Typography, Button, Grid, Paper, TextField, Divider, Tabs, Tab,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Chip, IconButton, CircularProgress, Alert, Dialog, DialogTitle,
-  DialogContent, DialogActions, Autocomplete, Checkbox, List, ListItem,
-  ListItemText, ListItemIcon, Input, useTheme, TablePagination, Menu, MenuItem, 
-} from '@mui/material';
+import './CourseList.css';
 import {
   Edit, Visibility, MoreVert, Search, FilterList, Refresh,
   PersonAdd, GroupAdd, UploadFile, Person, Groups, Description,
   CheckBoxOutlineBlank, CheckBox, Warning
 } from '@mui/icons-material';
+
+import CheckCircle from '@mui/icons-material/CheckCircle';
+
+
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
@@ -18,7 +16,6 @@ import * as XLSX from 'xlsx';
 import { coursesAPI, userAPI } from '../../../../config';
 
 const CourseList = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   
   // Course list state
@@ -171,7 +168,6 @@ const CourseList = () => {
             return;
           }
           
-          // Validate required columns
           const firstRow = results.data[0];
           if (!('email' in firstRow || 'Email' in firstRow || 'EMAIL' in firstRow)) {
             setFileError('CSV must contain an "email" column');
@@ -185,7 +181,6 @@ const CourseList = () => {
         }
       });
     } else {
-      // Handle Excel files
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -199,7 +194,6 @@ const CourseList = () => {
             return;
           }
           
-          // Validate required columns
           const firstRow = jsonData[0];
           if (!('email' in firstRow || 'Email' in firstRow || 'EMAIL' in firstRow)) {
             setFileError('Excel file must contain an "email" column');
@@ -420,10 +414,10 @@ const CourseList = () => {
   // Helper functions
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Published': return 'success';
-      case 'Draft': return 'warning';
-      case 'Archived': return 'default';
-      default: return 'info';
+      case 'Published': return '#4caf50';
+      case 'Draft': return '#f59e0b';
+      case 'Archived': return '#6b7280';
+      default: return '#0288d1';
     }
   };
 
@@ -446,542 +440,441 @@ const CourseList = () => {
   const paginatedCourses = filteredCourses.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
-    <Box>
-      {/* Success Message */}
+    <div className="CourseList">
       {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-          {successMessage}
-        </Alert>
+        <div className="notification success">
+          <CheckCircle className="icon" /> {successMessage}
+        </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              variant="outlined"
+      <div className="CourseList-Top">
+        <div className="CourseList-Top-Grid">
+          <div className="CourseList-Top-1">
+            <h2>
+              <Description className="icon" /> Course Management
+            </h2>
+          </div>
+          <div className="CourseList-Top-2">
+            <span className="status-count">
+              {totalCourses} {totalCourses === 1 ? 'Course' : 'Courses'}
+            </span>
+          </div>
+        </div>
+
+        <div className="CourseList-Filters">
+          <div className="filter-group">
+            <input
+              type="text"
+              className="search-input"
               placeholder="Search courses..."
               value={searchTerm}
               onChange={handleSearchChange}
-              size="small"
-              InputProps={{
-                startAdornment: <Search sx={{ color: theme.palette.text.secondary, mr: 1 }} />
-              }}
             />
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterList />}
-              size="small"
-              onClick={() => setFilterDialogOpen(true)}
-            >
-              Filters
-            </Button>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<Refresh />}
-              size="small"
-              onClick={resetFilters}
-            >
-              Reset
-            </Button>
-          </Grid>
-        </Grid>
+            <Search className="search-icon" />
+          </div>
+          <div className="filter-buttons">
+            <button className="filter-btn" onClick={() => setFilterDialogOpen(true)}>
+              <FilterList className="icon" /> Filters
+            </button>
+            <button className="filter-btn" onClick={resetFilters}>
+              <Refresh className="icon" /> Reset
+            </button>
+          </div>
+        </div>
 
-        {/* Status Tabs */}
-        <Tabs 
-          value={activeStatusTab} 
-          onChange={handleStatusTabChange}
-          sx={{ mt: 2 }}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab label="All" value="all" />
-          <Tab label="Published" value="Published" />
-          <Tab label="Draft" value="Draft" />
-          <Tab label="Archived" value="Archived" />
-        </Tabs>
-        <Divider />
-      </Paper>
+        <div className="status-tabs">
+          <button
+            className={`tab ${activeStatusTab === 'all' ? 'active' : ''}`}
+            onClick={() => handleStatusTabChange(null, 'all')}
+          >
+            All
+          </button>
+          <button
+            className={`tab ${activeStatusTab === 'Published' ? 'active' : ''}`}
+            onClick={() => handleStatusTabChange(null, 'Published')}
+          >
+            Published
+          </button>
+          <button
+            className={`tab ${activeStatusTab === 'Draft' ? 'active' : ''}`}
+            onClick={() => handleStatusTabChange(null, 'Draft')}
+          >
+            Draft
+          </button>
+          <button
+            className={`tab ${activeStatusTab === 'Archived' ? 'active' : ''}`}
+            onClick={() => handleStatusTabChange(null, 'Archived')}
+          >
+            Archived
+          </button>
+        </div>
+      </div>
 
-      {/* Filter Dialog */}
       {filterDialogOpen && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>Advanced Filters</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="Category"
+        <div className="filter-dialog">
+          <h3>Advanced Filters</h3>
+          <div className="filter-grid">
+            <div>
+              <label className="label">Category</label>
+              <select
+                className="select"
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
-                size="small"
               >
-                <MenuItem value="all">All Categories</MenuItem>
+                <option value="all">All Categories</option>
                 {Array.from(new Set(allCourses.map(c => c.category?.name).filter(Boolean))).map(categoryName => (
-                  <MenuItem key={categoryName} value={categoryName}>
+                  <option key={categoryName} value={categoryName}>
                     {categoryName}
-                  </MenuItem>
+                  </option>
                 ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                label="Level"
+              </select>
+            </div>
+            <div>
+              <label className="label">Level</label>
+              <select
+                className="select"
                 value={filters.level}
                 onChange={(e) => handleFilterChange('level', e.target.value)}
-                size="small"
               >
-                <MenuItem value="all">All Levels</MenuItem>
-                <MenuItem value="Beginner">Beginner</MenuItem>
-                <MenuItem value="Intermediate">Intermediate</MenuItem>
-                <MenuItem value="Advanced">Advanced</MenuItem>
-              </TextField>
-            </Grid>
-          </Grid>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button onClick={() => setFilterDialogOpen(false)} size="small">Cancel</Button>
-            <Button 
-              variant="contained" 
-              onClick={() => setFilterDialogOpen(false)}
-              size="small"
-              sx={{ ml: 1 }}
-            >
+                <option value="all">All Levels</option>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+          <div className="filter-actions">
+            <button className="action-btn" onClick={() => setFilterDialogOpen(false)}>
+              Cancel
+            </button>
+            <button className="action-btn primary" onClick={() => setFilterDialogOpen(false)}>
               Apply
-            </Button>
-          </Box>
-        </Paper>
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Error Alert */}
       {error && (
-        <Box sx={{ mb: 2 }}>
-          <Alert severity="error" onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        </Box>
+        <div className="error-message">
+          <Warning className="icon" /> {error}
+        </div>
       )}
 
-      {/* Courses Table */}
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Title</TableCell>
-              <TableCell>Price</TableCell>
-              <TableCell>Outcomes</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  <CircularProgress size={24} />
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  <Typography color="error">{error}</Typography>
-                </TableCell>
-              </TableRow>
-            ) : paginatedCourses.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  <Typography>No courses found</Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedCourses.map((course) => (
-                <TableRow key={course.id} hover>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 500 }}>{course.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+      <div className="CourseList-Table">
+        {loading ? (
+          <div className="loading">Loading...</div>
+        ) : paginatedCourses.length === 0 ? (
+          <div className="empty-state">
+            <Warning className="icon" />
+            <span>No courses found</span>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Outcomes</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCourses.map((course) => (
+                <tr key={course.id}>
+                  <td>
+                    <span className="course-title">{course.title}</span>
+                    <span className="course-meta">
                       {course.category?.name} • {course.level}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
+                    </span>
+                  </td>
+                  <td>
                     {course.discount_price ? (
                       <>
-                        <Typography sx={{ textDecoration: 'line-through', fontSize: '0.8rem' }}>
-                          {formatPrice(course.price, course.currency)}
-                        </Typography>
-                        <Typography color="error" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                          {formatPrice(course.discount_price, course.currency)}
-                        </Typography>
+                        <span className="price-strike">{formatPrice(course.price, course.currency)}</span>
+                        <span className="price-discount">{formatPrice(course.discount_price, course.currency)}</span>
                       </>
                     ) : (
-                      <Typography sx={{ fontSize: '0.8rem' }}>
-                        {formatPrice(course.price, course.currency)}
-                      </Typography>
+                      <span>{formatPrice(course.price, course.currency)}</span>
                     )}
-                  </TableCell>
-                  <TableCell sx={{ maxWidth: 200 }}>
+                  </td>
+                  <td>
                     {course.learning_outcomes?.length > 0 ? (
                       <>
                         {course.learning_outcomes.slice(0, 2).map((outcome, i) => (
-                          <Typography 
-                            key={i} 
-                            variant="body2" 
-                            sx={{ 
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              fontSize: '0.8rem'
-                            }}
-                          >
+                          <div key={i} className="outcome">
                             • {outcome}
-                          </Typography>
+                          </div>
                         ))}
                         {course.learning_outcomes.length > 2 && (
-                          <Typography variant="caption">
+                          <span className="more-outcomes">
                             +{course.learning_outcomes.length - 2} more
-                          </Typography>
+                          </span>
                         )}
                       </>
                     ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        No outcomes
-                      </Typography>
+                      <span className="no-outcomes">No outcomes</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={course.status} 
-                      size="small" 
-                      color={getStatusColor(course.status)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleEnrollClick(course)}
-                      aria-label="enroll"
-                      color="primary"
-                    >
-                      <PersonAdd fontSize="small" />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleBulkEnrollClick(course)}
-                      aria-label="bulk enroll"
-                      color="secondary"
-                    >
-                      <GroupAdd fontSize="small" />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleEdit(course.id)}
-                      aria-label="edit"
-                    >
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleView(course.id)}
-                      aria-label="view"
-                    >
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                    <IconButton 
-                      size="small" 
-                      onClick={(e) => handleMenuOpen(e, course)}
-                      aria-label="more options"
-                    >
-                      <MoreVert fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={totalCourses}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
-
-      {/* Single Enrollment Dialog */}
-      <Dialog open={enrollDialogOpen} onClose={() => setEnrollDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
-            <Person sx={{ mr: 1, fontSize: 20 }} /> Enroll User
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedCourse?.title}
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          {enrollmentError && (
-            <Alert severity="error" sx={{ mb: 1 }} onClose={() => setEnrollmentError(null)}>
-              {enrollmentError}
-            </Alert>
-          )}
-          
-          <Autocomplete
-            options={users}
-            getOptionLabel={(user) => `${user.first_name} ${user.last_name} (${user.email})`}
-            value={selectedUser}
-            onChange={(event, newValue) => setSelectedUser(newValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Select User"
-                variant="outlined"
-                fullWidth
-                size="small"
-                sx={{ mt: 1 }}
-              />
-            )}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1 }}>
-          <Button 
-            onClick={() => setEnrollDialogOpen(false)}
-            size="small"
-            sx={{ minWidth: 80 }}
+                  </td>
+                  <td>
+                    <span className="status-badge" style={{ backgroundColor: getStatusColor(course.status) }}>
+                      {course.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="action-icons">
+                      <button onClick={() => handleEnrollClick(course)}>
+                        <PersonAdd className="icon" />
+                      </button>
+                      <button onClick={() => handleBulkEnrollClick(course)}>
+                        <GroupAdd className="icon" />
+                      </button>
+                      <button onClick={() => handleEdit(course.id)}>
+                        <Edit className="icon" />
+                      </button>
+                      <button onClick={() => handleView(course.id)}>
+                        <Visibility className="icon" />
+                      </button>
+                      <button onClick={(e) => handleMenuOpen(e, course)}>
+                        <MoreVert className="icon" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="pagination">
+          <select
+            value={rowsPerPage}
+            onChange={handleChangeRowsPerPage}
+            className="rows-per-page"
           >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleEnrollSubmit}
-            variant="contained"
-            disabled={!selectedUser || enrollmentLoading}
-            size="small"
-            sx={{ minWidth: 80 }}
-            startIcon={enrollmentLoading ? <CircularProgress size={16} /> : null}
-          >
-            Enroll
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+          </select>
+          <div className="page-controls">
+            <button
+              disabled={page === 0}
+              onClick={() => handleChangePage(null, page - 1)}
+              className="page-btn"
+            >
+              Previous
+            </button>
+            <span>Page {page + 1} of {Math.ceil(totalCourses / rowsPerPage)}</span>
+            <button
+              disabled={page >= Math.ceil(totalCourses / rowsPerPage) - 1}
+              onClick={() => handleChangePage(null, page + 1)}
+              className="page-btn"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Bulk Enrollment Dialog */}
-      <Dialog open={bulkEnrollDialogOpen} onClose={() => setBulkEnrollDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center' }}>
-            <Groups sx={{ mr: 1, fontSize: 20 }} /> Bulk Enroll
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedCourse?.title}
-          </Typography>
-        </DialogTitle>
-        
-        <Tabs 
-          value={activeTab} 
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          sx={{ px: 2 }}
-          variant="fullWidth"
-        >
-          <Tab label="Manual" value="manual" icon={<Person fontSize="small" />} sx={{ minHeight: 48 }} />
-          <Tab label="File Upload" value="file" icon={<Description fontSize="small" />} sx={{ minHeight: 48 }} />
-        </Tabs>
-        
-        <DialogContent sx={{ pt: 1 }}>
-          {enrollmentError && (
-            <Alert severity="error" sx={{ mb: 1 }} onClose={() => setEnrollmentError(null)}>
-              {enrollmentError}
-            </Alert>
-          )}
-          
-          {activeTab === 'manual' ? (
-            <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedUsers.length} of {users.length} selected
-                </Typography>
-                <Button 
-                  size="small" 
-                  onClick={() => toggleSelectAllUsers(selectedUsers.length < users.length)}
-                >
-                  {selectedUsers.length === users.length ? 'Deselect all' : 'Select all'}
-                </Button>
-              </Box>
-              <List dense sx={{ maxHeight: 250, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                {users.map((user) => (
-                  <ListItem 
-                    key={user.id} 
-                    button
-                    onClick={() => toggleUserSelection(user)}
-                    sx={{ py: 0 }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      <Checkbox
-                        edge="start"
+      <div className={`enroll-dialog ${enrollDialogOpen ? 'open' : ''}`}>
+        <div className="dialog-overlay" onClick={() => setEnrollDialogOpen(false)}></div>
+        <div className="dialog-content">
+          <div className="dialog-header">
+            <h3>
+              <Person className="icon" /> Enroll User
+            </h3>
+            <button className="close-btn" onClick={() => setEnrollDialogOpen(false)}>
+              <Warning className="icon" />
+            </button>
+          </div>
+          <div className="dialog-body">
+            <span className="dialog-subtitle">{selectedCourse?.title}</span>
+            {enrollmentError && (
+              <div className="error-message">
+                <Warning className="icon" /> {enrollmentError}
+              </div>
+            )}
+            <select
+              className="select"
+              value={selectedUser?.id || ''}
+              onChange={(e) => {
+                const user = users.find(u => u.id === parseInt(e.target.value));
+                setSelectedUser(user || null);
+              }}
+            >
+              <option value="">Select User</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.first_name} {user.last_name} ({user.email})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="dialog-actions">
+            <button className="action-btn" onClick={() => setEnrollDialogOpen(false)}>
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleEnrollSubmit}
+              disabled={!selectedUser || enrollmentLoading}
+            >
+              {enrollmentLoading ? 'Enrolling...' : 'Enroll'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className={`bulk-enroll-dialog ${bulkEnrollDialogOpen ? 'open' : ''}`}>
+        <div className="dialog-overlay" onClick={() => setBulkEnrollDialogOpen(false)}></div>
+        <div className="dialog-content">
+          <div className="dialog-header">
+            <h3>
+              <Groups className="icon" /> Bulk Enroll
+            </h3>
+            <button className="close-btn" onClick={() => setBulkEnrollDialogOpen(false)}>
+              <Warning className="icon" />
+            </button>
+          </div>
+          <div className="tabs">
+            <button
+              className={`tab ${activeTab === 'manual' ? 'active' : ''}`}
+              onClick={() => setActiveTab('manual')}
+            >
+              <Person className="icon" /> Manual
+            </button>
+            <button
+              className={`tab ${activeTab === 'file' ? 'active' : ''}`}
+              onClick={() => setActiveTab('file')}
+            >
+              <Description className="icon" /> File Upload
+            </button>
+          </div>
+          <div className="dialog-body">
+            <span className="dialog-subtitle">{selectedCourse?.title}</span>
+            {enrollmentError && (
+              <div className="error-message">
+                <Warning className="icon" /> {enrollmentError}
+              </div>
+            )}
+            {activeTab === 'manual' ? (
+              <>
+                <div className="selection-info">
+                  <span>{selectedUsers.length} of {users.length} selected</span>
+                  <button onClick={() => toggleSelectAllUsers(selectedUsers.length < users.length)}>
+                    {selectedUsers.length === users.length ? 'Deselect all' : 'Select all'}
+                  </button>
+                </div>
+                <ul className="user-list">
+                  {users.map(user => (
+                    <li
+                      key={user.id}
+                      className="user-item"
+                      onClick={() => toggleUserSelection(user)}
+                    >
+                      <input
+                        type="checkbox"
                         checked={selectedUsers.some(u => u.id === user.id)}
-                        tabIndex={-1}
-                        disableRipple
-                        size="small"
+                        readOnly
                       />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={`${user.first_name} ${user.last_name}`}
-                      secondary={user.email}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                      secondaryTypographyProps={{ variant: 'caption' }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Upload CSV/Excel file with user emails (max 5MB):
-              </Typography>
-              
-              <Box 
-                {...getRootProps()} 
-                sx={{
-                  border: '1px dashed',
-                  borderColor: fileError ? 'error.main' : 'divider',
-                  borderRadius: 1,
-                  p: 2,
-                  textAlign: 'center',
-                  backgroundColor: theme.palette.action.hover,
-                  cursor: 'pointer',
-                  mb: 1
-                }}
-              >
-                <input {...getInputProps()} />
-                {file ? (
-                  <Box>
-                    <Description fontSize="small" />
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      {file.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {fileData.length} records found
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box>
-                    <UploadFile fontSize="small" />
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      Drag & drop file here
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      or click to browse (CSV, XLS, XLSX)
-                    </Typography>
-                  </Box>
+                      <span>{user.first_name} {user.last_name}</span>
+                      <span className="user-email">{user.email}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <span className="upload-info">Upload CSV/Excel file with user emails (max 5MB):</span>
+                <div {...getRootProps()} className="dropzone">
+                  <input {...getInputProps()} />
+                  {file ? (
+                    <div className="file-info">
+                      <Description className="icon" />
+                      <span>{file.name}</span>
+                      <span className="file-count">{fileData.length} records found</span>
+                    </div>
+                  ) : (
+                    <div className="dropzone-content">
+                      <UploadFile className="icon" />
+                      <span>Drag & drop file here</span>
+                      <span className="dropzone-hint">or click to browse (CSV, XLS, XLSX)</span>
+                    </div>
+                  )}
+                </div>
+                {fileError && (
+                  <div className="error-message">
+                    <Warning className="icon" /> {fileError}
+                  </div>
                 )}
-              </Box>
-              
-              {fileError && (
-                <Alert severity="error" sx={{ mb: 1 }}>
-                  {fileError}
-                </Alert>
-              )}
-              
-              {fileData.length > 0 && (
-                <Box sx={{ maxHeight: 150, overflow: 'auto' }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Preview (first 3 rows):
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined" sx={{ mt: 0.5 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
+                {fileData.length > 0 && (
+                  <div className="file-preview">
+                    <span>Preview (first 3 rows):</span>
+                    <table className="preview-table">
+                      <thead>
+                        <tr>
                           {Object.keys(fileData[0]).slice(0, 3).map(key => (
-                            <TableCell key={key} sx={{ fontWeight: 'bold', p: 0.5 }}>
-                              {key}
-                            </TableCell>
+                            <th key={key}>{key}</th>
                           ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {fileData.slice(0, 3).map((row, i) => (
-                          <TableRow key={i}>
+                          <tr key={i}>
                             {Object.values(row).slice(0, 3).map((value, j) => (
-                              <TableCell key={j} sx={{ p: 0.5 }}>
-                                {String(value)}
-                              </TableCell>
+                              <td key={j}>{String(value)}</td>
                             ))}
-                          </TableRow>
+                          </tr>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              )}
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1 }}>
-          <Button 
-            onClick={() => {
-              setBulkEnrollDialogOpen(false);
-              setSelectedUsers([]);
-              setFile(null);
-              setFileData([]);
-            }}
-            size="small"
-            sx={{ minWidth: 80 }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleBulkEnrollSubmit}
-            variant="contained"
-            disabled={
-              (activeTab === 'manual' && selectedUsers.length === 0) ||
-              (activeTab === 'file' && fileData.length === 0) ||
-              enrollmentLoading
-            }
-            size="small"
-            sx={{ minWidth: 120 }}
-            startIcon={enrollmentLoading ? <CircularProgress size={16} /> : null}
-          >
-            {activeTab === 'manual' 
-              ? `Enroll ${selectedUsers.length}`
-              : `Enroll from File`}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div className="dialog-actions">
+            <button
+              className="action-btn"
+              onClick={() => {
+                setBulkEnrollDialogOpen(false);
+                setSelectedUsers([]);
+                setFile(null);
+                setFileData([]);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="action-btn primary"
+              onClick={handleBulkEnrollSubmit}
+              disabled={
+                (activeTab === 'manual' && selectedUsers.length === 0) ||
+                (activeTab === 'file' && fileData.length === 0) ||
+                enrollmentLoading
+              }
+            >
+              {activeTab === 'manual' 
+                ? `Enroll ${selectedUsers.length}`
+                : `Enroll from File`}
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Course Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={() => handleView(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
-          <Visibility fontSize="small" sx={{ mr: 1 }} /> View
-        </MenuItem>
-        <MenuItem onClick={() => handleEdit(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
-          <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
-        </MenuItem>
-        <MenuItem onClick={() => handleDelete(selectedCourse?.id)} sx={{ fontSize: '0.875rem' }}>
-          <Warning fontSize="small" sx={{ mr: 1 }} /> Delete
-        </MenuItem>
-      </Menu>
-    </Box>
+      <div className="menu">
+        <div className={`menu-content ${anchorEl ? 'open' : ''}`}>
+          <button onClick={() => handleView(selectedCourse?.id)}>
+            <Visibility className="icon" /> View
+          </button>
+          <button onClick={() => handleEdit(selectedCourse?.id)}>
+            <Edit className="icon" /> Edit
+          </button>
+          <button onClick={() => handleDelete(selectedCourse?.id)}>
+            <Warning className="icon" /> Delete
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
