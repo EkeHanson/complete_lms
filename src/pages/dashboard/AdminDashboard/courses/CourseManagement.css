@@ -1,0 +1,369 @@
+
+.CourseManagement {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 15px;
+}
+
+.CourseManagement-Top {
+  position: relative;
+  width: 100%;
+  height: auto;
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.CourseManagement-Top-Grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.CourseManagement-Top-1 h2 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.CourseManagement-Top-1 .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.CourseManagement-Top-2 .Add-Course-Button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: #7226FF;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.CourseManagement-Top-2 .Add-Course-Button:hover {
+  background-color: #450CD5;
+}
+
+.CourseManagement-Top-2 .Add-Course-Button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.Tabs-Container {
+  margin-top: 20px;
+}
+
+.Tabs {
+  display: flex;
+  border-bottom: 1px solid #e3defc;
+  gap: 10px;
+}
+
+.Tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background-color: #f7f5ff;
+  color: #372580;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.Tab.active {
+  background-color: #7226FF;
+  color: #fff;
+  border-color: #7226FF;
+}
+
+.Tab .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.Tab-Content {
+  padding: 20px;
+  background: #fff;
+  border-radius: 0 10px 10px 10px;
+  border: 1px solid #eeeafa;
+  border-top: none;
+}
+
+.Loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.Error {
+  text-align: center;
+  padding: 20px;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.Retry-Button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.Retry-Button:hover {
+  background-color: #decdfd;
+}
+
+.Stats-Grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1024px) {
+  .Stats-Grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .Stats-Grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.StatCard {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  padding: 15px;
+}
+
+.StatCard-Content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.StatCard-Icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.StatCard-Icon.primary {
+  background-color: #decdfd;
+  color: #7226FF;
+}
+
+.StatCard-Icon.secondary {
+  background-color: #e2e8f0;
+  color: #5d5677;
+}
+
+.StatCard-Icon.success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.StatCard-Icon.info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.StatCard-Text {
+  display: flex;
+  flex-direction: column;
+}
+
+.StatCard-Title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #5d5677;
+}
+
+.StatCard-Value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #372580;
+}
+
+.Detailed-Stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .Detailed-Stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.Course-Card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.Course-Card:hover {
+  background-color: #f7f5ff;
+}
+
+.Course-Card-Content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.Course-Card-Header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.Course-Card-Header .icon.warning {
+  color: #f59e0b;
+}
+
+.Course-Card-Header .icon.error {
+  color: #b91c1c;
+}
+
+.Course-Card-Header .icon.purple {
+  color: #7226FF;
+}
+
+.Course-Card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #372580;
+}
+
+.Course-Card-Subtitle {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.Course-Card-Stats {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.Course-Card-Stats .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.Categories-Card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  padding: 15px;
+}
+
+.Categories-Card-Content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.Categories-List {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.Category-Item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.Category-Item span {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.Progress-Bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.Progress-Fill {
+  height: 100%;
+  background: #7226FF;
+  transition: width 0.3s ease-in-out;
+}
+
+.Course-List-Card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  padding: 15px;
+}
+
+@media (max-width: 768px) {
+  .CourseManagement {
+    padding: 10px;
+  }
+
+  .CourseManagement-Top {
+    padding: 10px;
+  }
+
+  .CourseManagement-Top-1 h2 {
+    font-size: 14px;
+  }
+
+  .Add-Course-Button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .Tab {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+}

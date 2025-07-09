@@ -1,0 +1,370 @@
+.InstructorAssignmentDialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: none;
+}
+
+.InstructorAssignmentDialog.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.InstructorAssignmentDialog-Overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.InstructorAssignmentDialog-Content {
+  position: relative;
+  width: 90%;
+  max-width: 600px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 1001;
+}
+
+@media (max-width: 768px) {
+  .InstructorAssignmentDialog-Content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}
+
+.InstructorAssignmentDialog-Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: #7226FF;
+  color: #fff;
+}
+
+.InstructorAssignmentDialog-Header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.InstructorAssignmentDialog-Header .icon {
+  font-size: 17px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.InstructorAssignmentDialog-Body {
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .InstructorAssignmentDialog-Body {
+    padding: 15px;
+  }
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 12px;
+}
+
+.error-message button {
+  background: none;
+  border: none;
+  color: #721c24;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.search-container {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #5d5677;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 15px 8px 40px;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+  background: #f7f5ff;
+  font-size: 12px;
+  color: #372580;
+}
+
+.instructor-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ece8fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.instructor-item {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.instructor-item:hover {
+  background: #f7f5ff;
+}
+
+.instructor-item.selected {
+  background: #ebe6ff;
+  border-left-color: #7226FF;
+}
+
+.instructor-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.instructor-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #372580;
+}
+
+.instructor-email {
+  font-size: 11px;
+  color: #5d5677;
+}
+
+.expertise-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.tag {
+  padding: 4px 8px;
+  border-radius: 30px;
+  background: #ece8fa;
+  font-size: 10px;
+  color: #372580;
+}
+
+.tag.selected {
+  background: #7226FF;
+  color: #fff;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 32px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.empty-state span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.selected-instructor {
+  padding: 10px 15px;
+  background: #ebe6ff;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.selected-instructor span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #372580;
+}
+
+h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 15px;
+}
+
+.assignment-type {
+  margin-bottom: 20px;
+}
+
+.assignment-type span {
+  font-size: 12px;
+  color: #5d5677;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #372580;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.module-count {
+  font-size: 11px;
+  color: #5d5677;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.module-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ece8fa;
+  border-radius: 8px;
+}
+
+.module-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.module-item:hover {
+  background: #f7f5ff;
+}
+
+.module-item.selected {
+  background: #ebe6ff;
+}
+
+.module-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.module-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #372580;
+}
+
+.module-description {
+  font-size: 11px;
+  color: #5d5677;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.loading-container span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.InstructorAssignmentDialog-Actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #ece8fa;
+}
+
+@media (max-width: 768px) {
+  .InstructorAssignmentDialog-Actions {
+    flex-direction: column-reverse;
+    padding: 10px;
+  }
+}
+
+.action-btn {
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.action-btn:hover {
+  background: #decdfd;
+}
+
+.action-btn.cancel {
+  border-color: #6b7280;
+  color: #6b7280;
+}
+
+.action-btn.cancel:hover {
+  background: #e9ecef;
+}
+
+.action-btn.primary {
+  background: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background: #450CD5;
+}
+
+.action-btn:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: #fff;
+  cursor: not-allowed;
+}

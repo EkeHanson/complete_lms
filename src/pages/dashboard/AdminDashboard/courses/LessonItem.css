@@ -1,0 +1,255 @@
+.LessonItem {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+  border: 1px solid #eeeafa;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.LessonItem-Header {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #f7f5ff;
+}
+
+.LessonItem-Header .icon {
+  width: 20px;
+  height: 20px;
+  color: #372580;
+}
+
+.LessonItem-Header .title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #372580;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid #ece8fa;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.icon-btn:hover {
+  background: #decdfd;
+}
+
+.icon-btn.delete .icon {
+  color: #b91c1c;
+}
+
+.icon-btn.delete:hover {
+  background: #f8d7da;
+}
+
+.LessonItem-Content {
+  padding: 20px;
+  border-top: 1px solid #e3defc;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+  color: #372580;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+  font-size: 12px;
+  background: #f7f5ff;
+  color: #372580;
+}
+
+.input.error {
+  border-color: #b91c1c;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.error-text {
+  font-size: 10px;
+  color: #b91c1c;
+  margin-top: 5px;
+  display: block;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.upload-btn:hover {
+  background: #decdfd;
+}
+
+.upload-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.file-info {
+  font-size: 11px;
+  color: #5d5677;
+  margin-top: 10px;
+  display: block;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.action-btn:hover {
+  background: #decdfd;
+}
+
+.action-btn.primary {
+  background: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background: #450CD5;
+}
+
+.action-btn:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.action-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.content-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.content-details p {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.content-details strong {
+  font-weight: 600;
+  color: #372580;
+}
+
+.content-details svg {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 13px 25px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-size: 12px;
+}
+
+.notification.success {
+  background: #4caf50;
+}
+
+.notification.error {
+  background: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .LessonItem-Header {
+    padding: 10px;
+  }
+
+  .LessonItem-Header .title {
+    font-size: 12px;
+  }
+
+  .LessonItem-Content {
+    padding: 15px;
+  }
+
+  .icon-btn {
+    width: 25px;
+    height: 25px;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .upload-btn,
+  .action-btn {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+}

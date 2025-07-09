@@ -1,0 +1,390 @@
+.CourseView {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 15px;
+}
+
+.CourseView-Loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #7226FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.CourseView-Error {
+  padding: 20px;
+  text-align: center;
+}
+
+.CourseView-Error span {
+  font-size: 14px;
+  color: #721c24;
+}
+
+.CourseView-Top {
+  position: relative;
+  width: 100%;
+  height: auto;
+  margin-bottom: 20px;
+  padding: 10px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.CourseView-Top-Grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.CourseView-Top-Left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.CourseView-Top-Left h2 {
+  font-size: 23px;
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 30px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.CourseView-Top-Right .edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: #7226FF;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.CourseView-Top-Right .edit-btn:hover {
+  background-color: #450CD5;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: transparent;
+  border: 1px solid #ece8fa;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.back-btn:hover {
+  background-color: #f7f5ff;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+}
+
+.icon.primary { color: #0288d1; }
+.icon.secondary { color: #ab47bc; }
+.icon.info { color: #0288d1; }
+.icon.error { color: #d32f2f; }
+.icon.success { color: #4caf50; }
+.icon.action { color: #6b7280; }
+.icon.small { width: 12px; height: 12px; }
+
+.CourseView-Grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .CourseView-Grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.CourseView-Card {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+  margin-bottom: 20px;
+}
+
+.CourseView-Card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.CourseView-Card p {
+  font-size: 12px;
+  color: #5d5677;
+  margin-bottom: 20px;
+}
+
+.outcomes-list {
+  list-style: none;
+  padding: 0;
+}
+
+.outcomes-list li {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e3defc;
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.tab.active {
+  color: #7226FF;
+  border-bottom: 3px solid #7226FF;
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+.module {
+  margin-bottom: 30px;
+}
+
+.module h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.module-description {
+  font-size: 11px;
+  color: #5d5677;
+  margin-bottom: 15px;
+}
+
+.lesson-list, .resource-list {
+  list-style: none;
+  padding: 0;
+}
+
+.lesson-item, .resource-item {
+  border-bottom: 1px solid #e3defc;
+}
+
+.lesson-header, .resource-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.lesson-header:hover, .resource-header:hover {
+  background-color: #f7f5ff;
+}
+
+.lesson-icon, .resource-icon {
+  min-width: 40px;
+}
+
+.lesson-text, .resource-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson-title, .resource-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.lesson-secondary, .resource-secondary {
+  font-size: 10px;
+  color: #5d5677;
+}
+
+.lesson-content, .resource-content {
+  padding: 20px;
+  background: #f7f5ff;
+  border-bottom: 1px solid #e3defc;
+}
+
+.media-container {
+  width: 100%;
+}
+
+.media {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.media-iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  margin-top: 10px;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  background-color: #decdfd;
+}
+
+.action-btn.primary {
+  background-color: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background-color: #450CD5;
+}
+
+.pdf-page-info {
+  font-size: 10px;
+  color: #5d5677;
+  margin-top: 10px;
+  display: block;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e3defc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-placeholder {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #5d5677;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.meta-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.price-strikethrough {
+  text-decoration: line-through;
+  margin-right: 10px;
+  color: #5d5677;
+}
+
+.price-discounted {
+  color: #d32f2f;
+}
+
+@media (max-width: 768px) {
+  .CourseView {
+    padding: 10px;
+  }
+
+  .CourseView-Top h2 {
+    font-size: 18px;
+  }
+
+  .module h4 {
+    font-size: 14px;
+  }
+}

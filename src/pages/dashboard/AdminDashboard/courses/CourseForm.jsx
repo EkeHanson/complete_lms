@@ -4,19 +4,10 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ModuleForm, DraggableModule } from './ModuleForm';
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, TextField, Button, Grid, Paper, Divider,
-  FormControl, InputLabel, Select, MenuItem, Chip, useTheme,
-  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
-  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
-  ListItemIcon, Checkbox, FormControlLabel, Tab, Tabs, Avatar,
-  useMediaQuery, AppBar, Toolbar, Drawer, ListItemAvatar, Tooltip,
-  CircularProgress, Alert, 
-} from '@mui/material';
-import {
   Save, Cancel, CloudUpload, AddCircle, Delete,
   Link as LinkIcon, PictureAsPdf, VideoLibrary,
   InsertDriveFile, Edit, Person, People, School,
-  Menu as MenuIcon, ArrowBack, Add, Star 
+  Menu as MenuIcon, ArrowBack, Add, Star, CheckCircle
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import LearningPaths from './LearningPaths';
@@ -24,6 +15,7 @@ import SCORMxAPISettings from './SCORMxAPISettings';
 import CertificateSettings from './CertificateSettings';
 import GamificationManager from './GamificationManager';
 import InstructorAssignmentDialog from './InstructorAssignmentDialog';
+import './CourseForm.css';
 
 const resourceTypes = [
   { value: 'link', label: 'Web Link', icon: <LinkIcon /> },
@@ -33,13 +25,10 @@ const resourceTypes = [
 ];
 
 const CourseForm = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
   const [activeTab, setActiveTab] = useState(0);
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedModules, setSelectedModules] = useState([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -122,7 +111,7 @@ const CourseForm = () => {
         setCategoryLoading(false);
       }
     };
-  
+
     const fetchCourseData = async () => {
       if (!isEdit) return;
       setLoading(true);
@@ -145,7 +134,7 @@ const CourseForm = () => {
           prerequisites: Array.isArray(courseData.prerequisites) ? courseData.prerequisites : [],
           thumbnail: null,
           modules: courseData.modules || [],
-          resources: courseData.resources || [], // Ensure resources are loaded
+          resources: courseData.resources || [],
           instructors: courseData.instructors || []
         });
       } catch (error) {
@@ -154,7 +143,7 @@ const CourseForm = () => {
         setLoading(false);
       }
     };
-  
+
     fetchCategories();
     fetchCourseData();
   }, [id, isEdit]);
@@ -171,19 +160,13 @@ const CourseForm = () => {
     setCourse(prev => {
       const newModules = [...prev.modules];
       const draggedModule = newModules[dragIndex];
-      
       newModules.splice(dragIndex, 1);
       newModules.splice(hoverIndex, 0, draggedModule);
-      
       const updatedModules = newModules.map((module, idx) => ({
         ...module,
         order: idx
       }));
-      
-      return {
-        ...prev,
-        modules: updatedModules
-      };
+      return { ...prev, modules: updatedModules };
     });
   };
 
@@ -193,7 +176,7 @@ const CourseForm = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    if (isMobile) setMobileOpen(false);
+    if (mobileOpen) setMobileOpen(false);
   };
 
   const handleChange = (e) => {
@@ -260,93 +243,91 @@ const CourseForm = () => {
     const { name, value } = e.target;
     setCurrentResource(prev => ({ ...prev, [name]: value }));
   };
-  
+
   const handleResourceFileChange = (e) => {
     setCurrentResource(prev => ({ ...prev, file: e.target.files[0] }));
   };
 
-const saveResource = async () => {
-  if (!currentResource.title.trim()) {
-    setApiError('Resource title is required');
-    return;
-  }
-  if (currentResource.type === 'link' && !currentResource.url.trim()) {
-    setApiError('URL is required for web link resources');
-    return;
-  }
-  if (['pdf', 'video', 'file'].includes(currentResource.type) && !currentResource.file && !currentResource.id) {
-    setApiError('File is required for this resource type');
-    return;
-  }
-
-  setLoading(true);
-  setApiError('');
-
-  try {
-    const formData = new FormData();
-    formData.append('title', currentResource.title);
-    formData.append('resource_type', currentResource.type);
-    if (currentResource.type === 'link') {
-      formData.append('url', currentResource.url || '');
-    } else if (currentResource.file) {
-      formData.append('file', currentResource.file);
+  const saveResource = async () => {
+    if (!currentResource.title.trim()) {
+      setApiError('Resource title is required');
+      return;
     }
-    formData.append('order', course.resources.length);
-
-    let updatedResource;
-    if (currentResource.id && !isNaN(currentResource.id)) {
-      // Update existing resource
-      const response = await coursesAPI.updateResource(id, currentResource.id, formData);
-      updatedResource = response.data;
-      setCourse(prev => ({
-        ...prev,
-        resources: prev.resources.map(r => (r.id === currentResource.id ? updatedResource : r)),
-      }));
-    } else {
-      // Create new resource
-      const response = await coursesAPI.createResource(id, formData);
-      updatedResource = response.data;
-      setCourse(prev => ({
-        ...prev,
-        resources: [...prev.resources, updatedResource],
-      }));
+    if (currentResource.type === 'link' && !currentResource.url.trim()) {
+      setApiError('URL is required for web link resources');
+      return;
+    }
+    if (['pdf', 'video', 'file'].includes(currentResource.type) && !currentResource.file && !currentResource.id) {
+      setApiError('File is required for this resource type');
+      return;
     }
 
-    setResourceDialogOpen(false);
-    setCurrentResource({
-      id: null,
-      title: '',
-      type: 'link',
-      url: '',
-      file: null,
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  } catch (error) {
-    setApiError(error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || 'Failed to save resource');
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setApiError('');
 
-const deleteResource = async (id) => {
-  setLoading(true);
-  setApiError('');
+    try {
+      const formData = new FormData();
+      formData.append('title', currentResource.title);
+      formData.append('resource_type', currentResource.type);
+      if (currentResource.type === 'link') {
+        formData.append('url', currentResource.url || '');
+      } else if (currentResource.file) {
+        formData.append('file', currentResource.file);
+      }
+      formData.append('order', course.resources.length);
 
-  try {
-    await coursesAPI.deleteResource(course.id || id, id);
-    setCourse(prev => ({
-      ...prev,
-      resources: prev.resources.filter(r => r.id !== id),
-    }));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  } catch (error) {
-    setApiError(error.response?.data?.detail || 'Failed to delete resource');
-  } finally {
-    setLoading(false);
-  }
-};
+      let updatedResource;
+      if (currentResource.id && !isNaN(currentResource.id)) {
+        const response = await coursesAPI.updateResource(id, currentResource.id, formData);
+        updatedResource = response.data;
+        setCourse(prev => ({
+          ...prev,
+          resources: prev.resources.map(r => (r.id === currentResource.id ? updatedResource : r)),
+        }));
+      } else {
+        const response = await coursesAPI.createResource(id, formData);
+        updatedResource = response.data;
+        setCourse(prev => ({
+          ...prev,
+          resources: [...prev.resources, updatedResource],
+        }));
+      }
+
+      setResourceDialogOpen(false);
+      setCurrentResource({
+        id: null,
+        title: '',
+        type: 'link',
+        url: '',
+        file: null,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setApiError(error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || 'Failed to save resource');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteResource = async (id) => {
+    setLoading(true);
+    setApiError('');
+
+    try {
+      await coursesAPI.deleteResource(course.id || id, id);
+      setCourse(prev => ({
+        ...prev,
+        resources: prev.resources.filter(r => r.id !== id),
+      }));
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setApiError(error.response?.data?.detail || 'Failed to delete resource');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addModule = async () => {
     try {
@@ -387,7 +368,6 @@ const deleteResource = async (id) => {
         }]
       }));
     } catch (error) {
-      console.error('Error creating module:', error);
       setApiError(error.response?.data?.detail || error.message || 'Failed to create module');
     } finally {
       setLoading(false);
@@ -404,11 +384,9 @@ const deleteResource = async (id) => {
   const deleteModule = async (moduleId) => {
     try {
       setLoading(true);
-      
       if (!isNaN(moduleId)) {
         await coursesAPI.deleteModule(moduleId);
       }
-      
       setCourse(prev => ({
         ...prev,
         modules: prev.modules.filter(m => m.id !== moduleId),
@@ -423,7 +401,6 @@ const deleteResource = async (id) => {
         })
       }));
     } catch (error) {
-      console.error('Error deleting module:', error);
       setApiError('Failed to delete module');
     } finally {
       setLoading(false);
@@ -432,7 +409,6 @@ const deleteResource = async (id) => {
 
   const handleInstructorAssignment = (instructor, assignedModules) => {
     const existingIndex = course.instructors.findIndex(i => i.instructorId === instructor.id);
-    
     const newInstructor = {
       instructorId: instructor.id,
       name: instructor.name,
@@ -555,25 +531,22 @@ const deleteResource = async (id) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-  
     const newErrors = {};
     if (!course.title.trim()) newErrors.title = 'Title is required';
     if (!course.code.trim()) newErrors.code = 'Course code is required';
     if (!course.description.trim()) newErrors.description = 'Description is required';
     if (!course.category_id) newErrors.category = 'Category is required';
-  
+
     if (Object.keys(newErrors).length > 0) {
-      console.log("Validation errors:", newErrors);
       setErrors(newErrors);
       return;
     }
-  
+
     setLoading(true);
     setApiError('');
-  
+
     try {
       const formData = new FormData();
-  
       formData.append('title', course.title);
       formData.append('code', course.code);
       formData.append('description', course.description);
@@ -582,21 +555,12 @@ const deleteResource = async (id) => {
       formData.append('status', course.status);
       formData.append('duration', course.duration);
       formData.append('price', course.price);
-  
       if (course.discountPrice) formData.append('discount_price', course.discountPrice);
       formData.append('currency', course.currency || 'NGN');
-  
-      course.learningOutcomes.forEach(outcome => {
-        formData.append('learning_outcomes', outcome);
-      });
-      course.prerequisites.forEach(prereq => {
-        formData.append('prerequisites', prereq);
-      });
-  
-      if (course.thumbnail instanceof File) {
-        formData.append('thumbnail', course.thumbnail);
-      }
-  
+      course.learningOutcomes.forEach(outcome => formData.append('learning_outcomes', outcome));
+      course.prerequisites.forEach(prereq => formData.append('prerequisites', prereq));
+      if (course.thumbnail instanceof File) formData.append('thumbnail', course.thumbnail);
+
       let response;
       if (isEdit) {
         response = await coursesAPI.updateCourse(id, formData);
@@ -604,14 +568,14 @@ const deleteResource = async (id) => {
         response = await coursesAPI.createCourse(formData);
         navigate(`/admin/courses/edit/${response.data.id}`, { replace: true });
       }
-  
+
       if (!response || !response.data) {
         throw new Error('Invalid response from server');
       }
-  
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-  
+
       if (isEdit) {
         setCourse(prev => ({
           ...prev,
@@ -634,7 +598,6 @@ const deleteResource = async (id) => {
         }));
       }
     } catch (error) {
-      console.error("Save error:", error);
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.detail || 
                           error.message || 
@@ -644,24 +607,23 @@ const deleteResource = async (id) => {
       setLoading(false);
     }
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
     const newErrors = {};
     if (!course.title.trim()) newErrors.title = 'Title is required';
     if (!course.code.trim()) newErrors.code = 'Course code is required';
     if (!course.description.trim()) newErrors.description = 'Description is required';
     if (!course.category_id) newErrors.category = 'Category is required';
-  
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-  
+
     setLoading(true);
     setApiError('');
-  
+
     try {
       const formData = new FormData();
       formData.append('title', course.title);
@@ -674,18 +636,10 @@ const deleteResource = async (id) => {
       formData.append('price', course.price);
       if (course.discountPrice) formData.append('discount_price', course.discountPrice);
       formData.append('currency', course.currency || 'NGN');
-  
-      course.learningOutcomes.forEach(outcome => {
-        formData.append('learning_outcomes', outcome);
-      });
-      course.prerequisites.forEach(prereq => {
-        formData.append('prerequisites', prereq);
-      });
-  
-      if (course.thumbnail instanceof File) {
-        formData.append('thumbnail', course.thumbnail);
-      }
-  
+      course.learningOutcomes.forEach(outcome => formData.append('learning_outcomes', outcome));
+      course.prerequisites.forEach(prereq => formData.append('prerequisites', prereq));
+      if (course.thumbnail instanceof File) formData.append('thumbnail', course.thumbnail);
+
       if (isEdit) {
         await coursesAPI.updateCourse(id, formData);
       } else {
@@ -720,494 +674,333 @@ const deleteResource = async (id) => {
   ];
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {isMobile && (
-        <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" noWrap component="div">
-              {isEdit ? 'Edit Course' : 'Create Course'}
-            </Typography>
-          </Toolbar>
-        </AppBar>
-      )}
+    <div className="CourseForm">
+      <div className="CourseForm-Header">
+        <div className="CourseForm-Header-Grid">
+          <div className="CourseForm-Header-Title">
+            <h2>
+              <Edit className="icon" /> {isEdit ? 'Edit Course' : 'Create New Course'}
+            </h2>
+          </div>
+          <div className="CourseForm-Header-Actions">
+            <button className="action-btn" onClick={() => navigate('/admin/courses')}>
+              <ArrowBack className="icon" /> Back to Courses
+            </button>
+          </div>
+        </div>
+      </div>
 
-      <Box sx={{ display: 'flex', flexGrow: 1, pt: isMobile ? '56px' : 0 }}>
-        {isMobile && mobileOpen && (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{
-              keepMounted: true,
-            }}
-            sx={{
-              '& .MuiDrawer-paper': { 
-                width: 240,
-                boxSizing: 'border-box',
-                pt: isMobile ? '56px' : 0
-              },
-            }}
-          >
-            <Tabs
-              orientation="vertical"
-              value={activeTab}
-              onChange={handleTabChange}
-              sx={{ flexGrow: 1 }}
-            >
-              {tabLabels.map((tab, index) => (
-                <Tab 
-                  key={index}
-                  icon={tab.icon}
-                  iconPosition="start"
-                  label={tab.label}
-                  sx={{
-                    minHeight: 'auto',
-                    py: 1.5,
-                    justifyContent: 'flex-start',
-                    alignItems: 'center',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    px: 2,
-                    gap: 1,
-                    '& .MuiTab-iconWrapper': {
-                      marginRight: '8px'
-                    }
-                  }}
-                />
-              ))}
-            </Tabs>
-          </Drawer>
-        )}
-
-        {!isMobile && (
-          <Tabs
-            orientation="vertical"
-            value={activeTab}
-            onChange={handleTabChange}
-            sx={{ 
-              borderRight: 1,
-              borderColor: 'divider',
-              minWidth: 160,
-              maxWidth: 220,
-              '& .MuiTab-root': {
-                minHeight: 48,
-                alignItems: 'flex-start',
-                textAlign: 'left',
-                px: 2,
-                gap: 1,
-                '& .MuiTab-iconWrapper': {
-                  marginRight: '8px'
-                }
-              }
-            }}
-          >
+      <div className="CourseForm-Main">
+        <div className={`CourseForm-Sidebar ${mobileOpen ? 'open' : ''}`}>
+          <div className="CourseForm-Sidebar-Header">
+            <button className="sidebar-toggle" onClick={handleDrawerToggle}>
+              <MenuIcon className="icon" />
+            </button>
+            <h3>Course Sections</h3>
+          </div>
+          <ul className="sidebar-nav">
             {tabLabels.map((tab, index) => (
-              <Tab 
+              <li
                 key={index}
-                icon={tab.icon}
-                iconPosition="start"
-                label={tab.label}
-              />
+                className={`sidebar-item ${activeTab === index ? 'active' : ''}`}
+                onClick={() => handleTabChange(null, index)}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </li>
             ))}
-          </Tabs>
-        )}
+          </ul>
+        </div>
 
-        <Box 
-          component="main" 
-          sx={{ 
-            flexGrow: 1, 
-            p: isMobile ? 1 : 3,
-            overflow: 'auto',
-            maxHeight: isMobile ? 'calc(100vh - 56px)' : '100vh'
-          }}
-        >
+        <div className="CourseForm-Content">
           {apiError && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setApiError('')}>
-              {apiError}
-            </Alert>
+            <div className="notification error">
+              <span>{apiError}</span>
+            </div>
           )}
-
           {saveSuccess && (
-            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaveSuccess(false)}>
-              Course saved successfully!
-            </Alert>
+            <div className="notification success">
+              <CheckCircle className="icon" /> Course saved successfully!
+            </div>
           )}
 
-          <Box sx={{ mb: 2 }}>
-            {isMobile && (
-              <IconButton onClick={() => navigate('/admin/courses')} sx={{ mr: 1 }}>
-                <ArrowBack />
-              </IconButton>
-            )}
-            <Typography variant={isMobile ? 'h5' : 'h4'} sx={{ fontWeight: 600, display: 'inline' }}>
-              {isEdit ? 'Edit Course' : 'Create New Course'}
-            </Typography>
-          </Box>
-
-          <Paper sx={{ p: isMobile ? 1 : 3, mb: 3 }}>
+          <div className="CourseForm-Section">
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
+              <div className="loading">Loading...</div>
             ) : (
               <form onSubmit={handleSubmit}>
                 {activeTab === 0 && (
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={8}>
-                      <TextField
-                        fullWidth
-                        label="Course Title"
+                  <div className="CourseForm-Grid">
+                    <div className="CourseForm-Left">
+                      <label className="label">Course Title</label>
+                      <input
+                        type="text"
+                        className="input"
                         name="title"
                         value={course.title}
                         onChange={handleChange}
-                        error={!!errors.title}
-                        helperText={errors.title}
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
+                        placeholder="Enter course title"
                       />
-                      
-                      <TextField
-                        fullWidth
-                        label="Course Code"
+                      {errors.title && <span className="error-text">{errors.title}</span>}
+
+                      <label className="label">Course Code</label>
+                      <input
+                        type="text"
+                        className="input"
                         name="code"
                         value={course.code}
                         onChange={handleChange}
-                        error={!!errors.code}
-                        helperText={errors.code}
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
+                        placeholder="Enter course code"
                       />
-                      
-                      <TextField
-                        fullWidth
-                        label="Description"
+                      {errors.code && <span className="error-text">{errors.code}</span>}
+
+                      <label className="label">Description</label>
+                      <textarea
+                        className="textarea"
                         name="description"
                         value={course.description}
                         onChange={handleChange}
-                        error={!!errors.description}
-                        helperText={errors.description}
-                        multiline
-                        rows={isMobile ? 3 : 4}
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
+                        placeholder="Enter course description"
+                        rows={4}
                       />
+                      {errors.description && <span className="error-text">{errors.description}</span>}
 
-                      <Divider sx={{ my: 2 }} />
+                      <div className="section-divider"></div>
 
-                      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-                        Learning Outcomes
-                      </Typography>
-
-                      <Box sx={{ mb: 1 }}>
+                      <h3>Learning Outcomes</h3>
+                      <div className="chip-list">
                         {course.learningOutcomes.map((outcome, index) => (
-                          <Chip
-                            key={index}
-                            label={outcome}
-                            onDelete={() => removeLearningOutcome(index)}
-                            sx={{ m: 0.5 }}
-                            size={isMobile ? 'small' : 'medium'}
-                          />
+                          <span key={index} className="chip">
+                            {outcome}
+                            <Delete
+                              className="chip-icon"
+                              onClick={() => removeLearningOutcome(index)}
+                            />
+                          </span>
                         ))}
-                      </Box>
-
-                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                        <TextField
-                          fullWidth
-                          variant="outlined"
-                          size={isMobile ? 'small' : 'medium'}
+                      </div>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="input"
                           placeholder="What will students learn?"
                           value={newOutcome}
                           onChange={(e) => setNewOutcome(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome()}
                         />
-                        <Button 
-                          variant="outlined" 
+                        <button
+                          className="action-btn"
                           onClick={addLearningOutcome}
                           disabled={!newOutcome.trim()}
-                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Add
-                        </Button>
-                      </Box>
+                          <Add className="icon" /> Add
+                        </button>
+                      </div>
 
-                      <Divider sx={{ my: 2 }} />
+                      <div className="section-divider"></div>
 
-                      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-                        Prerequisites
-                      </Typography>
-
-                      <Box sx={{ mb: 1 }}>
+                      <h3>Prerequisites</h3>
+                      <div className="chip-list">
                         {course.prerequisites.map((prereq, index) => (
-                          <Chip
-                            key={index}
-                            label={prereq}
-                            onDelete={() => removePrerequisite(index)}
-                            sx={{ m: 0.5 }}
-                            size={isMobile ? 'small' : 'medium'}
-                          />
+                          <span key={index} className="chip">
+                            {prereq}
+                            <Delete
+                              className="chip-icon"
+                              onClick={() => removePrerequisite(index)}
+                            />
+                          </span>
                         ))}
-                      </Box>
-
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <TextField
-                          fullWidth
-                          variant="outlined"
-                          size={isMobile ? 'small' : 'medium'}
+                      </div>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="input"
                           placeholder="What should students know beforehand?"
                           value={newPrerequisite}
                           onChange={(e) => setNewPrerequisite(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addPrerequisite()}
                         />
-                        <Button 
-                          variant="outlined" 
+                        <button
+                          className="action-btn"
                           onClick={addPrerequisite}
                           disabled={!newPrerequisite.trim()}
-                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Add
-                        </Button>
-                      </Box>
-                    </Grid>
+                          <Add className="icon" /> Add
+                        </button>
+                      </div>
+                    </div>
 
-                    <Grid item xs={12} md={4}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <FormControl fullWidth sx={{ flexGrow: 1 }} size={isMobile ? 'small' : 'medium'}>
-                        <InputLabel>Category</InputLabel>
-                        <Select
+                    <div className="CourseForm-Right">
+                      <div className="input-group">
+                        <label className="label">Category</label>
+                        <select
+                          className="select"
                           name="category_id"
                           value={course.category_id || ''}
                           onChange={handleChange}
-                          label="Category"
-                          error={!!errors.category}
                         >
+                          <option value="">Select a category</option>
                           {categories.map(cat => (
-                            <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
                           ))}
-                        </Select>
-                        {errors.category && (
-                          <Typography variant="caption" color="error">
-                            {errors.category}
-                          </Typography>
-                        )}
-                      </FormControl>
-                        <IconButton onClick={() => handleCategoryDialogOpen()} sx={{ ml: 1 }}>
-                          <Add />
-                        </IconButton>
-                      </Box>
+                        </select>
+                        {errors.category && <span className="error-text">{errors.category}</span>}
+                        <button
+                          className="action-btn"
+                          onClick={() => handleCategoryDialogOpen()}
+                        >
+                          <Add className="icon" /> Add Category
+                        </button>
+                      </div>
 
-                      {categoryLoading && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                          <CircularProgress size={24} />
-                        </Box>
-                      )}
+                      {categoryLoading && <div className="loading">Loading categories...</div>}
 
-                      <List dense>
+                      <ul className="category-list">
                         {categories.map(category => (
-                          <ListItem key={category.id} divider>
-                            <ListItemText primary={category.name} />
-                            <ListItemSecondaryAction>
-                              <IconButton onClick={() => handleCategoryDialogOpen(category)}>
-                                <Edit />
-                              </IconButton>
-                              <IconButton onClick={() => deleteCategory(category.id)}>
-                                <Delete />
-                              </IconButton>
-                            </ListItemSecondaryAction>
-                          </ListItem>
+                          <li key={category.id} className="category-item">
+                            <span>{category.name}</span>
+                            <div className="category-actions">
+                              <button
+                                className="icon-btn"
+                                onClick={() => handleCategoryDialogOpen(category)}
+                              >
+                                <Edit className="icon" />
+                              </button>
+                              <button
+                                className="icon-btn danger"
+                                onClick={() => deleteCategory(category.id)}
+                              >
+                                <Delete className="icon" />
+                              </button>
+                            </div>
+                          </li>
                         ))}
-                      </List>
+                      </ul>
 
-                      <FormControl fullWidth sx={{ mb: 2 }} size={isMobile ? 'small' : 'medium'}>
-                        <InputLabel>Level</InputLabel>
-                        <Select
-                          name="level"
-                          value={course.level}
-                          onChange={handleChange}
-                          label="Level"
-                        >
-                          <MenuItem value="Beginner">Beginner</MenuItem>
-                          <MenuItem value="Intermediate">Intermediate</MenuItem>
-                          <MenuItem value="Advanced">Advanced</MenuItem>
-                        </Select>
-                      </FormControl>
+                      <label className="label">Level</label>
+                      <select
+                        className="select"
+                        name="level"
+                        value={course.level}
+                        onChange={handleChange}
+                      >
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                      </select>
 
-                      <FormControl fullWidth sx={{ mb: 2 }} size={isMobile ? 'small' : 'medium'}>
-                        <InputLabel>Status</InputLabel>
-                        <Select
-                          name="status"
-                          value={course.status}
-                          onChange={handleChange}
-                          label="Status"
-                        >
-                          <MenuItem value="Draft">Draft</MenuItem>
-                          <MenuItem value="Published">Published</MenuItem>
-                          <MenuItem value="Archived">Archived</MenuItem>
-                        </Select>
-                      </FormControl>
+                      <label className="label">Status</label>
+                      <select
+                        className="select"
+                        name="status"
+                        value={course.status}
+                        onChange={handleChange}
+                      >
+                        <option value="Draft">Draft</option>
+                        <option value="Published">Published</option>
+                        <option value="Archived">Archived</option>
+                      </select>
 
-                      <TextField
-                        fullWidth
-                        label="Duration"
+                      <label className="label">Duration</label>
+                      <input
+                        type="text"
+                        className="input"
                         name="duration"
                         value={course.duration}
                         onChange={handleChange}
                         placeholder="e.g. 8 weeks, 30 hours"
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
                       />
 
-                      <Divider sx={{ my: 2 }} />
+                      <div className="section-divider"></div>
 
-                      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
-                        Pricing
-                      </Typography>
-
-                      <TextField
-                        fullWidth
-                        label="Price"
+                      <h3>Pricing</h3>
+                      <label className="label">Price ({course.currency})</label>
+                      <input
                         type="number"
+                        className="input"
                         value={course.price}
                         onChange={handlePriceChange}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              {course.currency}
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
                       />
-
-                      <TextField
-                        fullWidth
-                        label="Discount Price (optional)"
+                      <label className="label">Discount Price (optional)</label>
+                      <input
                         type="number"
+                        className="input"
                         value={course.discountPrice || ''}
                         onChange={handleDiscountChange}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              {course.currency}
-                            </InputAdornment>
-                          ),
-                        }}
-                        size={isMobile ? 'small' : 'medium'}
+                        placeholder="Enter discount price"
                       />
 
-                      <Divider sx={{ my: 2 }} />
+                      <div className="section-divider"></div>
 
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        component="label"
-                        startIcon={<CloudUpload />}
-                        sx={{ mb: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Upload Thumbnail
+                      <button className="action-btn" component="label">
+                        <CloudUpload className="icon" /> Upload Thumbnail
                         <input
                           type="file"
                           hidden
                           onChange={(e) => setCourse(prev => ({ ...prev, thumbnail: e.target.files[0] }))}
                           accept="image/*"
                         />
-                      </Button>
-
+                      </button>
                       {course.thumbnail && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                            {course.thumbnail.name || 'Thumbnail selected'}
-                          </Typography>
-                          <IconButton onClick={() => setCourse(prev => ({ ...prev, thumbnail: null }))} size="small">
-                            <Delete fontSize="small" /> 
-                          </IconButton>
-                        </Box>
+                        <div className="upload-preview">
+                          <span>{course.thumbnail.name || 'Thumbnail selected'}</span>
+                          <button
+                            className="icon-btn danger"
+                            onClick={() => setCourse(prev => ({ ...prev, thumbnail: null }))}
+                          >
+                            <Delete className="icon" />
+                          </button>
+                        </div>
                       )}
-                    </Grid>
-                  </Grid>
+                    </div>
+                  </div>
                 )}
 
                 {activeTab === 1 && (
-                  <Box>
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                      Course Modules
-                    </Typography>
-
+                  <div>
+                    <h3>Course Modules</h3>
                     {course.modules.length === 0 && (
-                      <Box sx={{ textAlign: 'center', py: 4 }}>
-                        <School sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                        <Typography variant="h6" color="text.secondary">
-                          No modules added yet
-                        </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
-                          Add modules to structure your course content
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          startIcon={<AddCircle />}
-                          onClick={addModule}
-                          size={isMobile ? 'small' : 'medium'}
-                        >
-                          Add First Module
-                        </Button>
-                      </Box>
+                      <div className="empty-state">
+                        <School className="empty-icon" />
+                        <h4>No modules added yet</h4>
+                        <p>Add modules to structure your course content</p>
+                        <button className="action-btn primary" onClick={addModule}>
+                          <AddCircle className="icon" /> Add First Module
+                        </button>
+                      </div>
                     )}
                     {selectedModules.length > 0 && (
-                      <Paper sx={{ 
-                        p: 1, 
-                        mb: 2, 
-                        display: 'flex', 
-                        gap: 1,
-                        alignItems: 'center',
-                        flexWrap: 'wrap'
-                      }}>
-                        <Typography sx={{ flexGrow: 1 }}>
-                          {selectedModules.length} selected
-                        </Typography>
-                        <Button
-                          variant="outlined"
+                      <div className="module-actions">
+                        <span>{selectedModules.length} selected</span>
+                        <button
+                          className="action-btn"
                           onClick={() => togglePublishSelectedModules(true)}
-                          size="small"
                           disabled={loading}
                         >
                           Publish
-                        </Button>
-                        <Button
-                          variant="outlined"
+                        </button>
+                        <button
+                          className="action-btn"
                           onClick={() => togglePublishSelectedModules(false)}
-                          size="small"
                           disabled={loading}
                         >
                           Unpublish
-                        </Button>
-                        <Button
-                          variant="outlined"
+                        </button>
+                        <button
+                          className="action-btn"
                           onClick={duplicateSelectedModules}
-                          size="small"
                           disabled={loading}
                         >
                           Duplicate
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
+                        </button>
+                        <button
+                          className="action-btn danger"
                           onClick={deleteSelectedModules}
-                          size="small"
                           disabled={loading}
                         >
                           Delete
-                        </Button>
-                      </Paper>
+                        </button>
+                      </div>
                     )}
 
                     <DndProvider backend={HTML5Backend}>
@@ -1221,469 +1014,329 @@ const deleteResource = async (id) => {
                           toggleModuleSelection={toggleModuleSelection}
                           onChange={handleModuleChange}
                           onDelete={deleteModule}
-                          isMobile={isMobile}
+                          isMobile={window.innerWidth <= 768}
                           courseId={id}
                         />
                       ))}
                     </DndProvider>
 
                     {course.modules.length > 0 && (
-                      <Button
-                        startIcon={<AddCircle />}
-                        onClick={addModule}
-                        sx={{ mt: 2 }}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Add Another Module
-                      </Button>
+                      <button className="action-btn" onClick={addModule}>
+                        <AddCircle className="icon" /> Add Another Module
+                      </button>
                     )}
-                  </Box>
+                  </div>
                 )}
 
                 {activeTab === 2 && (
-                  <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        Course Instructors
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        startIcon={<People />}
+                  <div>
+                    <div className="section-header">
+                      <h3>Course Instructors</h3>
+                      <button
+                        className="action-btn primary"
                         onClick={() => setInstructorDialogOpen(true)}
-                        size={isMobile ? 'small' : 'medium'}
                       >
-                        Assign Instructor
-                      </Button>
-                    </Box>
+                        <People className="icon" /> Assign Instructor
+                      </button>
+                    </div>
 
                     {course.instructors.length === 0 && (
-                      <Box sx={{ textAlign: 'center', py: 4 }}>
-                        <Person sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                        <Typography variant="h6" color="text.secondary">
-                          No instructors assigned
-                        </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
-                          Assign instructors to teach this course
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          startIcon={<People />}
+                      <div className="empty-state">
+                        <Person className="empty-icon" />
+                        <h4>No instructors assigned</h4>
+                        <p>Assign instructors to teach this course</p>
+                        <button
+                          className="action-btn primary"
                           onClick={() => setInstructorDialogOpen(true)}
-                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Assign Instructor
-                        </Button>
-                      </Box>
+                          <People className="icon" /> Assign Instructor
+                        </button>
+                      </div>
                     )}
 
-                    <List dense={isMobile}>
+                    <ul className="instructor-list">
                       {course.instructors.map((instructor) => (
-                        <ListItem
-                          key={instructor.instructorId}
-                          divider
-                          sx={{
-                            pr: { xs: 12, sm: 16 }, // Increased padding-right for actions
-                            alignItems: 'flex-start', // Align items to top for better text wrapping
-                          }}
-                        >
-                          <ListItemAvatar>
-                            <Avatar sx={{ width: 32, height: 32 }}>
-                              {instructor.name.charAt(0)}
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText
-                            primary={instructor.name}
-                            secondary={
-                              <>
-                                <Typography component="span" variant="body2" color="text.primary">
-                                  {instructor.email}
-                                </Typography>
-                                {` • Assigned to: ${getAssignedModulesText(instructor)}`}
-                              </>
-                            }
-                            primaryTypographyProps={{ variant: isMobile ? 'body2' : 'body1' }}
-                            secondaryTypographyProps={{ variant: isMobile ? 'caption' : 'body2' }}
-                            sx={{
-                              mr: { xs: 2, sm: 4 }, // Margin-right to avoid overlap with actions
-                              maxWidth: { xs: '60%', sm: '70%' }, // Limit text width
-                              wordBreak: 'break-word', // Ensure long text wraps
-                            }}
-                          />
-                          <ListItemSecondaryAction
-                            sx={{
-                              right: { xs: 8, sm: 16 }, // Adjust right positioning
-                              top: '50%', // Center vertically
-                              transform: 'translateY(-50%)', // Adjust for vertical centering
-                              display: 'flex', // Align actions in a row
-                              alignItems: 'center',
-                              gap: { xs: 0.5, sm: 1 }, // Space between action items
-                            }}
-                          >
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={instructor.isActive}
-                                  onChange={() => toggleInstructorStatus(instructor.instructorId)}
-                                  size={isMobile ? 'small' : 'medium'}
-                                  sx={{
-                                    p: 0, // Remove default padding to control spacing
-                                    mr: { xs: 0.5, sm: 1 }, // Add margin-right to separate from label
-                                  }}
-                                />
-                              }
-                              label={isMobile ? '' : ''} // Hide label on mobile
-                              labelPlacement="end" // Place label after checkbox
-                              sx={{
-                                mr: { xs: 0.5, sm: 1 }, // Margin-right to separate from buttons
-                                minWidth: 0, // Prevent label from taking too much space
-                                '& .MuiFormControlLabel-label': {
-                                  fontSize: isMobile ? '0.75rem' : '0.875rem', // Adjust label font size
-                                },
+                        <li key={instructor.instructorId} className="instructor-item">
+                          <div className="instructor-info">
+                            <span className="avatar">{instructor.name.charAt(0)}</span>
+                            <div>
+                              <span className="instructor-name">{instructor.name}</span>
+                              <p className="instructor-details">
+                                {instructor.email} • Assigned to: {getAssignedModulesText(instructor)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="instructor-actions">
+                            <label className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={instructor.isActive}
+                                onChange={() => toggleInstructorStatus(instructor.instructorId)}
+                                className="checkbox"
+                              />
+                              Active
+                            </label>
+                            <button
+                              className="icon-btn"
+                              onClick={() => {
+                                const instructorData = course.instructors.find(
+                                  (i) => i.instructorId === instructor.instructorId
+                                );
+                                setCurrentResource({
+                                  ...instructorData,
+                                  assignedModules: instructorData.assignedModules,
+                                });
+                                setInstructorDialogOpen(true);
                               }}
-                            />
-                            <Tooltip title="Edit Instructor">
-                              <IconButton
-                                onClick={() => {
-                                  const instructorData = course.instructors.find(
-                                    (i) => i.instructorId === instructor.instructorId
-                                  );
-                                  setCurrentResource({
-                                    ...instructorData,
-                                    assignedModules: instructorData.assignedModules,
-                                  });
-                                  setInstructorDialogOpen(true);
-                                }}
-                                size={isMobile ? 'small' : 'medium'}
-                              >
-                                <Edit fontSize={isMobile ? 'small' : 'medium'} />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Remove Instructor">
-                              <IconButton
-                                onClick={() => removeInstructor(instructor.instructorId)}
-                                size={isMobile ? 'small' : 'medium'}
-                              >
-                                <Delete fontSize={isMobile ? 'small' : 'medium'} />
-                              </IconButton>
-                            </Tooltip>
-                          </ListItemSecondaryAction>
-                        </ListItem>
+                            >
+                              <Edit className="icon" />
+                            </button>
+                            <button
+                              className="icon-btn danger"
+                              onClick={() => removeInstructor(instructor.instructorId)}
+                            >
+                              <Delete className="icon" />
+                            </button>
+                          </div>
+                        </li>
                       ))}
-                    </List>
-                  </Box>
+                    </ul>
+                  </div>
                 )}
+
                 {activeTab === 3 && (
-                  <Box>
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                      Course Resources
-                    </Typography>
-
-                    <List dense={isMobile}>
+                  <div>
+                    <h3>Course Resources</h3>
+                    <ul className="resource-list">
                       {course.resources.map((resource) => (
-                        <ListItem key={resource.id}>
-                          <ListItemIcon>
-                            {getResourceIcon(resource.type)}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={resource.title}
-                            secondary={resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
-                            primaryTypographyProps={{ variant: isMobile ? 'body2' : 'body1' }}
-                            secondaryTypographyProps={{ variant: isMobile ? 'caption' : 'body2' }}
-                          />
-                          <ListItemSecondaryAction>
-                            <IconButton 
+                        <li key={resource.id} className="resource-item">
+                          <span className="resource-icon">{getResourceIcon(resource.type)}</span>
+                          <div>
+                            <span className="resource-title">{resource.title}</span>
+                            <p className="resource-details">
+                              {resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
+                            </p>
+                          </div>
+                          <div className="resource-actions">
+                            <button
+                              className="icon-btn"
                               onClick={() => openResourceDialog(resource)}
-                              size={isMobile ? 'small' : 'medium'}
                             >
-                              <Edit fontSize={isMobile ? 'small' : 'medium'} />
-                            </IconButton>
-                            <IconButton 
+                              <Edit className="icon" />
+                            </button>
+                            <button
+                              className="icon-btn danger"
                               onClick={() => deleteResource(resource.id)}
-                              size={isMobile ? 'small' : 'medium'}
                             >
-                              <Delete fontSize={isMobile ? 'small' : 'medium'} />
-                            </IconButton>
-                          </ListItemSecondaryAction>
-                        </ListItem>
+                              <Delete className="icon" />
+                            </button>
+                          </div>
+                        </li>
                       ))}
-                    </List>
-
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddCircle />}
+                    </ul>
+                    <button
+                      className="action-btn"
                       onClick={() => openResourceDialog()}
-                      sx={{ mt: 1 }}
-                      size={isMobile ? 'small' : 'medium'}
                     >
-                      Add Resource
-                    </Button>
-                  </Box>
+                      <AddCircle className="icon" /> Add Resource
+                    </button>
+                  </div>
                 )}
 
-                {activeTab === 4 && <LearningPaths courseId={id} isMobile={isMobile} />}
-                {activeTab === 5 && <CertificateSettings courseId={id} isMobile={isMobile} />}
-                {activeTab === 6 && <SCORMxAPISettings courseId={id} isMobile={isMobile} />}
-                {activeTab === 7 && <GamificationManager courseId={id} isMobile={isMobile} />}
+                {activeTab === 4 && <LearningPaths courseId={id} isMobile={window.innerWidth <= 768} />}
+                {activeTab === 5 && <CertificateSettings courseId={id} isMobile={window.innerWidth <= 768} />}
+                {activeTab === 6 && <SCORMxAPISettings courseId={id} isMobile={window.innerWidth <= 768} />}
+                {activeTab === 7 && <GamificationManager courseId={id} isMobile={window.innerWidth <= 768} />}
 
-                <Divider sx={{ my: 2 }} />
-
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  justifyContent: 'space-between',
-                  gap: { xs: 2, sm: 1 }, // Increased gap on mobile
-                  mt: 2
-                }}>
-                  <Box sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' }, // Stack buttons vertically on mobile
-                    gap: { xs: 1, sm: 1 }, // Consistent gap
-                    flex: { xs: 1, sm: 'auto' }, // Full width on mobile
-                    flexWrap: 'wrap',
-                    justifyContent: { xs: 'space-between', sm: 'flex-start' }
-                  }}>
-                    <Button
-                      fullWidth={isMobile}
-                      variant="outlined"
-                      startIcon={<ArrowBack />}
-                      onClick={handlePrevious}
-                      disabled={activeTab === 0}
-                      size={isMobile ? 'small' : 'medium'}
-                      sx={{ 
-                        mb: { xs: 1, sm: 0 }, // Margin bottom on mobile
-                        minWidth: { sm: 120 }, // Ensure consistent width on desktop
-                        flex: { xs: 1, sm: 'none' } // Equal width on mobile
-                      }}
-                    >
-                      {isMobile ? 'Previous' : 'Previous'} {/* Show text on mobile */}
-                    </Button>
-
-                    <Button
-                      fullWidth={isMobile}
-                      onClick={handleSave}
-                      variant="contained"
-                      startIcon={<Save />}
-                      size={isMobile ? 'small' : 'medium'}
-                      sx={{ 
-                        mb: { xs: 1, sm: 0 }, 
-                        minWidth: { sm: 120 }, 
-                        flex: { xs: 1, sm: 'none' } 
-                      }}
+                <div className="action-buttons">
+                  <button
+                    className="action-btn"
+                    onClick={handlePrevious}
+                    disabled={activeTab === 0}
+                  >
+                    <ArrowBack className="icon" /> Previous
+                  </button>
+                  <button
+                    className="action-btn primary"
+                    onClick={handleSave}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="loading-spinner"></span>
+                    ) : (
+                      <>
+                        <Save className="icon" /> Save
+                      </>
+                    )}
+                  </button>
+                  {activeTab === tabLabels.length - 1 ? (
+                    <button
+                      className="action-btn primary"
+                      type="submit"
                       disabled={loading}
                     >
-                      {loading ? <CircularProgress size={20} /> : 'Save'}
-                    </Button>
-
-                    {activeTab === tabLabels.length - 1 ? (
-                      <Button
-                        fullWidth={isMobile}
-                        type="submit"
-                        variant="contained"
-                        startIcon={<Save />}
-                        size={isMobile ? 'small' : 'medium'}
-                        sx={{ 
-                          mb: { xs: 1, sm: 0 }, 
-                          minWidth: { sm: 120 }, 
-                          flex: { xs: 1, sm: 'none' } 
-                        }}
-                        disabled={loading}
-                      >
-                        {loading ? <CircularProgress size={20} /> : (isEdit ? 'Update & Finish' : 'Create & Finish')}
-                      </Button>
-                    ) : (
-                      <Button
-                        fullWidth={isMobile}
-                        variant="contained"
-                        startIcon={isMobile ? null : <ArrowBack sx={{ transform: 'rotate(180deg)' }} />}
-                        endIcon={isMobile ? <ArrowBack sx={{ transform: 'rotate(180deg)' }} /> : null}
-                        onClick={handleNext}
-                        size={isMobile ? 'small' : 'medium'}
-                        sx={{ 
-                          mb: { xs: 1, sm: 0 }, 
-                          minWidth: { sm: 120 }, 
-                          flex: { xs: 1, sm: 'none' } 
-                        }}
-                      >
-                        {isMobile ? 'Next' : 'Next'}
-                      </Button>
-                    )}
-                  </Box>
-
-                  <Button
-                    fullWidth={isMobile}
-                    variant="outlined"
-                    startIcon={<Cancel />}
+                      {loading ? (
+                        <span className="loading-spinner"></span>
+                      ) : (
+                        <>
+                          <Save className="icon" /> {isEdit ? 'Update & Finish' : 'Create & Finish'}
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      className="action-btn primary"
+                      onClick={handleNext}
+                    >
+                      <ArrowBack className="icon rotate" /> Next
+                    </button>
+                  )}
+                  <button
+                    className="action-btn cancel"
                     onClick={() => navigate('/admin/courses')}
-                    size={isMobile ? 'small' : 'medium'}
-                    sx={{
-                      order: { xs: 2, sm: 2 },
-                      mt: { xs: 2, sm: 0 }, // Increased margin top on mobile
-                      ml: { xs: 0, sm: 'auto' }, // Align right on desktop
-                      minWidth: { sm: 120 },
-                      flex: { xs: 1, sm: 'none' }
-                    }}
                   >
-                    Cancel
-                  </Button>
-                </Box>
+                    <Cancel className="icon" /> Cancel
+                  </button>
+                </div>
               </form>
             )}
-          </Paper>
-          <Dialog 
-            open={resourceDialogOpen} 
-            onClose={() => setResourceDialogOpen(false)}
-            fullScreen={isMobile}
-          >
-            <DialogTitle>
-              {currentResource.id ? 'Edit Resource' : 'Add Resource'}
-            </DialogTitle>
-            <DialogContent>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Resource Title"
-                fullWidth
-                name="title"
-                value={currentResource.title}
-                onChange={handleResourceChange}
-                sx={{ mb: 2 }}
-                size={isMobile ? 'small' : 'medium'}
-                error={!!errors.resourceTitle}
-                helperText={errors.resourceTitle}
-              />
+          </div>
 
-              <FormControl fullWidth sx={{ mb: 2 }} size={isMobile ? 'small' : 'medium'}>
-                <InputLabel>Resource Type</InputLabel>
-                <Select
+          <div className={`dialog ${resourceDialogOpen ? 'open' : ''}`}>
+            <div className="dialog-overlay" onClick={() => setResourceDialogOpen(false)}></div>
+            <div className="dialog-content">
+              <div className="dialog-header">
+                <h3>{currentResource.id ? 'Edit Resource' : 'Add Resource'}</h3>
+                <button className="dialog-close" onClick={() => setResourceDialogOpen(false)}>
+                  <Cancel className="icon" />
+                </button>
+              </div>
+              <div className="dialog-body">
+                <label className="label">Resource Title</label>
+                <input
+                  type="text"
+                  className="input"
+                  name="title"
+                  value={currentResource.title}
+                  onChange={handleResourceChange}
+                  placeholder="Enter resource title"
+                />
+                {errors.resourceTitle && <span className="error-text">{errors.resourceTitle}</span>}
+
+                <label className="label">Resource Type</label>
+                <select
+                  className="select"
                   name="type"
                   value={currentResource.type}
                   onChange={handleResourceChange}
-                  label="Resource Type"
                 >
                   {resourceTypes.map(type => (
-                    <MenuItem key={type.value} value={type.value}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {type.icon}
-                        {type.label}
-                      </Box>
-                    </MenuItem>
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
                   ))}
-                </Select>
-              </FormControl>
+                </select>
 
-              {currentResource.type === 'link' && (
-                <TextField
-                  margin="dense"
-                  label="URL"
-                  fullWidth
-                  name="url"
-                  value={currentResource.url}
-                  onChange={handleResourceChange}
-                  size={isMobile ? 'small' : 'medium'}
-                  error={!!errors.resourceUrl}
-                  helperText={errors.resourceUrl}
-                />
-              )}
+                {currentResource.type === 'link' && (
+                  <>
+                    <label className="label">URL</label>
+                    <input
+                      type="text"
+                      className="input"
+                      name="url"
+                      value={currentResource.url}
+                      onChange={handleResourceChange}
+                      placeholder="Enter resource URL"
+                    />
+                    {errors.resourceUrl && <span className="error-text">{errors.resourceUrl}</span>}
+                  </>
+                )}
 
-              {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  sx={{ mt: 1 }}
-                  size={isMobile ? 'small' : 'medium'}
+                {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
+                  <button className="action-btn" component="label">
+                    <CloudUpload className="icon" /> Upload File
+                    <input
+                      type="file"
+                      hidden
+                      onChange={handleResourceFileChange}
+                      accept={
+                        currentResource.type === 'pdf' ? 'application/pdf' : 
+                        currentResource.type === 'video' ? 'video/*' : '*'
+                      }
+                    />
+                  </button>
+                )}
+
+                {currentResource.file && (
+                  <span className="file-info">Selected: {currentResource.file.name || currentResource.file}</span>
+                )}
+              </div>
+              <div className="dialog-actions">
+                <button
+                  className="action-btn"
+                  onClick={() => setResourceDialogOpen(false)}
                 >
-                  Upload File
-                  <input
-                    type="file"
-                    hidden
-                    onChange={handleResourceFileChange}
-                    accept={
-                      currentResource.type === 'pdf' ? 'application/pdf' : 
-                      currentResource.type === 'video' ? 'video/*' : '*'
-                    }
-                  />
-                </Button>
-              )}
+                  Cancel
+                </button>
+                <button
+                  className="action-btn primary"
+                  onClick={saveResource}
+                  disabled={loading || !currentResource.title.trim()}
+                >
+                  {loading ? <span className="loading-spinner"></span> : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {currentResource.file && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Selected: {currentResource.file.name || currentResource.file}
-                </Typography>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button 
-                onClick={() => setResourceDialogOpen(false)}
-                size={isMobile ? 'small' : 'medium'}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={saveResource} 
-                disabled={loading || !currentResource.title.trim()}
-                variant="contained"
-                size={isMobile ? 'small' : 'medium'}
-              >
-                {loading ? <CircularProgress size={20} /> : 'Save'}
-              </Button>
-            </DialogActions>
-          </Dialog>
-          <Dialog 
-            open={categoryDialogOpen} 
-            onClose={() => setCategoryDialogOpen(false)}
-            fullWidth
-            maxWidth="sm"
-            fullScreen={isMobile}
-          >
-            <DialogTitle>
-              {editingCategory ? 'Edit Category' : 'Add Category'}
-            </DialogTitle>
-            <DialogContent>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Category Name"
-                fullWidth
-                name="name"
-                value={newCategory.name}
-                onChange={handleCategoryChange}
-                error={!!errors.categoryName}
-                helperText={errors.categoryName}
-                sx={{ mb: 2 }}
-                size={isMobile ? 'small' : 'medium'}
-              />
-              <TextField
-                margin="dense"
-                label="Description"
-                fullWidth
-                name="description"
-                value={newCategory.description}
-                onChange={handleCategoryChange}
-                multiline
-                rows={3}
-                sx={{ mb: 2 }}
-                size={isMobile ? 'small' : 'medium'}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button 
-                onClick={() => setCategoryDialogOpen(false)}
-                size={isMobile ? 'small' : 'medium'}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={saveCategory}
-                disabled={categoryLoading || !newCategory.name.trim()}
-                variant="contained"
-                size={isMobile ? 'small' : 'medium'}
-              >
-                {categoryLoading ? <CircularProgress size={24} /> : (editingCategory ? 'Update' : 'Add')}
-              </Button>
-            </DialogActions>
-          </Dialog>
+          <div className={`dialog ${categoryDialogOpen ? 'open' : ''}`}>
+            <div className="dialog-overlay" onClick={() => setCategoryDialogOpen(false)}></div>
+            <div className="dialog-content">
+              <div className="dialog-header">
+                <h3>{editingCategory ? 'Edit Category' : 'Add Category'}</h3>
+                <button className="dialog-close" onClick={() => setCategoryDialogOpen(false)}>
+                  <Cancel className="icon" />
+                </button>
+              </div>
+              <div className="dialog-body">
+                <label className="label">Category Name</label>
+                <input
+                  type="text"
+                  className="input"
+                  name="name"
+                  value={newCategory.name}
+                  onChange={handleCategoryChange}
+                  placeholder="Enter category name"
+                />
+                {errors.categoryName && <span className="error-text">{errors.categoryName}</span>}
+
+                <label className="label">Description</label>
+                <textarea
+                  className="textarea"
+                  name="description"
+                  value={newCategory.description}
+                  onChange={handleCategoryChange}
+                  placeholder="Enter category description"
+                  rows={3}
+                />
+              </div>
+              <div className="dialog-actions">
+                <button
+                  className="action-btn"
+                  onClick={() => setCategoryDialogOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="action-btn primary"
+                  onClick={saveCategory}
+                  disabled={categoryLoading || !newCategory.name.trim()}
+                >
+                  {categoryLoading ? <span className="loading-spinner"></span> : (editingCategory ? 'Update' : 'Add')}
+                </button>
+              </div>
+            </div>
+          </div>
 
           <InstructorAssignmentDialog
             open={instructorDialogOpen}
@@ -1691,11 +1344,11 @@ const deleteResource = async (id) => {
             modules={course.modules}
             currentAssignment={currentResource}
             onAssign={handleInstructorAssignment}
-            isMobile={isMobile}
+            isMobile={window.innerWidth <= 768}
           />
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Typography, Paper, Button, Chip,
-  Divider, Grid, List, ListItem, ListItemText, ListItemIcon, Tabs,
-  Tab, useTheme, IconButton, CircularProgress 
-} from '@mui/material';
+import './CourseView.css';
 import {
   ArrowBack, Edit, People, Schedule,
   MonetizationOn, Assessment, InsertDriveFile,
@@ -19,7 +15,6 @@ import { pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const CourseView = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams();
   const [course, setCourse] = useState(null);
@@ -73,10 +68,10 @@ const CourseView = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Published': return 'success';
-      case 'Draft': return 'warning';
-      case 'Archived': return 'default';
-      default: return 'info';
+      case 'Published': return '#4caf50';
+      case 'Draft': return '#f59e0b';
+      case 'Archived': return '#6b7280';
+      default: return '#0288d1';
     }
   };
 
@@ -96,24 +91,24 @@ const CourseView = () => {
   const getLessonIcon = (type) => {
     const normalizedType = type.toLowerCase();
     switch (normalizedType) {
-      case 'video': return <VideoLibrary color="primary" />;
-      case 'quiz': return <Quiz color="secondary" />;
-      case 'assignment': return <Assignment color="info" />;
-      case 'pdf': return <PictureAsPdf color="error" />;
-      case 'word': return <Description color="info" />;
-      case 'image': return <Image color="success" />;
-      default: return <InsertDriveFile color="action" />;
+      case 'video': return <VideoLibrary className="icon primary" />;
+      case 'quiz': return <Quiz className="icon secondary" />;
+      case 'assignment': return <Assignment className="icon info" />;
+      case 'pdf': return <PictureAsPdf className="icon error" />;
+      case 'word': return <Description className="icon info" />;
+      case 'image': return <Image className="icon success" />;
+      default: return <InsertDriveFile className="icon action" />;
     }
   };
 
   const getResourceIcon = (type) => {
     switch (type) {
-      case 'video': return <VideoLibrary color="primary" />;
-      case 'pdf': return <PictureAsPdf color="error" />;
-      case 'file': return <Description color="info" />;
-      case 'image': return <Image color="success" />;
-      case 'link': return <Link color="primary" />;
-      default: return <InsertDriveFile color="action" />;
+      case 'video': return <VideoLibrary className="icon primary" />;
+      case 'pdf': return <PictureAsPdf className="icon error" />;
+      case 'file': return <Description className="icon info" />;
+      case 'image': return <Image className="icon success" />;
+      case 'link': return <Link className="icon primary" />;
+      default: return <InsertDriveFile className="icon action" />;
     }
   };
 
@@ -131,514 +126,416 @@ const CourseView = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
+      <div className="CourseView-Loading">
+        <div className="spinner" />
+      </div>
     );
   }
 
   if (error || !course) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h6">{error || 'Course not found'}</Typography>
-      </Box>
+      <div className="CourseView-Error">
+        <span>{error || 'Course not found'}</span>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={handleBack} sx={{ mr: 2 }}>
-          <ArrowBack />
-        </IconButton>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          {course.title}
-        </Typography>
-        <Chip 
-          label={course.status} 
-          size="small" 
-          color={getStatusColor(course.status)}
-          sx={{ ml: 2 }}
-        />
-        <Button
-          variant="contained"
-          startIcon={<Edit />}
-          onClick={handleEdit}
-          sx={{ ml: 'auto' }}
-        >
-          Edit Course
-        </Button>
-      </Box>
+    <div className="CourseView">
+      <div className="CourseView-Top">
+        <div className="CourseView-Top-Grid">
+          <div className="CourseView-Top-Left">
+            <button onClick={handleBack} className="back-btn">
+              <ArrowBack className="icon" />
+            </button>
+            <h2>{course.title}</h2>
+            <span className="status-badge" style={{ backgroundColor: getStatusColor(course.status) }}>
+              {course.status}
+            </span>
+          </div>
+          <div className="CourseView-Top-Right">
+            <button onClick={handleEdit} className="edit-btn">
+              <Edit className="icon" /> Edit Course
+            </button>
+          </div>
+        </div>
+      </div>
 
-      <Grid container spacing={3}>
+      <div className="CourseView-Grid">
         {/* Left Column - Course Details */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              Course Description
-            </Typography>
-            <Typography paragraph>
-              {course.description}
-            </Typography>
+        <div className="CourseView-Left">
+          <div className="CourseView-Card">
+            <h3>Course Description</h3>
+            <p>{course.description}</p>
 
-            <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 600 }}>
-              Learning Outcomes
-            </Typography>
-            <List dense>
+            <h3>Learning Outcomes</h3>
+            <ul className="outcomes-list">
               {course.learning_outcomes.map((outcome, index) => (
-                <ListItem key={index} sx={{ py: 0.5 }}>
-                  <ListItemText primary={`• ${outcome}`} />
-                </ListItem>
+                <li key={index}>• {outcome}</li>
               ))}
-            </List>
-          </Paper>
+            </ul>
+          </div>
 
-          {/* Course Content Tabs */}
-          <Paper sx={{ mb: 3 }}>
-            <Tabs 
-              value={activeTab} 
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              sx={{
-                '& .MuiTabs-indicator': {
-                  backgroundColor: theme.palette.primary.main,
-                  height: 3
-                }
-              }}
-            >
-              <Tab label="Modules" />
-              <Tab label="Resources" />
-            </Tabs>
-            <Divider />
-
-            {activeTab === 0 && (
-              <Box sx={{ p: 3 }}>
-                {course.modules.map((module) => (
-                  <Box key={module.id} sx={{ mb: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-                      {module.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {module.description}
-                    </Typography>
-                    <List>
-                      {module.lessons.map((lesson) => {
-                        const lessonType = getLessonType(lesson);
-                        const contentUrl = lesson.content_file || lesson.content_url;
-                        return (
-                          <Box key={lesson.id}>
-                            <ListItem 
-                              sx={{ 
-                                py: 1,
-                                borderBottom: `1px solid ${theme.palette.divider}`,
-                                '&:hover': {
-                                  backgroundColor: theme.palette.action.hover,
-                                  cursor: 'pointer'
-                                }
-                              }}
-                              onClick={() => handleToggleLesson(lesson.id)}
-                            >
-                              <ListItemIcon sx={{ minWidth: 40 }}>
-                                {getLessonIcon(lessonType)}
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary={lesson.title} 
-                                secondary={
-                                  lessonType === 'video' ? 'Click to play video' :
-                                  lessonType === 'pdf' ? 'Click to view PDF' :
-                                  lessonType === 'word' ? 'Click to view document' :
-                                  lessonType === 'image' ? 'Click to view image' :
-                                  lesson.duration || 'Not specified'
-                                }
-                              />
-                            </ListItem>
-                            {expandedLesson === lesson.id && contentUrl && (
-                              <Box sx={{ 
-                                p: 2, 
-                                bgcolor: theme.palette.grey[100],
-                                borderBottom: `1px solid ${theme.palette.divider}`
-                              }}>
-                                {lessonType === 'video' && (
-                                  <Box sx={{ width: '100%' }}>
-                                    <video
-                                      controls
-                                      src={contentUrl}
-                                      style={{ width: '100%', maxHeight: '400px' }}
-                                      onError={() => alert('Failed to load video')}
-                                    >
-                                      Your browser does not support the video tag.
-                                    </video>
-                                    <Button
-                                      variant="outlined"
-                                      href={contentUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      sx={{ mt: 1 }}
-                                    >
-                                      Open Video in New Tab
-                                    </Button>
-                                  </Box>
-                                )}
-                                {lessonType === 'pdf' && (
-                                  <Box sx={{ width: '100%' }}>
-                                    {import.meta.env.DEV ? (
-                                      <>
-                                        <Document
-                                          file={contentUrl}
-                                          onLoadSuccess={onDocumentLoadSuccess}
-                                          onLoadError={() => alert('Failed to load PDF')}
-                                        >
-                                          {Array.from(new Array(numPages), (_, index) => (
-                                            <Page
-                                              key={`page_${index + 1}`}
-                                              pageNumber={index + 1}
-                                              width={800}
-                                              renderTextLayer={false}
-                                              renderAnnotationLayer={false}
-                                            />
-                                          ))}
-                                        </Document>
-                                        <Typography variant="body2" sx={{ mt: 1 }}>
-                                          Page {1} of {numPages}
-                                        </Typography>
-                                      </>
-                                    ) : (
-                                      <iframe
+          <div className="CourseView-Card">
+            <div className="tabs">
+              <button
+                className={activeTab === 0 ? 'tab active' : 'tab'}
+                onClick={() => setActiveTab(0)}
+              >
+                Modules
+              </button>
+              <button
+                className={activeTab === 1 ? 'tab active' : 'tab'}
+                onClick={() => setActiveTab(1)}
+              >
+                Resources
+              </button>
+            </div>
+            <div className="tab-content">
+              {activeTab === 0 && (
+                <div>
+                  {course.modules.map((module) => (
+                    <div key={module.id} className="module">
+                      <h4>{module.title}</h4>
+                      <p className="module-description">{module.description}</p>
+                      <ul className="lesson-list">
+                        {module.lessons.map((lesson) => {
+                          const lessonType = getLessonType(lesson);
+                          const contentUrl = lesson.content_file || lesson.content_url;
+                          return (
+                            <li key={lesson.id} className="lesson-item">
+                              <div
+                                className="lesson-header"
+                                onClick={() => handleToggleLesson(lesson.id)}
+                              >
+                                <span className="lesson-icon">{getLessonIcon(lessonType)}</span>
+                                <div className="lesson-text">
+                                  <span className="lesson-title">{lesson.title}</span>
+                                  <span className="lesson-secondary">
+                                    {lessonType === 'video' ? 'Click to play video' :
+                                     lessonType === 'pdf' ? 'Click to view PDF' :
+                                     lessonType === 'word' ? 'Click to view document' :
+                                     lessonType === 'image' ? 'Click to view image' :
+                                     lesson.duration || 'Not specified'}
+                                  </span>
+                                </div>
+                              </div>
+                              {expandedLesson === lesson.id && contentUrl && (
+                                <div className="lesson-content">
+                                  {lessonType === 'video' && (
+                                    <div className="media-container">
+                                      <video
+                                        controls
                                         src={contentUrl}
-                                        style={{ width: '100%', height: '500px', border: 'none' }}
-                                        title={lesson.title}
-                                      />
-                                    )}
-                                    <Button
-                                      variant="outlined"
-                                      href={contentUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      sx={{ mt: 1 }}
-                                    >
-                                      {import.meta.env.DEV ? 'Download PDF' : 'Open PDF in New Tab'}
-                                    </Button>
-                                  </Box>
-                                )}
-                                {lessonType === 'word' && (
-                                  <Box sx={{ width: '100%' }}>
-                                    {import.meta.env.DEV ? (
-                                      <Button 
-                                        variant="contained" 
-                                        href={contentUrl}
-                                        download
-                                        sx={{ mb: 2 }}
+                                        className="media"
+                                        onError={() => alert('Failed to load video')}
                                       >
-                                        Download Word Document
-                                      </Button>
-                                    ) : (
-                                      <iframe
-                                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(contentUrl)}&embedded=true`}
-                                        style={{ width: '100%', height: '500px', border: 'none' }}
-                                        title={lesson.title}
+                                        Your browser does not support the video tag.
+                                      </video>
+                                      <a
+                                        href={contentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn"
+                                      >
+                                        Open Video in New Tab
+                                      </a>
+                                    </div>
+                                  )}
+                                  {lessonType === 'pdf' && (
+                                    <div className="media-container">
+                                      {import.meta.env.DEV ? (
+                                        <>
+                                          <Document
+                                            file={contentUrl}
+                                            onLoadSuccess={onDocumentLoadSuccess}
+                                            onLoadError={() => alert('Failed to load PDF')}
+                                          >
+                                            {Array.from(new Array(numPages), (_, index) => (
+                                              <Page
+                                                key={`page_${index + 1}`}
+                                                pageNumber={index + 1}
+                                                width={800}
+                                                renderTextLayer={false}
+                                                renderAnnotationLayer={false}
+                                              />
+                                            ))}
+                                          </Document>
+                                          <span className="pdf-page-info">
+                                            Page {1} of {numPages}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <iframe
+                                          src={contentUrl}
+                                          className="media-iframe"
+                                          title={lesson.title}
+                                        />
+                                      )}
+                                      <a
+                                        href={contentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn"
+                                      >
+                                        {import.meta.env.DEV ? 'Download PDF' : 'Open PDF in New Tab'}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {lessonType === 'word' && (
+                                    <div className="media-container">
+                                      {import.meta.env.DEV ? (
+                                        <a
+                                          href={contentUrl}
+                                          download
+                                          className="action-btn primary"
+                                        >
+                                          Download Word Document
+                                        </a>
+                                      ) : (
+                                        <iframe
+                                          src={`https://docs.google.com/viewer?url=${encodeURIComponent(contentUrl)}&embedded=true`}
+                                          className="media-iframe"
+                                          title={lesson.title}
+                                        />
+                                      )}
+                                      <a
+                                        href={contentUrl}
+                                        target="_blank"
+                                        className="action-btn"
+                                      >
+                                        {import.meta.env.DEV ? 'Open Document' : 'Download Document'}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {lessonType === 'image' && (
+                                    <div className="media-container">
+                                      <img
+                                        src={contentUrl}
+                                        alt={lesson.title}
+                                        className="media"
+                                        onError={() => alert('Failed to load image')}
                                       />
-                                    )}
-                                    <Button
-                                      variant="outlined"
-                                      href={contentUrl}
-                                      target="_blank"
-                                      sx={{ mt: 1 }}
-                                    >
-                                      {import.meta.env.DEV ? 'Open Document' : 'Download Document'}
-                                    </Button>
-                                  </Box>
-                                )}
-                                {lessonType === 'image' && (
-                                  <Box sx={{ width: '100%' }}>
-                                    <img
-                                      src={contentUrl}
-                                      alt={lesson.title}
-                                      style={{ 
-                                        width: '100%', 
-                                        maxHeight: '500px', 
-                                        objectFit: 'contain',
-                                        display: 'block',
-                                        margin: '0 auto'
-                                      }}
-                                      onError={() => alert('Failed to load image')}
-                                    />
-                                    <Button
-                                      variant="outlined"
-                                      href={contentUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      sx={{ mt: 1 }}
-                                    >
-                                      Open Image in New Tab
-                                    </Button>
-                                  </Box>
-                                )}
-                                {lessonType === 'default' && contentUrl && (
-                                  <Box>
-                                    <Button
-                                      variant="contained"
-                                      href={contentUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Download Resource
-                                    </Button>
-                                  </Box>
-                                )}
-                              </Box>
-                            )}
-                          </Box>
-                        );
-                      })}
-                    </List>
-                  </Box>
-                ))}
-              </Box>
-            )}
-
-            {activeTab === 1 && (
-              <Box sx={{ p: 3 }}>
-                <List>
+                                      <a
+                                        href={contentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn"
+                                      >
+                                        Open Image in New Tab
+                                      </a>
+                                    </div>
+                                  )}
+                                  {lessonType === 'default' && contentUrl && (
+                                    <div className="media-container">
+                                      <a
+                                        href={contentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn primary"
+                                      >
+                                        Download Resource
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {activeTab === 1 && (
+                <ul className="resource-list">
                   {course.resources.map((resource) => {
                     const resourceUrl = resource.url || resource.file;
                     return (
-                      <Box key={resource.id}>
-                        <ListItem 
-                          sx={{ 
-                            py: 1,
-                            borderBottom: `1px solid ${theme.palette.divider}`,
-                            '&:hover': {
-                              backgroundColor: theme.palette.action.hover,
-                              cursor: 'pointer'
-                            }
-                          }}
+                      <li key={resource.id} className="resource-item">
+                        <div
+                          className="resource-header"
                           onClick={() => handleToggleResource(resource.id)}
                         >
-                          <ListItemIcon sx={{ minWidth: 40 }}>
-                            {getResourceIcon(resource.resource_type)}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={resource.title} 
-                            secondary={
-                              resource.resource_type === 'link' 
-                                ? resourceUrl 
-                                : resource.resource_type === 'video' 
-                                ? 'Click to play video' 
-                                : resource.resource_type === 'pdf' 
-                                ? 'Click to view PDF' 
-                                : resource.resource_type === 'file' 
-                                ? 'Click to view document' 
-                                : 'Resource'
-                            }
-                          />
-                        </ListItem>
+                          <span className="resource-icon">{getResourceIcon(resource.resource_type)}</span>
+                          <div className="resource-text">
+                            <span className="resource-title">{resource.title}</span>
+                            <span className="resource-secondary">
+                              {resource.resource_type === 'link' ? resourceUrl :
+                               resource.resource_type === 'video' ? 'Click to play video' :
+                               resource.resource_type === 'pdf' ? 'Click to view PDF' :
+                               resource.resource_type === 'file' ? 'Click to view document' :
+                               'Resource'}
+                            </span>
+                          </div>
+                        </div>
                         {expandedResource === resource.id && resourceUrl && (
-                          <Box sx={{ p: 2, bgcolor: theme.palette.grey[100] }}>
+                          <div className="resource-content">
                             {resource.resource_type === 'video' && (
                               <video
                                 controls
                                 src={resourceUrl}
-                                style={{ width: '100%', maxHeight: '400px' }}
+                                className="media"
                                 onError={() => alert('Failed to load video')}
                               >
                                 Your browser does not support the video tag.
                               </video>
                             )}
                             {resource.resource_type === 'pdf' && (
-                              import.meta.env.DEV ? (
-                                <>
-                                  <Document
-                                    file={resourceUrl}
-                                    onLoadSuccess={onDocumentLoadSuccess}
-                                    onLoadError={() => alert('Failed to load PDF')}
-                                  >
-                                    <Page
-                                      pageNumber={1}
-                                      width={800}
-                                      renderTextLayer={false}
-                                      renderAnnotationLayer={false}
-                                    />
-                                  </Document>
-                                  <Typography variant="body2" sx={{ mt: 1 }}>
-                                    Page 1 of {numPages}
-                                  </Typography>
-                                </>
-                              ) : (
-                                <iframe
-                                  src={resourceUrl}
-                                  style={{ width: '100%', height: '500px', border: 'none' }}
-                                  title={resource.title}
-                                />
-                              )
+                              <div className="media-container">
+                                {import.meta.env.DEV ? (
+                                  <>
+                                    <Document
+                                      file={resourceUrl}
+                                      onLoadSuccess={onDocumentLoadSuccess}
+                                      onLoadError={() => alert('Failed to load PDF')}
+                                    >
+                                      <Page
+                                        pageNumber={1}
+                                        width={800}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                      />
+                                    </Document>
+                                    <span className="pdf-page-info">
+                                      Page 1 of {numPages}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <iframe
+                                    src={resourceUrl}
+                                    className="media-iframe"
+                                    title={resource.title}
+                                  />
+                                )}
+                              </div>
                             )}
                             {(resource.resource_type === 'file' && resourceUrl.match(/\.(doc|docx)$/i)) && (
-                              import.meta.env.DEV ? (
-                                <Button 
-                                  variant="contained" 
-                                  href={resourceUrl}
-                                  download
-                                  sx={{ mb: 2 }}
-                                >
-                                  Download Word Document
-                                </Button>
-                              ) : (
-                                <iframe
-                                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(resourceUrl)}&embedded=true`}
-                                  style={{ width: '100%', height: '500px', border: 'none' }}
-                                  title={resource.title}
-                                />
-                              )
+                              <div className="media-container">
+                                {import.meta.env.DEV ? (
+                                  <a
+                                    href={resourceUrl}
+                                    download
+                                    className="action-btn primary"
+                                  >
+                                    Download Word Document
+                                  </a>
+                                ) : (
+                                  <iframe
+                                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(resourceUrl)}&embedded=true`}
+                                    className="media-iframe"
+                                    title={resource.title}
+                                  />
+                                )}
+                              </div>
                             )}
                             {resource.resource_type === 'link' && (
-                              <Button
-                                variant="contained"
-                                color="primary"
+                              <a
                                 href={resourceUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                sx={{ mt: 1 }}
+                                className="action-btn primary"
                               >
                                 Visit Link
-                              </Button>
+                              </a>
                             )}
-                            <Button
-                              variant="outlined"
+                            <a
                               href={resourceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              sx={{ mt: 1, ml: 1 }}
+                              className="action-btn"
                             >
                               {resource.resource_type === 'link' ? 'Open Link' : 'Download'}
-                            </Button>
-                          </Box>
+                            </a>
+                          </div>
                         )}
-                      </Box>
+                      </li>
                     );
                   })}
-                </List>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Right Column - Course Meta */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ 
-              width: '100%', 
-              height: 200, 
-              mb: 2,
-              borderRadius: 1,
-              overflow: 'hidden',
-              backgroundColor: theme.palette.grey[200],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+        <div className="CourseView-Right">
+          <div className="CourseView-Card">
+            <div className="thumbnail">
               {course.thumbnail ? (
-                <img 
-                  src={course.thumbnail} 
-                  alt={course.title} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+                <img src={course.thumbnail} alt={course.title} className="thumbnail-img" />
               ) : (
-                <Typography color="text.secondary">No thumbnail</Typography>
+                <span className="thumbnail-placeholder">No thumbnail</span>
               )}
-            </Box>
-
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  <People fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  Students
-                </Typography>
-                <Typography variant="h6">
-                  {course.totalStudents || 0}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  <Schedule fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  Duration
-                </Typography>
-                <Typography variant="h6">
-                  {course.duration}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  <MonetizationOn fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  Price
-                </Typography>
-                <Typography variant="h6">
+            </div>
+            <div className="meta-grid">
+              <div className="meta-item">
+                <span className="meta-label">
+                  <People className="icon small" /> Students
+                </span>
+                <span className="meta-value">{course.totalStudents || 0}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">
+                  <Schedule className="icon small" /> Duration
+                </span>
+                <span className="meta-value">{course.duration}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">
+                  <MonetizationOn className="icon small" /> Price
+                </span>
+                <span className="meta-value">
                   {course.discount_price ? (
                     <>
-                      <Typography component="span" sx={{ textDecoration: 'line-through', mr: 1 }}>
+                      <span className="price-strikethrough">
                         {formatPrice(course.price, course.currency)}
-                      </Typography>
-                      <Typography component="span" color="error">
+                      </span>
+                      <span className="price-discounted">
                         {formatPrice(course.discount_price, course.currency)}
-                      </Typography>
+                      </span>
                     </>
                   ) : (
                     formatPrice(course.price, course.currency)
                   )}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  <Assessment fontSize="small" sx={{ verticalAlign: 'middle', mr: 1 }} />
-                  Status
-                </Typography>
-                <Typography variant="h6">
-                  <Chip 
-                    label={course.status} 
-                    size="small" 
-                    color={getStatusColor(course.status)}
-                  />
-                </Typography>
-              </Grid>
-            </Grid>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="body2" color="text.secondary">
-              Course Code
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {course.code}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Category
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {course.category?.name || 'Not specified'}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Level
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {course.level}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Created
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {new Date(course.created_at).toLocaleDateString()}
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Last Updated
-            </Typography>
-            <Typography variant="body1">
-              {new Date(course.updated_at).toLocaleDateString()}
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+                </span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">
+                  <Assessment className="icon small" /> Status
+                </span>
+                <span className="meta-value">
+                  <span className="status-badge" style={{ backgroundColor: getStatusColor(course.status) }}>
+                    {course.status}
+                  </span>
+                </span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Course Code</span>
+                <span className="meta-value">{course.code}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Category</span>
+                <span className="meta-value">{course.category?.name || 'Not specified'}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Level</span>
+                <span className="meta-value">{course.level}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Created</span>
+                <span className="meta-value">{new Date(course.created_at).toLocaleDateString()}</span>
+              </div>
+              <div className="meta-item">
+                <span className="meta-label">Last Updated</span>
+                <span className="meta-value">{new Date(course.updated_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

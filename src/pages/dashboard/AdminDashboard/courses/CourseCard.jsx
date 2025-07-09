@@ -1,179 +1,124 @@
 import React from 'react';
-import {  Card,  CardMedia,  CardContent,  CardActions,
-  Typography,  Button,  Chip,  Box,  Avatar,  useTheme
-} from '@mui/material';
-import { School, People, AccessTime, Star } from '@mui/icons-material';
+import './CourseCard.css';
+import { ClockIcon, AcademicCapIcon, StarIcon, UserGroupIcon, DocumentTextIcon, PencilIcon } from '@heroicons/react/24/outline';
 
-const CourseCard = ({ 
-  course, 
-  onView, 
-  onEdit, 
+const CourseCard = ({
+  course,
+  onView,
+  onEdit,
   onEnroll,
   variant = 'default' // 'default' or 'minimal'
 }) => {
-  const theme = useTheme();
+  const getLevelColor = (level) => {
+    switch (level) {
+      case 'Advanced':
+        return '#f8d7da';
+      case 'Intermediate':
+        return '#fef3c7';
+      default:
+        return '#d1fae5';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Published':
+        return '#d1fae5';
+      case 'Draft':
+        return '#fef3c7';
+      default:
+        return '#f7f5ff';
+    }
+  };
 
   if (variant === 'minimal') {
     return (
-      <Card sx={{ 
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'transform 0.2s',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: theme.shadows[4]
-        }
-      }}>
-        <CardMedia
-          component="img"
-          height="140"
-          image={course.thumbnail || '/default-course.jpg'}
+      <div className="CourseCard CourseCard-minimal">
+        <img
+          src={course.thumbnail || '/default-course.jpg'}
           alt={course.title}
+          className="CourseCard-img"
         />
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Typography gutterBottom variant="h6" component="div">
-            {course.title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {course.instructor}
-          </Typography>
-          <Chip 
-            label={course.level} 
-            size="small" 
-            sx={{ 
-              mr: 1,
-              backgroundColor: 
-                course.level === 'Advanced' ? theme.palette.error.light :
-                course.level === 'Intermediate' ? theme.palette.warning.light :
-                theme.palette.success.light
-            }} 
-          />
-          <Chip 
-            label={course.category} 
-            size="small" 
-            variant="outlined" 
-          />
-        </CardContent>
-        <CardActions sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <People fontSize="small" sx={{ mr: 0.5 }} />
-            <Typography variant="body2">{course.enrolled}</Typography>
-          </Box>
-          <Button size="small" onClick={onView}>View</Button>
-        </CardActions>
-      </Card>
+        <div className="CourseCard-content">
+          <h3>{course.title}</h3>
+          <p className="instructor">{course.instructor}</p>
+          <div className="CourseCard-chips">
+            <span
+              className="chip"
+              style={{ backgroundColor: getLevelColor(course.level) }}
+            >
+              {course.level}
+            </span>
+            <span className="chip outlined">{course.category}</span>
+          </div>
+        </div>
+        <div className="CourseCard-actions">
+          <span className="enrolled">
+            <UserGroupIcon className="icon" /> {course.enrolled}
+          </span>
+          <button className="action-btn" onClick={onView}>
+            View
+          </button>
+        </div>
+      </div>
     );
   }
 
   // Default variant
   return (
-    <Card sx={{ 
-      display: 'flex',
-      height: '100%',
-      flexDirection: 'column',
-      boxShadow: 'none',
-      border: `1px solid ${theme.palette.divider}`,
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        boxShadow: theme.shadows[4],
-        borderColor: 'transparent'
-      }
-    }}>
-      <Box sx={{ position: 'relative' }}>
-        <CardMedia
-          component="img"
-          height="160"
-          image={course.thumbnail || '/default-course.jpg'}
+    <div className="CourseCard">
+      <div className="CourseCard-img-container">
+        <img
+          src={course.thumbnail || '/default-course.jpg'}
           alt={course.title}
-          sx={{ objectFit: 'cover' }}
+          className="CourseCard-img"
         />
-        <Chip
-          label={course.status}
-          size="small"
-          color={
-            course.status === 'Published' ? 'success' :
-            course.status === 'Draft' ? 'warning' : 'default'
-          }
-          sx={{ 
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            fontWeight: 600
-          }}
-        />
-      </Box>
-      
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h6" fontWeight={600} gutterBottom>
-          {course.title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {course.shortDescription || 'No description available'}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Avatar 
-            src={course.instructorAvatar} 
-            sx={{ 
-              width: 32, 
-              height: 32, 
-              mr: 1,
-              bgcolor: theme.palette.primary.main
-            }}
-          >
-            {course.instructor?.charAt(0)}
-          </Avatar>
-          <Typography variant="body2">
-            {course.instructor || 'Unknown Instructor'}
-          </Typography>
-        </Box>
-        
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-          <Chip 
-            icon={<AccessTime fontSize="small" />}
-            label={course.duration || 'N/A'} 
-            size="small" 
-          />
-          <Chip 
-            icon={<School fontSize="small" />}
-            label={course.level || 'All Levels'} 
-            size="small" 
-          />
+        <span
+          className="status-chip"
+          style={{ backgroundColor: getStatusColor(course.status) }}
+        >
+          {course.status}
+        </span>
+      </div>
+      <div className="CourseCard-content">
+        <h3>{course.title}</h3>
+        <p className="description">{course.shortDescription || 'No description available'}</p>
+        <div className="instructor-info">
+          <span className="avatar">{course.instructor?.charAt(0)}</span>
+          <span>{course.instructor || 'Unknown Instructor'}</span>
+        </div>
+        <div className="CourseCard-chips">
+          <span className="chip">
+            <ClockIcon className="icon" /> {course.duration || 'N/A'}
+          </span>
+          <span className="chip">
+            <AcademicCapIcon className="icon" /> {course.level || 'All Levels'}
+          </span>
           {course.rating && (
-            <Chip 
-              icon={<Star fontSize="small" sx={{ color: theme.palette.warning.main }} />}
-              label={course.rating} 
-              size="small" 
-            />
+            <span className="chip rating">
+              <StarIcon className="icon" /> {course.rating}
+            </span>
           )}
-        </Box>
-      </CardContent>
-      
-      <CardActions sx={{ p: 2, justifyContent: 'space-between' }}>
-        <Typography variant="h6" fontWeight={600}>
-          {course.price ? `$${course.price}` : 'Free'}
-        </Typography>
-        <Box>
+        </div>
+      </div>
+      <div className="CourseCard-actions">
+        <span className="price">{course.price ? `$${course.price}` : 'Free'}</span>
+        <div className="buttons">
           {onEdit && (
-            <Button 
-              size="small" 
-              onClick={onEdit}
-              sx={{ mr: 1 }}
-            >
-              Edit
-            </Button>
+            <button className="action-btn" onClick={onEdit}>
+              <PencilIcon className="icon" /> Edit
+            </button>
           )}
-          <Button 
-            variant="contained" 
-            size="small" 
+          <button
+            className="action-btn primary"
             onClick={onView || onEnroll}
           >
+            <DocumentTextIcon className="icon" />
             {onEdit ? 'Preview' : 'Enroll Now'}
-          </Button>
-        </Box>
-      </CardActions>
-    </Card>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

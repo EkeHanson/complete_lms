@@ -1,0 +1,480 @@
+.LearningPaths {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 15px;
+}
+
+.error-notification {
+  position: relative;
+  width: 100%;
+  padding: 10px 20px;
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.error-notification span {
+  font-size: 12px;
+}
+
+.error-notification .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.error-notification .icon {
+  width: 16px;
+  height: 16px;
+  color: #721c24;
+}
+
+.LearningPaths-Top {
+  position: relative;
+  width: 100%;
+  padding: 10px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.LearningPaths-Top-Grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.LearningPaths-Top-1 h2 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.LearningPaths-Top-1 .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.LearningPaths-Top-2 span {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.LearningPaths-Create {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.LearningPaths-Create h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.LearningPaths-Form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .LearningPaths-Form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+  font-size: 12px;
+  background-color: #f7f5ff;
+  color: #372580;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.action-btn:hover {
+  background-color: #decdfd;
+}
+
+.action-btn.primary {
+  background-color: #7226FF;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background-color: #450CD5;
+}
+
+.action-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.LearningPaths-List {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.LearningPaths-List h3 Pasha {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #7226FF;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #eeeafa;
+}
+
+.empty-state .empty-icon {
+  width: 60px;
+  height: 60px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.empty-state span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.empty-state p {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.path-item {
+  padding: 15px;
+  background: #f7f5ff;
+  border-radius: 8px;
+  border: 1px solid #ece8fa;
+}
+
+.path-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.drag-handle .icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  cursor: grab;
+}
+
+.path-info h4 {
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.path-info p {
+  font-size: 12px;
+  color: #5d5677;
+  word-break: break-word;
+}
+
+.path-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.icon-btn {
+  padding: 5px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid #ece8fa;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.icon-btn:hover {
+  background: #decdfd;
+}
+
+.icon-btn.delete {
+  border-color: #b91c1c;
+}
+
+.icon-btn.delete:hover {
+  background: #f8d7da;
+}
+
+.icon-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn.delete .icon {
+  color: #b91c1c;
+}
+
+.path-courses {
+  padding-left: 30px;
+  margin-top: 10px;
+}
+
+.path-courses .label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.course-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: #ebe6ff;
+  border-radius: 30px;
+  font-size: 11px;
+  color: #372580;
+}
+
+.chip-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.chip-delete .icon {
+  width: 14px;
+  height: 14px;
+  color: #b91c1c;
+}
+
+.no-courses {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.CourseDialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.CourseDialog-Body {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1000;
+}
+
+.CourseDialog-Main {
+  position: relative;
+  width: 90%;
+  max-width: 500px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.CourseDialog-Close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.CourseDialog-Close:hover {
+  background: #f4f1ff;
+}
+
+.CourseDialog-Close .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.CourseDialog-Header {
+  padding: 15px 20px;
+  background: #7226FF;
+  color: #fff;
+}
+
+.CourseDialog-Header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.CourseDialog-Content {
+  padding: 20px;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.course-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f7f5ff;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.course-item:hover {
+  background: #decdfd;
+}
+
+.course-info span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.course-info p {
+  font-size: 10px;
+  color: #5d5677;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+}
+
+.CourseDialog-Actions {
+  padding: 15px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #e3defc;
+}
+
+@media (max-width: 768px) {
+  .LearningPaths {
+    padding: 10px;
+  }
+
+  .LearningPaths-Top {
+    padding: 10px;
+  }
+
+  .LearningPaths-Top-1 h2 {
+    font-size: 14px;
+  }
+
+  .LearningPaths-Create {
+    padding: 15px;
+  }
+
+  .LearningPaths-List {
+    padding: 15px;
+  }
+
+  .CourseDialog-Main {
+    width: 100%;
+    height: 100%;
+  }
+}

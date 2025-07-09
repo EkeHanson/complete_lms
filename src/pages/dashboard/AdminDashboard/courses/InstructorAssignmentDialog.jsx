@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, List, ListItem, ListItemText,
-  Checkbox, FormControlLabel, Divider, Chip, Box,
-  useMediaQuery, useTheme, TextField, InputAdornment,
-  CircularProgress, Alert
-} from '@mui/material';
+import './InstructorAssignmentDialog.css';
 import { People, School, Search } from '@mui/icons-material';
-import { groupsAPI } from '../../../../config'; // Import API
+import { groupsAPI } from '../../../../config';
 
 const InstructorAssignmentDialog = ({
   open,
@@ -15,11 +9,8 @@ const InstructorAssignmentDialog = ({
   modules,
   currentAssignment,
   onAssign,
-  isMobile
+  isMobile,
 }) => {
-  const theme = useTheme();
-  const isMobileView = useMediaQuery(theme.breakpoints.down('sm'));
-  
   const [instructors, setInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState(
     currentAssignment?.instructorId || null
@@ -28,8 +19,8 @@ const InstructorAssignmentDialog = ({
     currentAssignment?.assignedModules === 'all' ? 'all' : 'specific'
   );
   const [selectedModules, setSelectedModules] = useState(
-    currentAssignment?.assignedModules !== 'all' 
-      ? currentAssignment?.assignedModules || [] 
+    currentAssignment?.assignedModules !== 'all'
+      ? currentAssignment?.assignedModules || []
       : []
   );
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,47 +28,48 @@ const InstructorAssignmentDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-useEffect(() => {
-  if (open) {
-    setLoading(true);
-    const tryGroupNames = ['trainers', 'instructors', 'teachers'];
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      const tryGroupNames = ['trainers', 'instructors', 'teachers'];
 
-    const fetchMembers = async (index = 0) => {
-      if (index >= tryGroupNames.length) {
-        setError('No instructor groups found (trainers, instructors, teachers)');
-        setLoading(false);
-        return;
-      }
-      try {
-        const response = await groupsAPI.getGroupMembersByName(tryGroupNames[index]);
-        const instructorList = response.data.map(membership => ({
-          id: membership.user.id,
-          name: `${membership.user.first_name} ${membership.user.last_name}`,
-          email: membership.user.email,
-          expertise: membership.user.expertise || []
-        }));
-        setInstructors(instructorList);
-        setFilteredInstructors(instructorList);
-        setLoading(false);
-      } catch (err) {
-        fetchMembers(index + 1); // Try next group name
-      }
-    };
+      const fetchMembers = async (index = 0) => {
+        if (index >= tryGroupNames.length) {
+          setError('No instructor groups found (trainers, instructors, teachers)');
+          setLoading(false);
+          return;
+        }
+        try {
+          const response = await groupsAPI.getGroupMembersByName(tryGroupNames[index]);
+          const instructorList = response.data.map((membership) => ({
+            id: membership.user.id,
+            name: `${membership.user.first_name} ${membership.user.last_name}`,
+            email: membership.user.email,
+            expertise: membership.user.expertise || [],
+          }));
+          setInstructors(instructorList);
+          setFilteredInstructors(instructorList);
+          setLoading(false);
+        } catch (err) {
+          fetchMembers(index + 1);
+        }
+      };
 
-    fetchMembers();
-  }
-}, [open]);
+      fetchMembers();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredInstructors(instructors);
     } else {
-      const filtered = instructors.filter(instructor => 
-        instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        instructor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        instructor.expertise.some(skill => 
-          skill.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      const filtered = instructors.filter(
+        (instructor) =>
+          instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          instructor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          instructor.expertise.some((skill) =>
+            skill.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       );
       setFilteredInstructors(filtered);
     }
@@ -95,9 +87,9 @@ useEffect(() => {
   };
 
   const toggleModuleSelection = (moduleId) => {
-    setSelectedModules(prev =>
+    setSelectedModules((prev) =>
       prev.includes(moduleId)
-        ? prev.filter(id => id !== moduleId)
+        ? prev.filter((id) => id !== moduleId)
         : [...prev, moduleId]
     );
   };
@@ -109,314 +101,179 @@ useEffect(() => {
   const handleSubmit = () => {
     if (!selectedInstructor) return;
 
-    const instructor = instructors.find(i => i.id === selectedInstructor);
+    const instructor = instructors.find((i) => i.id === selectedInstructor);
     const assignedModules = assignmentType === 'all' ? 'all' : selectedModules;
     onAssign(instructor, assignedModules);
     onClose();
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      fullWidth 
-      maxWidth="sm"
-      fullScreen={isMobileView}
-    >
-      <DialogTitle sx={{ 
-        fontSize: isMobileView ? '1.25rem' : '1.5rem',
-        padding: isMobileView ? 2 : 3
-      }}>
-        {currentAssignment ? 'Edit Instructor Assignment' : 'Assign Instructor'}
-      </DialogTitle>
-      
-      <DialogContent dividers sx={{ 
-        padding: isMobileView ? 2 : 3,
-        '& .MuiListItem-root': {
-          paddingLeft: isMobileView ? 1 : 2,
-          paddingRight: isMobileView ? 1 : 2
-        }
-      }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
+    <div className={`InstructorAssignmentDialog ${open ? 'open' : ''}`}>
+      <div className="InstructorAssignmentDialog-Overlay" onClick={onClose}></div>
+      <div className="InstructorAssignmentDialog-Content">
+        <div className="InstructorAssignmentDialog-Header">
+          <h3>
+            <People className="icon" />
+            {currentAssignment ? 'Edit Instructor Assignment' : 'Assign Instructor'}
+          </h3>
+          <button className="close-btn" onClick={onClose}>
+            <span>&times;</span>
+          </button>
+        </div>
 
-        <Typography variant="subtitle1" sx={{ 
-          mb: 2, 
-          fontWeight: 600,
-          fontSize: isMobileView ? '1rem' : 'inherit'
-        }}>
-          Select Instructor
-        </Typography>
-        
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search instructors by name, email or expertise..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          sx={{ mb: 2 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-          size={isMobileView ? 'small' : 'medium'}
-        />
-        
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <List sx={{ 
-            maxHeight: isMobileView ? '40vh' : 200, 
-            overflow: 'auto', 
-            mb: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 1
-          }}>
-            {filteredInstructors.length === 0 ? (
-              <ListItem sx={{ 
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: isMobileView ? '16px 12px' : '24px 16px'
-              }}>
-                <People sx={{ 
-                  fontSize: isMobileView ? 32 : 40, 
-                  color: 'text.disabled', 
-                  mb: 1 
-                }} />
-                <Typography color="text.secondary" align="center">
-                  No instructors found
-                </Typography>
-              </ListItem>
-            ) : (
-              filteredInstructors.map((instructor) => (
-                <ListItem 
-                  key={instructor.id}
-                  button={true}
-                  selected={selectedInstructor === instructor.id}
-                  onClick={() => handleInstructorSelect(instructor.id)}
-                  sx={{
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    padding: isMobileView ? '8px 12px' : '12px 16px',
-                    backgroundColor: selectedInstructor === instructor.id 
-                      ? theme.palette.action.selected 
-                      : 'inherit',
-                    borderLeft: selectedInstructor === instructor.id
-                      ? `4px solid ${theme.palette.primary.main}`
-                      : '4px solid transparent',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover,
-                    }
-                  }}
-                >
-                  <ListItemText
-                    primary={
-                      <Typography 
-                        fontWeight={selectedInstructor === instructor.id ? 700 : 500}
-                        color={selectedInstructor === instructor.id ? 'primary.main' : 'text.primary'}
-                      >
-                        {instructor.name}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography 
-                        variant="body2"
-                        color={selectedInstructor === instructor.id ? 'primary.main' : 'text.secondary'}
-                      >
-                        {instructor.email}
-                      </Typography>
-                    }
-                    sx={{ mb: 1 }}
-                  />
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap',
-                    gap: 0.5,
-                    width: '100%'
-                  }}>
-                    {instructor.expertise.map(skill => (
-                      <Chip 
-                        key={skill} 
-                        label={skill} 
-                        size="small" 
-                        sx={{ 
-                          fontSize: '0.7rem',
-                          maxWidth: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          backgroundColor: selectedInstructor === instructor.id
-                            ? theme.palette.primary.light
-                            : theme.palette.grey[200],
-                          color: selectedInstructor === instructor.id
-                            ? theme.palette.primary.contrastText
-                            : 'inherit'
-                        }} 
-                      />
-                    ))}
-                  </Box>
-                </ListItem>
-              ))
-            )}
-          </List>
-        )}
+        <div className="InstructorAssignmentDialog-Body">
+          {error && (
+            <div className="error-message">
+              <span>{error}</span>
+              <button onClick={() => setError('')}>Dismiss</button>
+            </div>
+          )}
 
-        {selectedInstructor && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            
-            <Box sx={{ 
-              backgroundColor: theme.palette.primary.light,
-              color: theme.palette.primary.contrastText,
-              p: 2,
-              borderRadius: 1,
-              mb: 2
-            }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Selected Instructor: {instructors.find(i => i.id === selectedInstructor)?.name}
-              </Typography>
-              <Typography variant="body2">{instructors.find(i => i.id === selectedInstructor)?.email}</Typography>
-            </Box>
+          <h4>Select Instructor</h4>
+          <div className="search-container">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search instructors by name, email or expertise..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="search-input"
+            />
+          </div>
 
-            <Typography variant="subtitle1" sx={{ 
-              mb: 2, 
-              fontWeight: 600,
-              fontSize: isMobileView ? '1rem' : 'inherit'
-            }}>
-              Assignment Scope
-            </Typography>
+          {loading ? (
+            <div className="loading-container">
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <ul className="instructor-list">
+              {filteredInstructors.length === 0 ? (
+                <li className="empty-state">
+                  <People className="empty-icon" />
+                  <span>No instructors found</span>
+                </li>
+              ) : (
+                filteredInstructors.map((instructor) => (
+                  <li
+                    key={instructor.id}
+                    className={`instructor-item ${
+                      selectedInstructor === instructor.id ? 'selected' : ''
+                    }`}
+                    onClick={() => handleInstructorSelect(instructor.id)}
+                  >
+                    <div className="instructor-details">
+                      <span className="instructor-name">{instructor.name}</span>
+                      <span className="instructor-email">{instructor.email}</span>
+                    </div>
+                    <div className="expertise-tags">
+                      {instructor.expertise.map((skill) => (
+                        <span
+                          key={skill}
+                          className={`tag ${
+                            selectedInstructor === instructor.id ? 'selected' : ''
+                          }`}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {assignmentType === 'all' 
-                  ? 'This instructor will be assigned to all modules in the course.'
-                  : 'Select specific modules to assign this instructor to.'}
-              </Typography>
-              <FormControlLabel
-                control={
-                  <Checkbox
+          {selectedInstructor && (
+            <>
+              <div className="selected-instructor">
+                <span>
+                  Selected: {instructors.find((i) => i.id === selectedInstructor)?.name} (
+                  {instructors.find((i) => i.id === selectedInstructor)?.email})
+                </span>
+              </div>
+
+              <h4>Assignment Scope</h4>
+              <div className="assignment-type">
+                <span>
+                  {assignmentType === 'all'
+                    ? 'This instructor will be assigned to all modules in the course.'
+                    : 'Select specific modules to assign this instructor to.'}
+                </span>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
                     checked={assignmentType === 'specific'}
                     onChange={handleAssignmentTypeChange}
-                    size={isMobileView ? 'small' : 'medium'}
-                    color="primary"
+                    className="checkbox"
                   />
-                }
-                label="Assign to specific modules only"
-              />
-            </Box>
+                  Assign to specific modules only
+                </label>
+              </div>
 
-            {assignmentType === 'specific' && (
-              <>
-                {modules.length === 0 ? (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    py: 3,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 1
-                  }}>
-                    <School sx={{ 
-                      fontSize: isMobileView ? 32 : 40, 
-                      color: 'text.disabled', 
-                      mb: 1 
-                    }} />
-                    <Typography color="text.secondary" align="center">
-                      No modules available for assignment
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" align="center">
-                      Create modules first to assign specific ones
-                    </Typography>
-                  </Box>
-                ) : (
-                  <>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Selected: {selectedModules.length} of {modules.length} modules
-                    </Typography>
-                    <List sx={{ 
-                      maxHeight: isMobileView ? '40vh' : 300, 
-                      overflow: 'auto',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1
-                    }}>
-                      {modules.map((module) => (
-                        <ListItem 
-                          key={module.id}
-                          button={true}
-                          onClick={() => toggleModuleSelection(module.id)}
-                          sx={{
-                            padding: isMobileView ? '8px 12px' : '12px 16px',
-                            backgroundColor: selectedModules.includes(module.id)
-                              ? theme.palette.action.selected
-                              : 'inherit'
-                          }}
-                        >
-                          <ListItemText
-                            primary={
-                              <Typography fontWeight={selectedModules.includes(module.id) ? 600 : 400}>
+              {assignmentType === 'specific' && (
+                <>
+                  {modules.length === 0 ? (
+                    <div className="empty-state">
+                      <School className="empty-icon" />
+                      <span>No modules available for assignment</span>
+                      <span>Create modules first to assign specific ones</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="module-count">
+                        Selected: {selectedModules.length} of {modules.length} modules
+                      </span>
+                      <ul className="module-list">
+                        {modules.map((module) => (
+                          <li
+                            key={module.id}
+                            className={`module-item ${
+                              selectedModules.includes(module.id) ? 'selected' : ''
+                            }`}
+                            onClick={() => toggleModuleSelection(module.id)}
+                          >
+                            <div className="module-details">
+                              <span className="module-title">
                                 {module.title || 'Untitled Module'}
-                              </Typography>
-                            }
-                            primaryTypographyProps={{ 
-                              fontSize: isMobileView ? '0.9rem' : 'inherit'
-                            }}
-                            secondary={module.description || 'No description'}
-                            secondaryTypographyProps={{ 
-                              fontSize: isMobileView ? '0.8rem' : 'inherit'
-                            }}
-                            sx={{ mr: 1 }}
-                          />
-                          <Checkbox
-                            edge="end"
-                            checked={selectedModules.includes(module.id)}
-                            size={isMobileView ? 'small' : 'medium'}
-                            color="primary"
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </DialogContent>
-      <DialogActions sx={{
-        padding: isMobileView ? 2 : 3,
-        flexDirection: isMobileView ? 'column-reverse' : 'row',
-        gap: isMobileView ? 1 : 0
-      }}>
-        <Button 
-          onClick={onClose} 
-          fullWidth={isMobileView}
-          size={isMobileView ? 'medium' : 'large'}
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit}
-          disabled={!selectedInstructor || (assignmentType === 'specific' && selectedModules.length === 0)}
-          variant="contained"
-          fullWidth={isMobileView}
-          size={isMobileView ? 'medium' : 'large'}
-          color="primary"
-        >
-          {currentAssignment ? 'Update Assignment' : 'Assign Instructor'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+                              </span>
+                              <span className="module-description">
+                                {module.description || 'No description'}
+                              </span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={selectedModules.includes(module.id)}
+                              onChange={() => toggleModuleSelection(module.id)}
+                              className="checkbox"
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="InstructorAssignmentDialog-Actions">
+          <button className="action-btn cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="action-btn primary"
+            onClick={handleSubmit}
+            disabled={
+              !selectedInstructor ||
+              (assignmentType === 'specific' && selectedModules.length === 0)
+            }
+          >
+            {currentAssignment ? 'Update Assignment' : 'Assign Instructor'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
