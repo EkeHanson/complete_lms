@@ -4,8 +4,6 @@ import axios from 'axios';
 // Environment variables for URLs (fallback to localhost for development)
 //export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
  export const API_BASE_URL = 'http://localhost:9090';
-//export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
-export const API_BASE_URL = 'http://localhost:9090';
 export const CMVP_SITE_URL = 'http://localhost:3000';
 export const CMVP_API_URL = 'http://localhost:9091';
 
@@ -104,51 +102,41 @@ api.interceptors.request.use(
 // Consolidated response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('Response details:', {
+    console.log('Response:', {
       url: response.config.url,
       status: response.status,
-      headers: response.headers,
-      cookies: document.cookie,
+      data: response.data,
     });
     return response;
   },
   async (error) => {
-    console.log('Response error details:', {
+    console.log('Error response:', {
       url: error.config?.url,
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers,
-      cookies: document.cookie,
     });
     const originalRequest = error.config;
     if (
-      originalRequest.url.includes('/api/token/') ||
-      originalRequest.url.includes('/api/logout/') ||
-      window.location.pathname === '/login'
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.includes('/api/token/') &&
+      !originalRequest.url.includes('/api/logout/') &&
+      window.location.pathname !== '/login'
     ) {
-      console.log('Skipping interceptor for token, logout, or login page');
-      return Promise.reject(error);
-    }
-    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      console.log('Attempting token refresh');
       try {
+        console.log('Attempting token refresh');
         const refreshResponse = await api.post('/api/token/refresh/', {}, { withCredentials: true });
-        console.log('Refresh successful:', refreshResponse.data);
+        console.log('Refresh response:', refreshResponse.data);
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', {
-          message: refreshError.message,
-          response: refreshError.response?.data,
+        console.error('Refresh failed:', {
           status: refreshError.response?.status,
-          cookies: document.cookie,
+          data: refreshError.response?.data,
         });
         document.cookie = 'access_token=; Max-Age=0; path=/';
         document.cookie = 'refresh_token=; Max-Age=0; path=/';
-        if (window.location.pathname !== '/login') {
-          console.log('Redirecting to login due to refresh failure');
-          window.location.href = '/login?session_expired=1';
-        }
+        window.location.href = '/login?session_expired=1';
         return Promise.reject(refreshError);
       }
     }
