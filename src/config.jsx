@@ -442,12 +442,16 @@ export const coursesAPI = {
   updatePointsConfig: (courseId, config) => api.post(`/api/courses/courses/${courseId}/points-config/`, config, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  adminSingleEnroll: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/`, data, {
+  adminSingleEnroll: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/enroll/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-  }),
+
+adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, data, {
+  headers: { 
+    'X-CSRFToken': getCSRFToken(), 
+    'Content-Type': 'application/json' 
+  },
+}),
   adminBulkEnroll: (enrollmentsData) => api.post('/api/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),

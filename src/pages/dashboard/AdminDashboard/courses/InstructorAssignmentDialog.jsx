@@ -33,27 +33,39 @@ const InstructorAssignmentDialog = ({
       setLoading(true);
       const tryGroupNames = ['trainers', 'instructors', 'teachers'];
 
-      const fetchMembers = async (index = 0) => {
-        if (index >= tryGroupNames.length) {
-          setError('No instructor groups found (trainers, instructors, teachers)');
-          setLoading(false);
-          return;
-        }
-        try {
-          const response = await groupsAPI.getGroupMembersByName(tryGroupNames[index]);
-          const instructorList = response.data.map((membership) => ({
-            id: membership.user.id,
-            name: `${membership.user.first_name} ${membership.user.last_name}`,
-            email: membership.user.email,
-            expertise: membership.user.expertise || [],
-          }));
-          setInstructors(instructorList);
-          setFilteredInstructors(instructorList);
-          setLoading(false);
-        } catch (err) {
-          fetchMembers(index + 1);
-        }
-      };
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      const groups = ['trainers', 'instructors', 'teachers'];
+      const groupMembers = await Promise.all(
+        groups.map(async (groupName) => {
+          try {
+            const response = await groupsAPI.getGroupMembersByName(groupName);
+            return { groupName, members: response.data };
+          } catch (error) {
+            if (error.response?.status === 404) {
+              console.warn(`Group ${groupName} not found`);
+              return { groupName, members: [] }; // Return empty members for missing groups
+            }
+            throw error; // Re-throw other errors
+          }
+        })
+      );
+      const membersData = groupMembers.reduce((acc, { groupName, members }) => ({
+        ...acc,
+        [groupName]: members
+      }), {});
+      setMembers(membersData);
+      if (Object.values(membersData).every(members => members.length === 0)) {
+        setError('No instructors found in trainers, instructors, or teachers groups.');
+      }
+    } catch (error) {
+      console.error('Error fetching group members:', error);
+      setError('Failed to load instructors. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
       fetchMembers();
     }

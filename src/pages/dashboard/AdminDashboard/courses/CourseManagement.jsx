@@ -19,73 +19,78 @@ const CourseManagement = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchCourseStats = async () => {
-      try {
-        setLoading(true);
-        const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
-          coursesAPI.getCourses(),
-          coursesAPI.getAllEnrollments(),
-          coursesAPI.getMostPopularCourses(),
-          coursesAPI.getLeastPopularCourses(),
-          coursesAPI.getCategories()
-        ]);
+  const fetchCourseStats = async () => {
+    try {
+      setLoading(true);
+      const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
+        coursesAPI.getCourses(),
+        coursesAPI.getAllEnrollments(),
+        coursesAPI.getMostPopularCourses(),
+        coursesAPI.getLeastPopularCourses(),
+        coursesAPI.getCategories()
+      ]);
 
-        const totalCourses = coursesRes.data.count;
-        const totalEnrollments = enrollmentsRes.data.count;
 
-        const mostPopularCourse = mostPopularRes.data ? {
-          id: mostPopularRes.data.id,
-          title: mostPopularRes.data.title,
-          enrollments: mostPopularRes.data.enrollment_count || 0,
-          instructor: mostPopularRes.data.instructor || "No instructor assigned"
-        } : {
-          title: "No courses available",
-          enrollments: 0,
-          instructor: "No instructor assigned"
-        };
+      const totalCourses = coursesRes.data.count || 0;
+      const totalEnrollments = enrollmentsRes.data.count || 0;
 
-        const leastPopularCourse = leastPopularRes.data ? {
-          id: leastPopularRes.data.id,
-          title: leastPopularRes.data.title,
-          enrollments: leastPopularRes.data.enrollment_count || 0,
-          instructor: leastPopularRes.data.instructor || "No instructor assigned"
-        } : {
-          title: "No courses available",
-          enrollments: 0,
-          instructor: "No instructor assigned"
-        };
+      const mostPopularCourse = mostPopularRes.data && mostPopularRes.status === 200 ? {
+        id: mostPopularRes.data.course.id,
+        title: mostPopularRes.data.course.title,
+        enrollments: mostPopularRes.data.enrollment_count || 0,
+        instructor: mostPopularRes.data.course.instructor || "No instructor assigned"
+      } : {
+        title: "No popular course data",
+        enrollments: 0,
+        instructor: "No instructor assigned"
+      };
 
-        const completedCourses = enrollmentsRes.data.results.filter(e => e.completed).length;
-        const averageCompletionRate = totalEnrollments > 0 
-          ? Math.round((completedCourses / totalEnrollments) * 100) 
-          : 0;
+      // console.log("mostPopularCourse")
+      // console.log(mostPopularCourse)
+      // console.log("mostPopularCourse")
 
-        const categories = categoriesRes.data.results.map(cat => ({
-          name: cat.name,
-          count: cat.course_count || 0
-        }));
+      const leastPopularCourse = leastPopularRes.data && leastPopularRes.status === 200 ? {
+        id: leastPopularRes.data.course.id,
+        title: leastPopularRes.data.course.title,
+        enrollments: leastPopularRes.data.enrollment_count || 0,
+        instructor: leastPopularRes.data.course.instructor || "No instructor assigned"
+      } : {
+        title: "No least popular course data",
+        enrollments: 0,
+        instructor: "No instructor assigned"
+      };
 
-        setCourseStats({
-          totalCourses,
-          totalEnrollments,
-          mostPopularCourse,
-          leastPopularCourse,
-          completedCourses,
-          ongoingCourses: totalEnrollments - completedCourses,
-          averageCompletionRate,
-          categories,
-          noEnrollmentCourses: 0,
-          recentCourses: [],
-          averageRating: 0,
-          attentionNeeded: []
-        });
-      } catch (err) {
-        setError(err.message || 'Failed to fetch course statistics');
-        console.error('Error fetching course stats:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const completedCourses = enrollmentsRes.data.results.filter(e => e.completed).length;
+      const averageCompletionRate = totalEnrollments > 0 
+        ? Math.round((completedCourses / totalEnrollments) * 100) 
+        : 0;
+
+      const categories = categoriesRes.data.results.map(cat => ({
+        name: cat.name,
+        count: cat.course_count || 0
+      }));
+
+      setCourseStats({
+        totalCourses,
+        totalEnrollments,
+        mostPopularCourse,
+        leastPopularCourse,
+        completedCourses,
+        ongoingCourses: totalEnrollments - completedCourses,
+        averageCompletionRate,
+        categories,
+        noEnrollmentCourses: 0,
+        recentCourses: [],
+        averageRating: 0,
+        attentionNeeded: []
+      });
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to fetch course statistics');
+      console.error('Error fetching course stats:', err.response || err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
     fetchCourseStats();
   }, []);
