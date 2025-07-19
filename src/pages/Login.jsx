@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authAPI } from '../services/auth';
 import './Login.css';
 
 const Login = () => {
@@ -44,8 +45,6 @@ const Login = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-
-    console.log("Your session has expired. Please log in again.")
     if (params.get('session_expired') === '1') {
       setErrors({
         general: 'Your session has expired. Please log in again.',
@@ -62,7 +61,7 @@ const Login = () => {
       if (route === '/login') {
         setErrors((prev) => ({
           ...prev,
-          general: 'User data not properly set after login',
+          general: 'Unable to determine your dashboard. Please try again or contact support.',
         }));
       } else if (window.location.pathname !== route) {
         navigate(route, { replace: true });
@@ -119,38 +118,68 @@ const Login = () => {
     return valid;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
-  setLoading(true);
-  try {
-    const response = await login(formData); // Expect full response
-    console.log('Login response:', response.data);
-    console.log('Login response headers:', response.headers);
-    console.log('Cookies after login:', document.cookie); // Note: HttpOnly cookies won't appear
-    // Verify authentication with a follow-up request
-    const validateResponse = await authAPI.verifyToken();
-    console.log('Token validation response:', validateResponse.data);
-    // Navigation will be handled by useEffect in AuthContext
-  } catch (error) {
-    console.error('Login error details:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-      cookies: document.cookie,
-    });
-    setErrors({
-      general: error.response?.data?.detail || 'Login failed. Please try again.',
-    });
-    if (error.response?.data?.remaining_attempts) {
-      setRemainingAttempts(error.response.data.remaining_attempts);
+    setLoading(true);
+    try {
+      const response = await login(formData);
+      console.log('Login response:', response.data);
+      console.log('Tokens stored in localStorage:', {
+        access_token: localStorage.getItem('access_token'),
+        refresh_token: localStorage.getItem('refresh_token'),
+      });
+      const validateResponse = await authAPI.verifyToken();
+      console.log('Token validation response:', validateResponse.data);
+   } catch (error) {
+  console.error('Login error details:', {
+    message: error.message,
+    response: error.response?.data,
+    status: error.response?.status,
+  });
+
+  let errorMessage = 'Login failed. Please try again.';
+
+  if (error.response?.data) {
+    const detail = error.response.data.detail;
+
+    if (typeof detail === 'string') {
+      const match = detail.match(/string='([^']+)'/);
+      if (match && match[1]) {
+        errorMessage = match[1];
+      } else {
+        errorMessage = detail;
+      }
+
+      if (errorMessage.includes('Account suspended')) {
+        errorMessage = 'Your account has been suspended. Please contact support at <a href="mailto:support@example.com">support@example.com</a>.';
+      } else if (errorMessage.includes('Invalid credentials')) {
+        errorMessage = 'Incorrect email or password. Please try again.';
+      }
+
+    } else if (Array.isArray(error.response.data.non_field_errors)) {
+      errorMessage = error.response.data.non_field_errors.join(', ');
+    } else if (typeof detail === 'object') {
+      errorMessage = JSON.stringify(detail);
     }
-  } finally {
-    setLoading(false);
+  } else if (error.response?.status === 500) {
+    errorMessage = 'Something went wrong on our end. Please try again later or contact support.';
+  } else {
+    errorMessage = error.message || 'An unexpected error occurred.';
   }
-};
+
+  setErrors({ general: errorMessage });
+
+  if (error.response?.data?.remaining_attempts !== undefined) {
+    console.log('Remaining attempts:', error.response.data.remaining_attempts);
+    setRemainingAttempts(error.response.data.remaining_attempts);
+  }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box className="login-container">
       <Box className="wave wave-1" />
@@ -192,7 +221,7 @@ const handleSubmit = async (e) => {
               severity={remainingAttempts !== null && remainingAttempts <= 2 ? 'warning' : 'error'}
               sx={{ mb: 2, fontSize: '0.85rem' }}
             >
-              {errors.general}
+              <span dangerouslySetInnerHTML={{ __html: errors.general }} />
               {remainingAttempts !== null && (
                 <Box sx={{ mt: 1 }}>
                   <Typography variant="caption">

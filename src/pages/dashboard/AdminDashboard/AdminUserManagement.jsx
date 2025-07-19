@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   People as PeopleIcon, PersonAdd as PersonAddIcon,
@@ -10,17 +10,17 @@ import {
   Password as PasswordIcon, LockOpen as UnlockIcon,
   School as CourseIcon, Message as MessageIcon, Close as CloseIcon
 } from '@mui/icons-material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import API_BASE_URL, { userAPI, coursesAPI, messagingAPI } from '../../../config';
-
-
+import { userAPI, coursesAPI, messagingAPI, authAPI, setAuthTokens } from '../../../config';
 import UserRegistration from './UserRegistration';
 import BulkUserUpload from './BulkUserUpload';
 import UserGroupsManagement from './UserGroupsManagement';
 import './AdminUserManagement.css';
 
 const AdminUserManagement = () => {
+  const menuRef = useRef(null);
   const navigate = useNavigate();
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -34,6 +34,8 @@ const AdminUserManagement = () => {
     previous: null,
     currentPage: 1
   });
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -170,6 +172,34 @@ const AdminUserManagement = () => {
     }
   }, [selectedUser]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target) && !event.target.closest('.aum-btn-icon')) {
+        setAnchorEl(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleSelectUser = (userId) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUsers.length === users.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(users.map(user => user.id));
+    }
+  };
+
   const handleFilterChange = (name, value) => {
     setFilters({
       ...filters,
@@ -188,11 +218,25 @@ const AdminUserManagement = () => {
   };
 
   const handleImpersonate = async (userId) => {
-    setSnackbar({
-      open: true,
-      message: 'Impersonation not implemented yet',
-      severity: 'warning'
-    });
+    try {
+      const response = await userAPI.impersonateUser(userId);
+      const { token } = response.data;
+      setAuthTokens(token, null);
+      setSnackbar({
+        open: true,
+        message: 'Successfully impersonated user. Redirecting...',
+        severity: 'success'
+      });
+      setTimeout(() => {
+        navigate('/admin');
+      }, 1000);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.detail || 'Failed to impersonate user',
+        severity: 'error'
+      });
+    }
   };
 
   const handlePasswordReset = async (userId) => {
@@ -313,20 +357,34 @@ const AdminUserManagement = () => {
   };
 
   const handleActionSelect = (action) => {
+    if (!selectedUser) {
+      setSnackbar({
+        open: true,
+        message: 'No user selected for this action',
+        severity: 'error'
+      });
+      return;
+    }
     setActionType(action);
     if (action === 'courses' || action === 'messages') {
       setShowCourseEnrollment(action === 'courses');
       setShowMessaging(action === 'messages');
+      setAnchorEl(null);
     } else {
       setOpenConfirmModal(true);
+      setAnchorEl(null);
     }
-    handleMenuClose();
   };
 
   const handleConfirmAction = async () => {
     setActionError(null);
     if (!selectedUser) {
       setActionError('No user selected');
+      setSnackbar({
+        open: true,
+        message: 'No user selected for this action',
+        severity: 'error'
+      });
       return;
     }
     try {
@@ -359,8 +417,14 @@ const AdminUserManagement = () => {
       }
       setOpenConfirmModal(false);
       setSelectedUser(null);
+      setActionType(null);
     } catch (err) {
       setActionError(err.message || 'Failed to perform action');
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to perform action',
+        severity: 'error'
+      });
     }
   };
 
@@ -368,6 +432,44 @@ const AdminUserManagement = () => {
     setOpenConfirmModal(false);
     setActionType(null);
     setActionError(null);
+    setSelectedUser(null);
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      setLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const userId of selectedUsers) {
+        try {
+          await userAPI.deleteUser(userId);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to delete user ${userId}:`, err);
+          errorCount++;
+        }
+      }
+      
+      await fetchUsers();
+      
+      setSnackbar({
+        open: true,
+        message: `Deleted ${successCount} user(s) successfully. ${errorCount > 0 ? `Failed to delete ${errorCount} user(s).` : ''}`,
+        severity: successCount > 0 ? 'success' : 'error'
+      });
+      
+      setSelectedUsers([]);
+      setBulkDeleteConfirm(false);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Error during bulk delete operation',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const StatusChip = ({ status }) => {
@@ -503,6 +605,14 @@ const AdminUserManagement = () => {
           <button className="aum-btn aum-btn-secondary" onClick={() => setShowBulkUpload(true)}>
             <UploadIcon /> Bulk Upload
           </button>
+          {selectedUsers.length > 0 && (
+            <button 
+              className="aum-btn aum-btn-error" 
+              onClick={() => setBulkDeleteConfirm(true)}
+            >
+              <DeleteIcon /> Delete Selected ({selectedUsers.length})
+            </button>
+          )}
         </div>
 
         <div className="aum-filters">
@@ -588,6 +698,14 @@ const AdminUserManagement = () => {
           <table className="aum-table">
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.length === users.length && users.length > 0}
+                    onChange={handleSelectAll}
+                    disabled={users.length === 0}
+                  />
+                </th>
                 <th><span>User</span></th>
                 <th><span>Role</span></th>
                 <th><span>Status</span></th>
@@ -600,21 +718,28 @@ const AdminUserManagement = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="aum-loading">
+                  <td colSpan="8" className="aum-loading">
                     <div className="aum-spinner"></div>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" className="aum-error">{error}</td>
+                  <td colSpan="8" className="aum-error">{error}</td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="aum-no-data">No users found</td>
+                  <td colSpan="8" className="aum-no-data">No users found</td>
                 </tr>
               ) : (
                 users.map((user) => (
                   <tr key={user.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={() => handleSelectUser(user.id)}
+                      />
+                    </td>
                     <td>
                       <div className="aum-user-cell">
                         <div
@@ -654,75 +779,84 @@ const AdminUserManagement = () => {
                       <div className="aum-action-btns">
                         <button
                           className="aum-btn aum-btn-icon"
-                          onClick={(event) => handleMenuOpen(event, user)}
+                          onClick={(event) => {
+                            if (anchorEl && selectedUser?.id === user.id) {
+                              handleMenuClose();
+                            } else {
+                              handleMenuOpen(event, user);
+                            }
+                          }}
                         >
                           <MoreIcon />
                         </button>
-                        <div
-                          className="aum-menu"
-                          style={{ display: anchorEl && selectedUser?.id === user.id ? 'block' : 'none' }}
-                        >
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('activate')}
-                            disabled={user.status === 'active'}
+                        {selectedUser?.id === user.id && anchorEl && (
+                          <div
+                            ref={menuRef}
+                            className="aum-menu"
+                            style={{ display: 'block' }}
                           >
-                            Activate
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('suspend')}
-                            disabled={user.status === 'suspended'}
-                          >
-                            Suspend
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('delete')}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('impersonate')}
-                          >
-                            Impersonate
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('reset_password')}
-                          >
-                            Reset Password
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect(user.is_locked ? 'unlock' : 'lock')}
-                          >
-                            {user.is_locked ? 'Unlock' : 'Lock'} Account
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => {
-                              resetLoginAttempts(user.id);
-                              handleMenuClose();
-                            }}
-                            disabled={user.login_attempts === 0}
-                          >
-                            Reset Login Attempts
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('courses')}
-                          >
-                            Manage Courses
-                          </button>
-                          <button
-                            className="aum-menu-item"
-                            onClick={() => handleActionSelect('messages')}
-                          >
-                            Messages
-                          </button>
-                        </div>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('activate')}
+                              disabled={user.status === 'active'}
+                            >
+                              Activate
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('suspend')}
+                              disabled={user.status === 'suspended'}
+                            >
+                              Suspend
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('delete')}
+                            >
+                              Delete
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('impersonate')}
+                            >
+                              Impersonate
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('reset_password')}
+                            >
+                              Reset Password
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect(user.is_locked ? 'unlock' : 'lock')}
+                            >
+                              {user.is_locked ? 'Unlock' : 'Lock'} Account
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => {
+                                resetLoginAttempts(user.id);
+                                handleMenuClose();
+                              }}
+                              disabled={user.login_attempts === 0}
+                            >
+                              Reset Login Attempts
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('courses')}
+                            >
+                              Manage Courses
+                            </button>
+                            <button
+                              className="aum-menu-item"
+                              onClick={() => handleActionSelect('messages')}
+                            >
+                              Messages
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -798,7 +932,7 @@ const AdminUserManagement = () => {
                   userActivities.map((activity) => (
                     <div key={activity.id} className="aum-list-item">
                       <div className="aum-list-avatar">
-                        {activity.activity_type === 'login' ? <LoginIcon /> : <PeopleIcon />}
+                        {activity.activity_type === 'login' ? <ImpersonateIcon /> : <PeopleIcon />}
                       </div>
                       <div className="aum-list-content">
                         <span>{activity.activity_type} - {activity.status}</span>
@@ -888,7 +1022,13 @@ const AdminUserManagement = () => {
               )}
               {selectedUser ? (
                 <p>
-                  Are you sure you want to {actionType} the user <strong>{selectedUser.email}</strong>?
+                  Are you sure you want to {actionType === 'delete' ? 'delete' : 
+                                          actionType === 'suspend' ? 'suspend' :
+                                          actionType === 'impersonate' ? 'impersonate' :
+                                          actionType === 'reset_password' ? 'reset the password for' :
+                                          actionType === 'lock' ? 'lock the account of' :
+                                          actionType === 'unlock' ? 'unlock the account of' : 'activate'} 
+                  {' '}the user <strong>{selectedUser.email}</strong>?
                   {actionType === 'delete' && ' This action cannot be undone.'}
                   {actionType === 'impersonate' && ' You will be logged in as this user.'}
                 </p>
@@ -1027,6 +1167,38 @@ const AdminUserManagement = () => {
             </div>
           </div>
         </div>
+
+        {bulkDeleteConfirm && (
+          <div className="aum-dialog">
+            <div className="aum-dialog-backdrop" onClick={() => setBulkDeleteConfirm(false)}></div>
+            <div className="aum-dialog-content">
+              <div className="aum-dialog-header">
+                <h3>Delete Selected Users</h3>
+                <button className="aum-dialog-close" onClick={() => setBulkDeleteConfirm(false)}>
+                  <CloseIcon />
+                </button>
+              </div>
+              <div className="aum-dialog-body">
+                <p>
+                  Are you sure you want to delete {selectedUsers.length} selected user(s)?
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="aum-dialog-actions">
+                <button className="aum-btn aum-btn-cancel" onClick={() => setBulkDeleteConfirm(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="aum-btn aum-btn-error"
+                  onClick={handleBulkDelete}
+                  disabled={selectedUsers.length === 0}
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="aum-dialog" style={{ display: showBulkUpload ? 'block' : 'none' }}>
           <div className="aum-dialog-backdrop" onClick={() => setShowBulkUpload(false)}></div>

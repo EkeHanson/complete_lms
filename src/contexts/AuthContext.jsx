@@ -1,7 +1,6 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { authAPI, userAPI } from '../services/auth';
+import { authAPI, userAPI, setAuthTokens, clearAuthTokens }  from '../config';
 import { QA_ROLES } from '../constants/qaRoles';
 import { useLocation } from 'react-router-dom';
 
@@ -29,98 +28,94 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
-
-
-const login = async (credentials) => {
-  try {
-    setLoading(true);
-    const response = await authAPI.login(credentials);
-    if (!response.data?.user) {
-      throw new Error('Invalid credentials');
+  const login = async (credentials) => {
+    try {
+      setLoading(true);
+      const response = await authAPI.login(credentials);
+      if (!response.data?.user) {
+        throw new Error('Invalid credentials');
+      }
+      console.log('Login response:', response);
+      setAuthTokens(response.data.access, response.data.refresh);
+      const transformedUser = transformUserData(response.data.user);
+      setUser(transformedUser);
+      setError(null);
+      return response;
+    } catch (err) {
+      console.error('Login error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-    console.log('Login response:', response);
-    // Wait briefly to ensure cookies are set
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const transformedUser = transformUserData(response.data.user);
-    setUser(transformedUser);
-    setError(null);
-    return response; // Return full response
-  } catch (err) {
-    console.error('Login error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-    });
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const fetchUser = useCallback(async () => {
-  if (['/login', '/signup', '/forgot-password'].includes(location.pathname)) {
-    setLoading(false);
-    return;
-  }
-
-  if (user && !['/login', '/signup', '/forgot-password'].includes(location.pathname)) {
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  try {
-    if (!document.cookie.includes('access_token') || !document.cookie.includes('refresh_token')) {
-      console.warn('No tokens found in cookies, skipping user fetch');
-      setUser(null);
-      setError('No authentication tokens found');
+  const fetchUser = useCallback(async () => {
+    if (['/login', '/signup', '/forgot-password'].includes(location.pathname)) {
       setLoading(false);
       return;
     }
 
-    const response = await authAPI.getCurrentUser();
-    console.log('Fetch user response:', response.data);
-    if (!response.data?.user) {
-      throw new Error('No user data returned');
+    if (user && !['/login', '/signup', '/forgot-password'].includes(location.pathname)) {
+      setLoading(false);
+      return;
     }
-    const userData = transformUserData(response.data.user);
-    setUser(userData);
-    api.defaults.headers['X-Tenant-Schema'] = response.data.tenant_schema;
-    setError(null);
-  } catch (err) {
-    console.error('Fetch user error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-      cookies: document.cookie,
-    });
-    setError(err.message);
-    setUser(null);
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login?session_expired=1';
+
+    setLoading(true);
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      if (!accessToken) {
+        console.warn('No access token found in localStorage, skipping user fetch');
+        setUser(null);
+        setError('No authentication tokens found');
+        setLoading(false);
+        return;
+      }
+
+      const response = await authAPI.getCurrentUser();
+      //console.log('Fetch user response:', response.data);
+      if (!response.data?.user) {
+        throw new Error('No user data returned');
+      }
+      const userData = transformUserData(response.data.user);
+      setUser(userData);
+      setError(null);
+    } catch (err) {
+      console.error('Fetch user error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+      setError(err.message);
+      setUser(null);
+      clearAuthTokens();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login?session_expired=1';
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-}, [location.pathname, user]);
+  }, [location.pathname, user]);
+
   // Initialize auth on mount
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
-
-const logout = async () => {
+  const logout = async () => {
     try {
-        await authAPI.logout();
-        document.cookie = 'access_token=; Max-Age=0; path=/';
-        document.cookie = 'refresh_token=; Max-Age=0; path=/';
+      await authAPI.logout();
+      clearAuthTokens();
     } catch (err) {
-        console.error('Logout error:', err);
+      console.error('Logout error:', err);
     } finally {
-        setUser(null);
+      setUser(null);
     }
-};
+  };
 
   // Permission check
   const hasPermission = (permission) => {
@@ -129,31 +124,32 @@ const logout = async () => {
   };
 
   // Get dashboard route based on role
-const getDashboardRoute = () => {
-  if (!user) {
-    console.warn('No user found in getDashboardRoute');
-    return '/login';
-  }
-  const role = user.role?.toLowerCase();
-   console.log('User role in getDashboardRoute:', role); // Debug log
-  switch (role) {
-    case 'admin':
-    case 'super_admin':
-      return '/admin';
-    case 'instructor':
-    case 'trainer':
-      return '/instructor-dashboard';
-    case 'learner':
-    case 'student':
-      return '/student-dashboard';
-    case 'iqa_lead':
-    case 'eqa_auditor':
-      return '/iqa';
-    default:
-      console.warn('Unknown role:', role);
-      return '/dashboard';
-  }
-};
+  const getDashboardRoute = () => {
+    if (!user) {
+      console.warn('No user found in getDashboardRoute');
+      return '/login';
+    }
+    const role = user.role?.toLowerCase();
+    console.log('User role in getDashboardRoute:', role);
+    switch (role) {
+      case 'admin':
+      case 'super_admin':
+        return '/admin';
+      case 'instructor':
+      case 'trainer':
+        return '/instructor-dashboard';
+      case 'learner':
+      case 'student':
+        return '/student-dashboard';
+      case 'iqa_lead':
+      case 'eqa_auditor':
+        return '/iqa';
+      default:
+        console.warn('Unknown role:', role);
+        return '/dashboard';
+    }
+  };
+
   // Update user profile
   const updateUser = async (updates) => {
     try {

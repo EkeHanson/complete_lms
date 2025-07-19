@@ -10,6 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { coursesAPI } from '../../../../config';
 
 const CourseContentManagement = () => {
+
+  console.log("Here")
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });

@@ -5,7 +5,7 @@ import {
   CloudUpload, DragHandle, VideoLibrary, PictureAsPdf,
   Link as LinkIcon, InsertDriveFile
 } from '@mui/icons-material';
-import { coursesAPI } from '../../../../config'; // Import API from api.js
+import { coursesAPI } from '../../../../config';
 
 const resourceTypes = [
   { value: 'link', label: 'Web Link', icon: <LinkIcon /> },
@@ -20,7 +20,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
   const [editedLesson, setEditedLesson] = useState({
     title: lesson.title || '',
     description: lesson.description || '',
-    content_type: lesson.content_type || 'video',
+    lesson_type: lesson.lesson_type || 'video', // Align with ModuleForm
     content_url: lesson.content_url || '',
     content_file: null,
     duration: lesson.duration || ''
@@ -38,7 +38,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
     setEditedLesson({
       title: lesson.title || '',
       description: lesson.description || '',
-      content_type: lesson.content_type || 'video',
+      lesson_type: lesson.lesson_type || 'video',
       content_url: lesson.content_url || '',
       content_file: null,
       duration: lesson.duration || ''
@@ -48,15 +48,25 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
   const handleChange = (e) => {
     const { name, value } = e.target;
     setEditedLesson(prev => ({ ...prev, [name]: value }));
+    setError(null);
   };
 
   const handleFileChange = (e) => {
     setEditedLesson(prev => ({ ...prev, content_file: e.target.files[0] }));
+    setError(null);
   };
 
   const handleSave = async () => {
     if (!editedLesson.title.trim()) {
       setError('Lesson title is required.');
+      return;
+    }
+    if (editedLesson.lesson_type === 'link' && !editedLesson.content_url.trim()) {
+      setError('Content URL is required for link lessons.');
+      return;
+    }
+    if (['video', 'pdf', 'file'].includes(editedLesson.lesson_type) && !editedLesson.content_file && !lesson.id) {
+      setError('Content file is required for this lesson type.');
       return;
     }
 
@@ -65,28 +75,29 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
       const formData = new FormData();
       formData.append('title', editedLesson.title);
       formData.append('description', editedLesson.description);
-      formData.append('content_type', editedLesson.content_type);
-      if (editedLesson.content_type === 'link') {
+      formData.append('lesson_type', editedLesson.lesson_type);
+      formData.append('order', lesson.order ?? index); // Ensure order is set
+      if (editedLesson.lesson_type === 'link') {
         formData.append('content_url', editedLesson.content_url);
       } else if (editedLesson.content_file) {
         formData.append('content_file', editedLesson.content_file);
       }
       formData.append('duration', editedLesson.duration);
-      formData.append('module_id', moduleId);
 
       let updatedLesson;
       if (lesson.id) {
-        updatedLesson = await coursesAPI.updateLesson(lesson.id, formData);
+        updatedLesson = await coursesAPI.updateLesson(courseId, moduleId, lesson.id, formData);
         setSuccess('Lesson updated successfully.');
       } else {
-        updatedLesson = await coursesAPI.createLesson(formData);
+        updatedLesson = await coursesAPI.createLesson(courseId, moduleId, formData);
         setSuccess('Lesson created successfully.');
       }
 
       onUpdate(updatedLesson.data);
       setIsEditing(false);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save lesson. Please try again.');
+      console.error('Error saving lesson:', err.response?.data || err.message);
+      setError(err.response?.data?.non_field_errors?.[0] || err.response?.data?.detail || 'Failed to save lesson.');
     } finally {
       setLoading(false);
     }
@@ -100,18 +111,19 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
 
     setLoading(true);
     try {
-      await coursesAPI.deleteLesson(lesson.id);
+      await coursesAPI.deleteLesson(courseId, moduleId, lesson.id);
       onDelete(lesson.id);
       setSuccess('Lesson deleted successfully.');
     } catch (err) {
-      setError('Failed to delete lesson. Please try again.');
+      console.error('Error deleting lesson:', err.response?.data || err.message);
+      setError(err.response?.data?.detail || 'Failed to delete lesson.');
     } finally {
       setLoading(false);
     }
   };
 
   const getContentIcon = () => {
-    const resourceType = resourceTypes.find(t => t.value === lesson.content_type);
+    const resourceType = resourceTypes.find(t => t.value === lesson.lesson_type);
     return resourceType ? resourceType.icon : <InsertDriveFile />;
   };
 
@@ -164,8 +176,8 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
               <label className="label">Content Type</label>
               <select
                 className="select"
-                name="content_type"
-                value={editedLesson.content_type}
+                name="lesson_type"
+                value={editedLesson.lesson_type}
                 onChange={handleChange}
               >
                 {resourceTypes.map(type => (
@@ -175,16 +187,19 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
                 ))}
               </select>
 
-              {editedLesson.content_type === 'link' ? (
+              {editedLesson.lesson_type === 'link' ? (
                 <>
                   <label className="label">Content URL</label>
                   <input
-                    className="input"
+                    className={`input ${error && editedLesson.lesson_type === 'link' && !editedLesson.content_url.trim() ? 'error' : ''}`}
                     name="content_url"
                     value={editedLesson.content_url}
                     onChange={handleChange}
                     placeholder="Enter URL"
                   />
+                  {error && editedLesson.lesson_type === 'link' && !editedLesson.content_url.trim() && (
+                    <span className="error-text">Content URL is required</span>
+                  )}
                 </>
               ) : (
                 <>
@@ -196,15 +211,18 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
                       hidden
                       onChange={handleFileChange}
                       accept={
-                        editedLesson.content_type === 'pdf' ? 'application/pdf' :
-                        editedLesson.content_type === 'video' ? 'video/*' : '*'
+                        editedLesson.lesson_type === 'pdf' ? 'application/pdf' :
+                        editedLesson.lesson_type === 'video' ? 'video/*' : '*'
                       }
                     />
                   </button>
+                  {editedLesson.content_file && (
+                    <span className="file-info">Selected: {editedLesson.content_file.name}</span>
+                  )}
+                  {error && ['video', 'pdf', 'file'].includes(editedLesson.lesson_type) && !editedLesson.content_file && !lesson.id && (
+                    <span className="error-text">Content file is required</span>
+                  )}
                 </>
-              )}
-              {editedLesson.content_file && (
-                <span className="file-info">Selected: {editedLesson.content_file.name}</span>
               )}
 
               <label className="label">Duration</label>
@@ -239,15 +257,15 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
                 <strong>Description:</strong> {lesson.description || 'No description'}
               </p>
               <p>
-                <strong>Content Type:</strong> {getContentIcon()} {lesson.content_type}
+                <strong>Content Type:</strong> {getContentIcon()} {lesson.lesson_type}
               </p>
-              {lesson.content_type === 'link' ? (
+              {lesson.lesson_type === 'link' ? (
                 <p>
                   <strong>URL:</strong> {lesson.content_url}
                 </p>
               ) : (
                 <p>
-                  <strong>File:</strong> {lesson.content_file?.name || 'Uploaded content'}
+                  <strong>File:</strong> {lesson.content_file?.name || lesson.content_file || 'Uploaded content'}
                 </p>
               )}
               <p>
@@ -273,3 +291,4 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
 };
 
 export default LessonItem;
+

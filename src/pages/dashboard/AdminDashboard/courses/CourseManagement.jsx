@@ -25,8 +25,8 @@ const CourseManagement = () => {
         const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
           coursesAPI.getCourses(),
           coursesAPI.getAllEnrollments(),
-          coursesAPI.getMostPopularCourse(),
-          coursesAPI.getLeastPopularCourse(),
+          coursesAPI.getMostPopularCourses(),
+          coursesAPI.getLeastPopularCourses(),
           coursesAPI.getCategories()
         ]);
 

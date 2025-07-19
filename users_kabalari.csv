@@ -1,13 +1,11 @@
-firstName,lastName,email,password,role
-Adoga,Okpani,adoga.okpani@example.com,Password123!,owner
-Onoja,Achema,onoja.achema@example.com,Password123!,learner
-Owoicho,Ogbole,owoicho.ogbole@example.com,Password123!,instructor
-Ehi,Onuh,ehi.onuh@example.com,Password123!,learner
-Ojima,Abutu,ojima.abutu@example.com,Password123!,admin
-Eje,Onoja,eje.onoja@example.com,Password123!,owner
-Ojoma,Adoga,ojoma.adoga@example.com,Password123!,learner
-Amedu,Okopi,amedu.okopi@example.com,Password123!,instructor
-Enejoh,Ikwue,enejoh.ikwue@example.com,Password123!,learner
-Onyilo,Agbo,onyilo.agbo@example.com,Password123!,admin
-Alekwu,Omale,alekwuu.omale@example.com,Password123!,owner
-Okopi,Ocheje,okopi.ocheje@example.com,Password123!,learner
+firstName,lastName,email,password,role,phone,title,bio,status
+Ibim,George,ibim.george@prolianceltd.com,qwerty123,carer,+2348011111111,Carer,Compassionate caregiver with experience in elder support,active
+Abiye,Briggs,abiye.briggs@prolianceltd.com,qwerty123,admin,+2348022222222,Admin Manager,Oversees administrative operations effectively,active
+Keme,Jack,keme.jack@prolianceltd.com,qwerty123,learner,Student,Eager to learn and grow professionally,pending
+Ibiye,Princewill,ibiye.princewill@prolianceltd.com,qwerty123,tutor,+2348033333333,Tutor,Delivers educational content with clarity,active
+Orubibi,Hart,orubibi.hart@prolianceltd.com,qwerty123,assessor,Assessor,Focuses on high-standard evaluations,pending
+Tubotamuno,Allison,tubotamuno.allison@prolianceltd.com,qwerty123,iqa,+2348044444444,IQA,Drives internal quality processes,active
+Abiye,Manuel,abiye.manuel@prolianceltd.com,qwerty123,client,Client,Respected client of Proliance Ltd,active
+Tamunotonye,Green,tamunotonye.green@prolianceltd.com,qwerty123,hr,+2348055555555,HR Specialist,Handles HR and staff welfare,active
+Ibiso,Lawson,ibiso.lawson@prolianceltd.com,qwerty123,eqa,EQA,Handles external QA audits and compliance,pending
+Minasu,Abbi,minasu.abbi@prolianceltd.com,qwerty123,family,+2348066666666,Family Member,Primary family contact for the client,active

@@ -1,13 +1,11 @@
-firstName,lastName,email,password,role
-Adama,Bello,adama.bello@example.com,Password123!,owner
-Aissatou,Ba,aissatou.ba@example.com,Password123!,learner
-Moussa,Diallo,moussa.diallo@example.com,Password123!,instructor
-Fatoumata,Sow,fatoumata.sow@example.com,Password123!,learner
-Ousmane,Barry,ousmane.barry@example.com,Password123!,admin
-Mariama,Touré,mariama.toure@example.com,Password123!,owner
-Seynabou,Bah,seynabou.bah@example.com,Password123!,learner
-Abdoulaye,Diouf,abdoulaye.diouf@example.com,Password123!,instructor
-Yero,Camara,yero.camara@example.com,Password123!,learner
-Hawa,Dramé,hawa.drame@example.com,Password123!,admin
-Lamine,Sidibé,lamine.sidibe@example.com,Password123!,owner
-Khadija,Kouyaté,khadija.kouyate@example.com,Password123!,learner
+firstName,lastName,email,password,role,phone,title,bio,status
+Abdullahi,Mamman,abdullahi.mamman@netwiver.com,qwerty123,carer,+2348011111111,Carer,Experienced caregiver offering support with empathy,active
+Binta,Ndagi,binta.ndagi@netwiver.com,qwerty123,admin,+2348022222222,Admin Manager,Oversees administrative operations effectively,active
+Yahaya,Etsu,yahaya.etsu@netwiver.com,qwerty123,learner,,Student,Eager to grow professionally and academically,pending
+Aisha,Tanko,aisha.tanko@netwiver.com,qwerty123,tutor,+2348033333333,Tutor,Focused on delivering effective educational training,active
+Salihu,Dogo,salihu.dogo@netwiver.com,qwerty123,assessor,,Assessor,Skilled in conducting training assessments,pending
+Hadiza,Lapai,hadiza.lapai@netwiver.com,qwerty123,iqa,+2348044444444,IQA,Handles internal quality processes with diligence,active
+Halima,Muye,halima.muye@netwiver.com,qwerty123,client,,Client,Esteemed client of Proliance Ltd,active
+Bello,Bida,bello.bida@netwiver.com,qwerty123,hr,+2348055555555,HR Specialist,In charge of HR and personnel management,active
+Fatima,Katcha,fatima.katcha@netwiver.com,qwerty123,eqa,EQA,Responsible for external quality verification,pending
+Isah,Zungeru,isah.zungeru@netwiver.com,qwerty123,family,+2348066666666,Family Member,Family liaison ensuring communication,active

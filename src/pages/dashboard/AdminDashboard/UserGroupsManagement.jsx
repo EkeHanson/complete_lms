@@ -24,6 +24,7 @@ const UserGroupsManagement = () => {
   const [groups, setGroups] = useState([]);
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
   const [loading, setLoading] = useState({
     main: true,
     dialog: false,
@@ -134,6 +135,7 @@ const UserGroupsManagement = () => {
         members: []
       });
     }
+    setSelectedUsers([]); // Reset selected users when opening dialog
     setOpenGroupDialog(true);
   };
 
@@ -225,7 +227,7 @@ const UserGroupsManagement = () => {
         setRoles(roles.map(r => r.id === currentRole.id ? response.data : r));
         setSuccessMessage('Role updated successfully');
       } else {
-        response = needsAPI.createRole(roleData);
+        response = await rolesAPI.createRole(roleData);
         setRoles([...roles, response.data]);
         setSuccessMessage('Role created successfully');
       }
@@ -261,6 +263,40 @@ const UserGroupsManagement = () => {
           : [...members, userId]
       };
     });
+  };
+
+  const toggleSelectUser = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSelectAllUsers = () => {
+    if (selectedUsers.length === users.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(users.map(user => user.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.length === 0) {
+      setError('No users selected for deletion');
+      return;
+    }
+    try {
+      setLoading(prev => ({ ...prev, action: true }));
+      await userAPI.bulkDelete({ ids: selectedUsers });
+      setUsers(users.filter(user => !selectedUsers.includes(user.id)));
+      setSelectedUsers([]);
+      setSuccessMessage(`Successfully deleted ${selectedUsers.length} user(s)`);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to delete users');
+    } finally {
+      setLoading(prev => ({ ...prev, action: false }));
+    }
   };
 
   const getRoleIcon = (roleCode) => {
@@ -661,14 +697,34 @@ const UserGroupsManagement = () => {
               </div>
               <div className="ugm-form-field ugm-form-field-full">
                 <h4>Group Members ({currentGroup.members?.length || 0})</h4>
-                <div className="ugm-search-input">
-                  <SearchIcon />
-                  <input
-                    type="text"
-                    placeholder="Search users by name or email..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                  />
+                <div className="ugm-members-controls">
+                  <div className="ugm-search-input">
+                    <SearchIcon />
+                    <input
+                      type="text"
+                      placeholder="Search users by name or email..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                    />
+                  </div>
+                  <div className="ugm-members-actions">
+                    <label className="ugm-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.length === users.length && users.length > 0}
+                        onChange={handleSelectAllUsers}
+                      />
+                      <span>Select All</span>
+                    </label>
+                    <button
+                      className="ugm-btn ugm-btn-delete"
+                      onClick={handleBulkDelete}
+                      disabled={selectedUsers.length === 0 || loading.action}
+                    >
+                      <DeleteIcon />
+                      Delete Selected ({selectedUsers.length})
+                    </button>
+                  </div>
                 </div>
                 {loading.users ? (
                   <div className="ugm-members-loading">
@@ -681,16 +737,27 @@ const UserGroupsManagement = () => {
                         <div
                           key={user.id}
                           className={`ugm-member-item ${currentGroup.members?.includes(user.id) ? 'selected' : ''}`}
-                          onClick={() => toggleMember(user.id)}
                         >
-                          <div className="ugm-member-info">
-                            <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
-                            <div>
-                              <span>{user.first_name} {user.last_name}</span>
-                              <span className="ugm-text-secondary">{user.email}</span>
-                            </div>
+                          <div className="ugm-member-selection">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.includes(user.id)}
+                              onChange={() => toggleSelectUser(user.id)}
+                            />
                           </div>
-                          {currentGroup.members?.includes(user.id) && <CheckIcon />}
+                          <div
+                            className="ugm-member-content"
+                            onClick={() => toggleMember(user.id)}
+                          >
+                            <div className="ugm-member-info">
+                              <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
+                              <div>
+                                <span>{user.first_name} {user.last_name}</span>
+                                <span className="ugm-text-secondary">{user.email}</span>
+                              </div>
+                            </div>
+                            {currentGroup.members?.includes(user.id) && <CheckIcon />}
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -1,0 +1,11 @@
+firstName,lastName,email,password,role,phone,title,bio,status
+Amina,Bello,amina.bello@prolianceltd.com,qwerty123,carer,+2347012345678,Carer,Experienced caregiver offering compassionate home care,active
+Musa,Abdullahi,musa.abdullahi@prolianceltd.com,qwerty123,admin,+2347023456789,Admin Manager,Handles administrative duties efficiently,active
+Fatima,Garba,fatima.garba@prolianceltd.com,qwerty123,learner,+2347034567890,Student,Eager to learn and grow professionally,pending
+Sadiq,Usman,sadiq.usman@prolianceltd.com,qwerty123,tutor,+2347045678901,Tutor,Provides structured educational support,active
+Zainab,Ibrahim,zainab.ibrahim@prolianceltd.com,qwerty123,assessor,+2347056789012,Assessor,Specialist in competency-based assessments,pending
+Hassan,Danladi,hassan.danladi@prolianceltd.com,qwerty123,iqa,+2347067890123,IQA,Focuses on maintaining internal quality standards,active
+Rahila,Shehu,rahila.shehu@prolianceltd.com,qwerty123,client,+2347078901234,Client,Esteemed client at Proliance Ltd,active
+Abubakar,Nura,abubakar.nura@prolianceltd.com,qwerty123,hr,+2347089012345,HR Specialist,Coordinates recruitment and employee relations,active
+Khadija,Aliyu,khadija.aliyu@prolianceltd.com,qwerty123,eqa,+2347090123456,EQA,Leads external quality assurance reviews,pending
+Yahaya,Tanko,yahaya.tanko@prolianceltd.com,qwerty123,family,+2347101234567,Family Member,Trusted family contact for client,active

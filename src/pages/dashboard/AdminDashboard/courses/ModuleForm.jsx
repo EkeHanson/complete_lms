@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useReducer, useCallback, useRef } from 'react';
 import './ModuleForm.css';
 import {
-  ExpandMore, AddCircle, Delete, Edit,
+  ExpandMore, AddCircle, Delete, Edit, 
   VideoLibrary, InsertDriveFile, Link as LinkIcon,
   CloudUpload, Visibility, VisibilityOff, CheckCircle
 } from '@mui/icons-material';
@@ -88,6 +88,13 @@ const ModuleForm = ({
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // console.log("Here")
+  // console.log("Here")
+  // console.log("Here")
+  useEffect(() => {
+  console.log('lessonDialogOpen changed:', lessonDialogOpen);
+}, [lessonDialogOpen]);
+
   const validateLesson = () => {
     const newErrors = {};
     if (!newLesson.title.trim()) newErrors.title = 'Lesson title is required';
@@ -160,44 +167,55 @@ const ModuleForm = ({
     setErrors((prev) => ({ ...prev, content_file: '' }));
   };
 
-  const addLesson = async () => {
-    if (!validateLesson()) return;
+const addLesson = async () => {
+  if (!validateLesson()) return;
 
-    const formData = new FormData();
-    formData.append('title', newLesson.title.trim());
-    formData.append('lesson_type', newLesson.lesson_type);
-    formData.append('order', module.lessons.length + 1);
-    formData.append('is_published', true);
-    if (newLesson.duration) formData.append('duration', newLesson.duration);
-    if (newLesson.lesson_type === 'link') {
-      formData.append('content_url', newLesson.content_url);
-    } else if (newLesson.content_file) {
-      formData.append('content_file', newLesson.content_file);
-    }
+  console.log('addLesson called with courseId:', courseId, 'moduleId:', module.id); // Debug log
 
-    try {
-      setLoading(true);
-      const response = await coursesAPI.createLesson(courseId, module.id, formData);
-      onChange(module.id, {
-        ...module,
-        lessons: [...module.lessons, response.data]
-      });
-      setNewLesson({
-        title: '',
-        lesson_type: 'video',
-        content_url: '',
-        content_file: null,
-        duration: ''
-      });
-      setLessonDialogOpen(false);
-      setErrors({});
-    } catch (error) {
-      console.error('Error creating lesson:', error);
-      setErrors((prev) => ({ ...prev, submit: error.response?.data || 'Failed to create lesson' }));
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!courseId || !module.id) {
+    setErrors({ ...errors, submit: 'Invalid course or module ID' });
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('title', newLesson.title.trim());
+  formData.append('lesson_type', newLesson.lesson_type);
+  formData.append('order', module.lessons.length);
+  formData.append('is_published', true);
+  if (newLesson.duration) formData.append('duration', newLesson.duration);
+  if (newLesson.lesson_type === 'link') {
+    formData.append('content_url', newLesson.content_url);
+  } else if (newLesson.content_file) {
+    formData.append('content_file', newLesson.content_file);
+  }
+
+  try {
+    setLoading(true);
+    const response = await coursesAPI.createLesson(courseId, module.id, formData);
+    console.log('Lesson created:', response.data);
+    onChange(module.id, {
+      ...module,
+      lessons: [...module.lessons, { ...response.data, order: module.lessons.length }]
+    });
+    setNewLesson({
+      title: '',
+      lesson_type: 'video',
+      content_url: '',
+      content_file: null,
+      duration: ''
+    });
+    setLessonDialogOpen(false);
+    setErrors({});
+  } catch (error) {
+    console.error('Error creating lesson:', error.response?.data || error.message);
+    setErrors({
+      ...errors,
+      submit: error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create lesson'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const updateLesson = async () => {
     if (!validateLesson()) return;
@@ -372,9 +390,28 @@ const ModuleForm = ({
 
                 <div className="lessons-header">
                   <h4>Lessons</h4>
-                  <button
+                  {/* <button
                     className="action-btn"
                     onClick={() => {
+                      setEditingLesson(null);
+                      setNewLesson({
+                        title: '',
+                        lesson_type: 'video',
+                        content_url: '',
+                        content_file: null,
+                        duration: ''
+                      });
+                      setLessonDialogOpen(true);
+                    }}
+                  >
+                    <AddCircle /> Add Lesson
+                  </button> */}
+                  <button
+                    className="action-btn"
+                    type="button"
+                    onClick={(e) => { // Add 'e' as a parameter
+                      e.preventDefault(); // Prevent form submission
+                      console.log('Add Lesson button clicked');
                       setEditingLesson(null);
                       setNewLesson({
                         title: '',
@@ -446,7 +483,7 @@ const ModuleForm = ({
               setErrors({});
             }}
           >
-            <CloseIcon />
+            <Delete />
           </button>
           <div className="form-group">
             <label className="label">Lesson Title</label>
@@ -555,3 +592,5 @@ const ModuleForm = ({
 };
 
 export { ModuleForm, DraggableModule };
+
+

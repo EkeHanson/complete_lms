@@ -9,11 +9,19 @@ const DraftEditor = ({ value, onChange }) => {
   useEffect(() => {
     if (value) {
       try {
-        const content = convertFromRaw(JSON.parse(value));
-        setEditorState(EditorState.createWithContent(content));
-      } catch {
+        const parsedContent = JSON.parse(value);
+        if (parsedContent && parsedContent.blocks && parsedContent.entityMap) {
+          const content = convertFromRaw(parsedContent);
+          setEditorState(EditorState.createWithContent(content));
+        } else {
+          setEditorState(EditorState.createEmpty());
+        }
+      } catch (error) {
+        console.warn('Failed to parse description JSON:', error);
         setEditorState(EditorState.createEmpty());
       }
+    } else {
+      setEditorState(EditorState.createEmpty());
     }
   }, [value]);
 

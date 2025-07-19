@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Publish as UploadIcon, Description as FileIcon, CheckCircle as SuccessIcon,
-  Error as ErrorIcon, CloudDownload as DownloadIcon, Search as SearchIcon
+  Error as ErrorIcon, CloudDownload as DownloadIcon, Search as SearchIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { userAPI, coursesAPI, messagingAPI } from '../../../config';
+import { userAPI, messagingAPI } from '../../../config';
+import { Snackbar, Alert } from '@mui/material'; // Added for notifications
 import './BulkUserUpload.css';
 
 const BulkUserUpload = ({ onUpload }) => {
@@ -14,19 +16,21 @@ const BulkUserUpload = ({ onUpload }) => {
   const [uploadResult, setUploadResult] = useState(null);
   const [previewData, setPreviewData] = useState([]);
   const [openPreviewModal, setOpenPreviewModal] = useState(false);
-  const [selectedUserIndex, setSelectedUserIndex] = useState(null);
-  const [editedUser, setEditedUser] = useState(null);
-  const [validationErrors, setValidationErrors] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [openRemoveConfirm, setOpenRemoveConfirm] = useState(false);
-  const [courses, setCourses] = useState([]);
   const [existingEmails, setExistingEmails] = useState([]);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [snackbarOpen, setSnackbarOpen] = useState(false); // Added for Snackbar
+  const [snackbarMessage, setSnackbarMessage] = useState(''); // Added for Snackbar
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // Added for Snackbar
+
+  const validRoles = ['learner', 'admin', 'hr', 'carer', 'client', 'family', 'auditor', 'tutor', 'assessor', 'iqa', 'eqa'];
+  const validStatuses = ['active', 'pending', 'suspended'];
 
   const templateData = [
-    ['firstName', 'lastName', 'email', 'password', 'role', 'birthDate', 'status', 'department', 'courseIds'],
-    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner', '1990-01-15', 'active', 'Engineering', 'course1,course2'],
-    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'instructor', '1985-05-22', 'active', 'Mathematics', '']
+    ['firstName', 'lastName', 'email', 'password', 'role'],
+    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner'],
+    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'admin']
   ];
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -46,6 +50,7 @@ const BulkUserUpload = ({ onUpload }) => {
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
         setPreviewData(jsonData);
         setOpenPreviewModal(true);
+        validateAllUsers(jsonData);
       }
     }
   });
@@ -53,18 +58,17 @@ const BulkUserUpload = ({ onUpload }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesResponse, usersResponse] = await Promise.all([
-          coursesAPI.getCourses(),
-          userAPI.getUsers({ page_size: 1000 })
-        ]);
-        setCourses(coursesResponse.data.results || []);
+        const usersResponse = await userAPI.getUsers({ page_size: 1000 });
         setExistingEmails(usersResponse.data.results.map(user => user.email.toLowerCase()));
       } catch (err) {
         setUploadResult({
           success: false,
-          message: 'Failed to fetch initial data',
+          message: 'Failed to fetch existing users',
           details: [err.message]
         });
+        setSnackbarOpen(true);
+        setSnackbarMessage('Failed to fetch existing users');
+        setSnackbarSeverity('error');
       }
     };
     fetchData();
@@ -82,142 +86,66 @@ const BulkUserUpload = ({ onUpload }) => {
     const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
     requiredFields.forEach(field => {
       if (!userData[field]) {
-        errors.push(`Row ${index + 2}: Missing required field: ${field}`);
+        errors.push(`Missing required field: ${field}`);
       }
     });
     if (userData.email) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
-        errors.push(`Row ${index + 2}: Invalid email format`);
+        errors.push(`Invalid email format`);
       }
       const emailCount = allUsers.filter(u => u.email?.toLowerCase() === userData.email.toLowerCase()).length;
       if (emailCount > 1) {
-        errors.push(`Row ${index + 2}: Duplicate email in upload batch`);
+        errors.push(`Duplicate email in upload batch`);
       }
       if (existingEmails.includes(userData.email.toLowerCase())) {
-        errors.push(`Row ${index + 2}: Email already exists in the system`);
+        errors.push(`Email already exists in the system`);
       }
     }
     if (userData.password && userData.password.length < 8) {
-      errors.push(`Row ${index + 2}: Password must be at least 8 characters`);
+      errors.push(`Password must be at least 8 characters`);
     }
-    const validRoles = ['admin', 'instructor', 'learner', 'owner'];
     if (userData.role && !validRoles.includes(userData.role.toLowerCase())) {
-      errors.push(`Row ${index + 2}: Invalid role. Must be one of: ${validRoles.join(', ')}`);
+      errors.push(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
     }
-    if (userData.birthDate && isNaN(new Date(userData.birthDate).getTime())) {
-      errors.push(`Row ${index + 2}: Invalid birth date format (use YYYY-MM-DD)`);
-    }
-    const validStatuses = ['active', 'pending', 'suspended'];
     if (userData.status && !validStatuses.includes(userData.status.toLowerCase())) {
-      errors.push(`Row ${index + 2}: Invalid status. Must be one of: ${validStatuses.join(', ')}`);
-    }
-    if (userData.courseIds) {
-      const courseIds = userData.courseIds.split(',').map(id => id.trim()).filter(id => id);
-      courseIds.forEach(id => {
-        if (!courses.some(course => course.id === id)) {
-          errors.push(`Row ${index + 2}: Invalid course ID: ${id}`);
-        }
-      });
+      errors.push(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
     return errors.length ? errors : null;
   };
 
-  const handleSelectUser = (index) => {
-    setSelectedUserIndex(index);
-    setEditedUser({ ...previewData[index] });
-    setValidationErrors(validateUserData(previewData[index], index, previewData) || []);
+  const validateAllUsers = (users) => {
+    const newErrors = {};
+    users.forEach((user, index) => {
+      const errors = validateUserData(user, index, users);
+      if (errors) newErrors[index] = errors;
+    });
+    setValidationErrors(newErrors);
   };
 
-  const handleEditUser = (field, value) => {
-    setEditedUser(prev => ({ ...prev, [field]: value }));
-    setValidationErrors(validateUserData({ ...editedUser, [field]: value }, selectedUserIndex, previewData) || []);
+  const handleEditUser = (index, field, value) => {
+    setPreviewData(prev => {
+      const newData = [...prev];
+      newData[index] = { ...newData[index], [field]: value };
+      return newData;
+    });
+    validateAllUsers(previewData);
   };
 
-  const handleSaveUser = async () => {
-    if (validationErrors.length) return;
-    try {
-      const userData = {
-        first_name: editedUser.firstName || '',
-        last_name: editedUser.lastName || '',
-        email: editedUser.email || '',
-        password: editedUser.password || '',
-        role: editedUser.role || 'learner',
-        birth_date: editedUser.birthDate || null,
-        status: editedUser.status || 'active',
-        department: editedUser.department || null,
-      };
-      const response = await userAPI.createUser(userData);
-      if (response.status === 201 || response.status === 200) {
-        const courseIds = editedUser.courseIds?.split(',').map(id => id.trim()).filter(id => id) || [];
-        for (const courseId of courseIds) {
-          await coursesAPI.adminSingleEnroll(courseId, { user_id: response.data.id });
-        }
-        if (sendWelcomeEmail) {
-          await messagingAPI.createMessage({
-            recipient_id: response.data.id,
-            subject: 'Welcome to Our Platform!',
-            content: `Hello ${editedUser.firstName},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${editedUser.email}\n\nPlease login to get started.`,
-            type: 'welcome'
-          });
-        }
-        setPreviewData((prev) => {
-          const newData = [...prev];
-          newData[selectedUserIndex] = {
-            ...editedUser,
-            id: response.data.id,
-          };
-          return newData;
-        });
-        setUploadResult({
-          success: true,
-          message: `User ${userData.email} saved successfully`,
-          details: courseIds.length ? [`Enrolled in courses: ${courseIds.join(', ')}`] : [],
-        });
-        setSelectedUserIndex(null);
-        setEditedUser(null);
-        setValidationErrors([]);
-      }
-    } catch (error) {
-      let errorMessage = 'Failed to save user';
-      let errorDetails = [];
-      if (error.response?.data) {
-        errorMessage = error.response.data.error || 'Error saving user';
-        errorDetails = error.response.data.errors || [errorMessage];
-      } else {
-        errorDetails = [error.message || 'Network error'];
-      }
-      setUploadResult({
-        success: false,
-        message: errorMessage,
-        details: errorDetails,
-      });
+  const handleRemoveUser = (index) => {
+    setPreviewData(prev => {
+      const newData = prev.filter((_, i) => i !== index);
+      validateAllUsers(newData);
+      return newData;
+    });
+    if (previewData.length === 1) {
+      setOpenPreviewModal(false);
+      setFile(null);
+      setSearchQuery('');
     }
-  };
-
-  const handleRemoveUser = () => {
-    setOpenRemoveConfirm(true);
-  };
-
-  const confirmRemoveUser = () => {
-    if (selectedUserIndex !== null) {
-      setPreviewData(prev => {
-        const newData = prev.filter((_, index) => index !== selectedUserIndex);
-        return newData;
-      });
-      setSelectedUserIndex(null);
-      setEditedUser(null);
-      setValidationErrors([]);
-      if (previewData.length === 1) {
-        setOpenPreviewModal(false);
-        setFile(null);
-        setSearchQuery('');
-      }
-    }
-    setOpenRemoveConfirm(false);
   };
 
   const processFile = async () => {
-    if (!file || previewData.length === 0) return;
+    if (!file || previewData.length === 0 || Object.keys(validationErrors).length > 0) return;
     setIsProcessing(true);
     setUploadResult(null);
     try {
@@ -225,10 +153,18 @@ const BulkUserUpload = ({ onUpload }) => {
       if (unsavedUsers.length === 0) {
         setUploadResult({
           success: true,
-          message: 'All users already saved individually',
-          details: [],
+          message: 'All users already saved',
+          details: []
         });
+        setSnackbarOpen(true);
+        setSnackbarMessage('All users already saved');
+        setSnackbarSeverity('success');
         setIsProcessing(false);
+        setOpenPreviewModal(false);
+        setFile(null);
+        setPreviewData([]);
+        setSearchQuery('');
+        if (onUpload) onUpload();
         return;
       }
       const ws = XLSX.utils.json_to_sheet(unsavedUsers);
@@ -236,15 +172,9 @@ const BulkUserUpload = ({ onUpload }) => {
       const blob = new Blob([csv], { type: 'text/csv' });
       const csvFile = new File([blob], 'users.csv', { type: 'text/csv' });
       const response = await userAPI.bulkUpload(csvFile);
-      if (response.data.success) {
+      if (response.status === 201 && response.data.error_count === 0 && response.data.created_count > 0) {
         for (const createdUser of response.data.created_users) {
           const userData = unsavedUsers.find(u => u.email === createdUser.email);
-          if (userData?.courseIds) {
-            const courseIds = userData.courseIds.split(',').map(id => id.trim()).filter(id => id);
-            for (const courseId of courseIds) {
-              await coursesAPI.adminSingleEnroll(courseId, { user_id: createdUser.id });
-            }
-          }
           if (sendWelcomeEmail) {
             await messagingAPI.createMessage({
               recipient_id: createdUser.id,
@@ -257,40 +187,56 @@ const BulkUserUpload = ({ onUpload }) => {
         setUploadResult({
           success: true,
           message: `Successfully processed ${response.data.created_count} users`,
-          details: response.data.errors || [],
+          details: response.data.errors || []
         });
+        setSnackbarOpen(true);
+        setSnackbarMessage(`Successfully created ${response.data.created_count} users`);
+        setSnackbarSeverity('success');
+        setOpenPreviewModal(false);
+        setFile(null);
+        setPreviewData([]);
+        setSearchQuery('');
         if (onUpload && response.data.created_count > 0) {
           onUpload();
         }
       } else {
         setUploadResult({
           success: false,
-          message: response.data.error || 'Upload failed',
-          details: response.data.errors || [],
+          message: response.data.detail || 'Upload failed',
+          details: (response.data.errors || []).map(err =>
+            err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
+          )
         });
+        setSnackbarOpen(true);
+        setSnackbarMessage(response.data.detail || 'Upload failed');
+        setSnackbarSeverity('error');
       }
     } catch (error) {
       let errorDetails = [];
       if (error.response?.data?.errors) {
-        errorDetails = error.response.data.errors;
-      } else if (error.response?.data?.error) {
-        errorDetails = [error.response.data.error];
+        errorDetails = error.response.data.errors.map(err =>
+          err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
+        );
+      } else if (error.response?.data?.detail) {
+        errorDetails = [error.response.data.detail];
       } else {
         errorDetails = [error.message || 'Network error'];
       }
       setUploadResult({
         success: false,
         message: 'Error processing file',
-        details: errorDetails,
+        details: errorDetails
       });
+      setSnackbarOpen(true);
+      setSnackbarMessage('Error processing file');
+      setSnackbarSeverity('error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const getInitial = (user) => {
-    if (user.firstName) return user.firstName.charAt(0).toUpperCase();
-    return user.email?.charAt(0).toUpperCase() || '?';
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   const filteredUsers = previewData.filter(user => {
@@ -304,29 +250,21 @@ const BulkUserUpload = ({ onUpload }) => {
 
   return (
     <div className="buu-container">
-      <div className="buu-backdrop" style={{ display: isProcessing ? 'flex' : 'none' }}>
-        <div className="buu-spinner"></div>
-        <span>Processing...</span>
-      </div>
+      {isProcessing && (
+        <div className="buu-backdrop">
+          <div className="buu-spinner"></div>
+          <span>Processing...</span>
+        </div>
+      )}
 
       <div className="buu-paper">
-        <h1>Bulk User Upload</h1>
-        <p className="buu-caption">Upload an Excel or CSV file to register users</p>
-
+        <h2>Bulk User Upload</h2>
         <div className="buu-template-section">
           <button className="buu-btn buu-btn-download" onClick={downloadTemplate}>
-            <DownloadIcon />
-            Template
+            <DownloadIcon /> Download Template
           </button>
-          <span className="buu-caption">Use our template for formatting</span>
+          <span className="buu-caption">Excel (.xlsx) or CSV format</span>
         </div>
-
-        <div className="buu-info">
-          <p><strong>Required:</strong> firstName, lastName, email, password, role</p>
-          <p><strong>Optional:</strong> birthDate (YYYY-MM-DD), status, department, courseIds</p>
-        </div>
-
-        <div className="buu-divider"></div>
 
         <div {...getRootProps()} className={`buu-dropzone ${isDragActive ? 'buu-dropzone-active' : ''}`}>
           <input {...getInputProps()} />
@@ -339,7 +277,7 @@ const BulkUserUpload = ({ onUpload }) => {
           ) : (
             <div className="buu-file-info">
               <UploadIcon />
-              <span>{isDragActive ? 'Drop file' : 'Drag & drop or click to select'}</span>
+              <span>{isDragActive ? 'Drop file' : 'Drop or click to upload'}</span>
               <span className="buu-caption">Excel (.xlsx, .xls) or CSV</span>
             </div>
           )}
@@ -361,14 +299,10 @@ const BulkUserUpload = ({ onUpload }) => {
             </div>
             <div>
               <span>{uploadResult.message}</span>
-              {uploadResult.details && (
+              {uploadResult.details.length > 0 && (
                 <ul>
                   {uploadResult.details.map((detail, index) => (
-                    <li key={index}>
-                      {typeof detail === 'string' ? detail : 
-                      detail.error ? `Row ${detail.row}: ${detail.error}` : 
-                      JSON.stringify(detail)}
-                    </li>
+                    <li key={index}>{detail}</li>
                   ))}
                 </ul>
               )}
@@ -379,164 +313,118 @@ const BulkUserUpload = ({ onUpload }) => {
 
       <div className="buu-dialog" style={{ display: openPreviewModal ? 'block' : 'none' }}>
         <div className="buu-dialog-backdrop" onClick={() => setOpenPreviewModal(false)}></div>
-        <div className="buu-dialog-content buu-dialog-wide">
+        <div className="buu-dialog-content">
           <div className="buu-dialog-header">
-            <h3>Preview Users</h3>
-            <span className="buu-caption">{previewData.length} users</span>
+            <h3>Preview Users ({filteredUsers.length})</h3>
+            <div className="buu-search-input">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
           <div className="buu-dialog-body">
-            <div className="buu-user-list">
-              <div className="buu-search-input">
-                <SearchIcon />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="buu-list">
+            <table className="buu-table">
+              <thead>
+                <tr>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                  <th>Email</th>
+                  <th>Password</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Errors</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                 {filteredUsers.length === 0 ? (
-                  <div className="buu-no-data">No users</div>
+                  <tr>
+                    <td colSpan="8" className="buu-no-data">No users found</td>
+                  </tr>
                 ) : (
-                  filteredUsers.map((user, index) => (
-                    <div
-                      key={index}
-                      className={`buu-list-item ${selectedUserIndex === previewData.indexOf(user) ? 'selected' : ''}`}
-                      onClick={() => handleSelectUser(previewData.indexOf(user))}
-                    >
-                      <div className="buu-avatar">{getInitial(user)}</div>
-                      <div>
-                        <span>{`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed'}</span>
-                        <span className="buu-caption">{user.email || 'No email'}</span>
-                      </div>
-                    </div>
-                  ))
+                  filteredUsers.map((user, index) => {
+                    const originalIndex = previewData.indexOf(user);
+                    return (
+                      <tr key={originalIndex} className={originalIndex % 2 === 0 ? 'buu-row-even' : 'buu-row-odd'}>
+                        <td>
+                          <input
+                            type="text"
+                            value={user.firstName || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'firstName', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={user.lastName || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'lastName', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="email"
+                            value={user.email || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'email', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={user.password || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'password', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            value={user.role || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'role', e.target.value)}
+                          >
+                            <option value="">Select Role</option>
+                            {validRoles.map(role => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            value={user.status || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'status', e.target.value)}
+                          >
+                            <option value="">Select Status</option>
+                            {validStatuses.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          {validationErrors[originalIndex] ? (
+                            <ul className="buu-error-list">
+                              {validationErrors[originalIndex].map((error, idx) => (
+                                <li key={idx}>{error}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <SuccessIcon className="buu-success-icon" />
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            className="buu-btn buu-btn-icon"
+                            onClick={() => handleRemoveUser(originalIndex)}
+                          >
+                            <DeleteIcon />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-            </div>
-            <div className="buu-user-edit">
-              {selectedUserIndex !== null && editedUser ? (
-                <div>
-                  <h4>Edit (Row {selectedUserIndex + 2})</h4>
-                  <div className="buu-form-grid">
-                    <div className="buu-form-field">
-                      <label>First Name</label>
-                      <input
-                        type="text"
-                        value={editedUser.firstName || ''}
-                        onChange={(e) => handleEditUser('firstName', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field">
-                      <label>Last Name</label>
-                      <input
-                        type="text"
-                        value={editedUser.lastName || ''}
-                        onChange={(e) => handleEditUser('lastName', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field buu-form-field-full">
-                      <label>Email</label>
-                      <input
-                        type="email"
-                        value={editedUser.email || ''}
-                        onChange={(e) => handleEditUser('email', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field">
-                      <label>Password</label>
-                      <input
-                        type="text"
-                        value={editedUser.password || ''}
-                        onChange={(e) => handleEditUser('password', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field">
-                      <label>Role</label>
-                      <select
-                        value={editedUser.role || ''}
-                        onChange={(e) => handleEditUser('role', e.target.value)}
-                      >
-                        <option value="">Select Role</option>
-                        {['admin', 'instructor', 'learner', 'owner'].map((role) => (
-                          <option key={role} value={role}>{role}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="buu-form-field">
-                      <label>Birth Date</label>
-                      <input
-                        type="text"
-                        value={editedUser.birthDate || ''}
-                        onChange={(e) => handleEditUser('birthDate', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field">
-                      <label>Status</label>
-                      <select
-                        value={editedUser.status || ''}
-                        onChange={(e) => handleEditUser('status', e.target.value)}
-                      >
-                        <option value="">Select Status</option>
-                        {['active', 'pending', 'suspended'].map((status) => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="buu-form-field buu-form-field-full">
-                      <label>Department</label>
-                      <input
-                        type="text"
-                        value={editedUser.department || ''}
-                        onChange={(e) => handleEditUser('department', e.target.value)}
-                      />
-                    </div>
-                    <div className="buu-form-field buu-form-field-full">
-                      <label>Courses</label>
-                      <select
-                        multiple
-                        value={editedUser.courseIds?.split(',').map(id => id.trim()).filter(id => id) || []}
-                        onChange={(e) => handleEditUser('courseIds', Array.from(e.target.selectedOptions).map(opt => opt.value).join(','))}
-                      >
-                        {courses.map((course) => (
-                          <option key={course.id} value={course.id}>{course.title}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  {validationErrors.length > 0 && (
-                    <div className="buu-alert buu-alert-error">
-                      <div className="buu-alert-icon">
-                        <ErrorIcon />
-                      </div>
-                      <ul>
-                        {validationErrors.map((error, idx) => (
-                          <li key={idx}>{error}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="buu-edit-actions">
-                    <button
-                      className="buu-btn buu-btn-confirm"
-                      onClick={handleSaveUser}
-                      disabled={validationErrors.length > 0}
-                    >
-                      Save
-                    </button>
-                    <button
-                      className="buu-btn buu-btn-delete"
-                      onClick={handleRemoveUser}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="buu-no-data">Select a user</div>
-              )}
-            </div>
+              </tbody>
+            </table>
           </div>
           <div className="buu-dialog-actions">
             <button className="buu-btn buu-btn-cancel" onClick={() => setOpenPreviewModal(false)}>
@@ -545,7 +433,7 @@ const BulkUserUpload = ({ onUpload }) => {
             <button
               className="buu-btn buu-btn-confirm"
               onClick={processFile}
-              disabled={isProcessing || previewData.length === 0}
+              disabled={isProcessing || previewData.length === 0 || Object.keys(validationErrors).length > 0}
             >
               {isProcessing ? <div className="buu-spinner-small"></div> : 'Submit'}
             </button>
@@ -553,28 +441,16 @@ const BulkUserUpload = ({ onUpload }) => {
         </div>
       </div>
 
-      <div className="buu-dialog" style={{ display: openRemoveConfirm ? 'block' : 'none' }}>
-        <div className="buu-dialog-backdrop" onClick={() => setOpenRemoveConfirm(false)}></div>
-        <div className="buu-dialog-content">
-          <div className="buu-dialog-header">
-            <h3>Confirm</h3>
-          </div>
-          <div className="buu-dialog-body">
-            <p>Remove user?</p>
-            {editedUser && (
-              <p className="buu-bold">{editedUser.email || 'Unnamed'}</p>
-            )}
-          </div>
-          <div className="buu-dialog-actions">
-            <button className="buu-btn buu-btn-cancel" onClick={() => setOpenRemoveConfirm(false)}>
-              Cancel
-            </button>
-            <button className="buu-btn buu-btn-delete" onClick={confirmRemoveUser}>
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

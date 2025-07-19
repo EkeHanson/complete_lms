@@ -1,11 +1,18 @@
-// config.js
 import axios from 'axios';
 
-// Environment variables for URLs (fallback to localhost for development)
-//export const API_BASE_URL = 'https://complete-lms-api.onrender.com';
- export const API_BASE_URL = 'http://localhost:9090';
-export const CMVP_SITE_URL = 'http://localhost:3000';
-export const CMVP_API_URL = 'http://localhost:9091';
+// Dynamically set API base URL based on environment
+const isLocalhost = window?.location?.hostname === 'localhost';
+
+export const API_BASE_URL = isLocalhost
+  ? 'http://localhost:9090'
+  : 'https://complete-lms-api.onrender.com';
+
+export const CMVP_SITE_URL = isLocalhost
+  ? 'http://localhost:3000'
+  : 'https://your-production-site-url.com'; // Optional: Replace with your deployed frontend URL
+
+export const CMVP_API_URL = API_BASE_URL;
+
 
 // Payment Methods Configuration
 export const paymentMethods = [
@@ -52,7 +59,6 @@ export const currencies = ['USD', 'NGN', 'EUR', 'GBP', 'KES', 'GHS'];
 // Create base axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Enable sending cookies with requests
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -78,19 +84,17 @@ const getCSRFToken = () => {
   return cookieValue || '';
 };
 
-// Request interceptor to add CSRF token
+// Request interceptor to add CSRF token and Authorization header
 api.interceptors.request.use(
   (config) => {
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      config.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
     const csrfToken = getCSRFToken();
     if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
       config.headers['X-CSRFToken'] = csrfToken;
     }
-    console.log('Request details:', {
-      url: config.url,
-      method: config.method,
-      headers: config.headers,
-      cookies: document.cookie,
-    });
     return config;
   },
   (error) => {
@@ -102,41 +106,43 @@ api.interceptors.request.use(
 // Consolidated response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data,
-    });
     return response;
   },
   async (error) => {
-    console.log('Error response:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
     const originalRequest = error.config;
     if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes('/api/token/') &&
-      !originalRequest.url.includes('/api/logout/') &&
-      window.location.pathname !== '/login'
+      originalRequest.url.includes('/api/token/') ||
+      originalRequest.url.includes('/api/logout/') ||
+      window.location.pathname === '/login'
     ) {
+      console.log('Skipping interceptor for token, logout, or login page');
+      return Promise.reject(error);
+    }
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        console.log('Attempting token refresh');
-        const refreshResponse = await api.post('/api/token/refresh/', {}, { withCredentials: true });
-        console.log('Refresh response:', refreshResponse.data);
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        const refreshResponse = await api.post('/api/token/refresh/', { refresh: refreshToken });
+        localStorage.setItem('access_token', refreshResponse.data.access);
+        if (refreshResponse.data.refresh) {
+          localStorage.setItem('refresh_token', refreshResponse.data.refresh);
+        }
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('Refresh failed:', {
+        console.error('Token refresh failed:', {
+          message: refreshError.message,
+          response: refreshError.response?.data,
           status: refreshError.response?.status,
-          data: refreshError.response?.data,
         });
-        document.cookie = 'access_token=; Max-Age=0; path=/';
-        document.cookie = 'refresh_token=; Max-Age=0; path=/';
-        window.location.href = '/login?session_expired=1';
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        if (window.location.pathname !== '/login') {
+          console.log('Redirecting to login due to refresh failure');
+          window.location.href = '/login?session_expired=1';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -146,9 +152,9 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: (credentials) => api.post('/api/token/', credentials, { withCredentials: true }),
+  login: (credentials) => api.post('/api/token/', credentials),
   logout: () => api.post('/api/logout/', {}, { headers: { 'X-CSRFToken': getCSRFToken() } }),
-  refreshToken: () => api.post('/api/token/refresh/', {}, { withCredentials: true }),
+  refreshToken: () => api.post('/api/token/refresh/', { refresh: localStorage.getItem('refresh_token') }),
   getCurrentUser: () => api.get('/api/token/validate/'),
   register: (userData) => api.post('/users/api/register/', userData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -167,7 +173,7 @@ export const authAPI = {
 
 // User API
 export const userAPI = {
-  impersonateUser: (id) => api.post(`/api/users/${id}/impersonate/`, {}, {
+  impersonateUser: (id) => api.post(`/api/users/users/${id}/impersonate/`, {}, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
   getUsers: (params = {}) => api.get('/api/users/users/', { params }),
@@ -181,13 +187,19 @@ export const userAPI = {
   deleteUser: (id) => api.delete(`/api/users/users/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+  lockUser: (id) => api.post(`/api/users/users/${id}/lock/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  unlockUser: (id) => api.post(`/api/users/users/${id}/unlock/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
   fetchRoleStats: (params = {}) => api.get('/api/users/users/role_stats/', { params }),
   getUserActivities: (params = {}) => api.get('/api/users/user-activities/', { params }),
   getUserStats: () => api.get('/api/users/stats/'),
   bulkUpload: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/users/api/users/bulk_upload/', formData, {
+    return api.post('/api/users/users/bulk_upload/', formData, {
       headers: {
         'X-CSRFToken': getCSRFToken(),
         'Content-Type': 'multipart/form-data',
@@ -359,15 +371,15 @@ export const advertAPI = {
 
 // Courses API
 export const coursesAPI = {
-  getCategories: (params = {}) => api.get('/courses/categories/', { params }),
-  getCategory: (id) => api.get(`/courses/categories/${id}/`),
-  createCategory: (data) => api.post('/courses/categories/', data, {
+  getCategories: (params = {}) => api.get('/api/courses/categories/', { params }),
+  getCategory: (id) => api.get(`/api/courses/categories/${id}/`),
+  createCategory: (data) => api.post('/api/courses/categories/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  updateCategory: (id, data) => api.patch(`/courses/categories/${id}/`, data, {
+  updateCategory: (id, data) => api.patch(`/api/courses/categories/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteCategory: (id) => api.delete(`/courses/categories/${id}/`, {
+  deleteCategory: (id) => api.delete(`/api/courses/categories/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
   getCourses: (params = {}) => api.get('/api/courses/courses/', { params }),
@@ -376,13 +388,13 @@ export const coursesAPI = {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
   updateCourse: (id, formData) => api.patch(`/api/courses/courses/${id}/`, formData, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
   deleteCourse: (id) => api.delete(`/api/courses/courses/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  getMostPopularCourse: () => api.get('/api/courses/courses/most_popular/'),
-  getLeastPopularCourse: () => api.get('/api/courses/courses/least_popular/'),
+  getMostPopularCourses: () => api.get('/api/courses/courses/most_popular/'),
+  getLeastPopularCourses: () => api.get('/api/courses/courses/least_popular/'),
   getModules: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/modules/`, { params }),
   getModule: (courseId, moduleId) => api.get(`/api/courses/courses/${courseId}/modules/${moduleId}/`),
   createModule: (courseId, data) => api.post(`/api/courses/courses/${courseId}/modules/`, data, {
@@ -415,81 +427,101 @@ export const coursesAPI = {
   deleteResource: (courseId, resourceId) => api.delete(`/api/courses/courses/${courseId}/resources/${resourceId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  getBadges: () => api.get('/courses/api/badges/'),
-  createBadge: (data) => api.post('/courses/api/badges/', data, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  getBadges: () => api.get('/api/courses/badges/'),
+  createBadge: (formData) => api.post('/api/courses/badges/', formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  updateBadge: (id, data) => api.put(`/courses/api/badges/${id}/`, data, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  updateBadge: (id, formData) => api.patch(`/api/courses/badges/${id}/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  deleteBadge: (id) => api.delete(`/courses/api/badges/${id}/`, {
+  deleteBadge: (id) => api.delete(`/api/courses/badges/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
   getLeaderboard: (courseId) =>
-    api.get(`/courses/api/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
-  updatePointsConfig: (courseId, config) => api.post(`/courses/api/courses/${courseId}/points-config/`, config, {
+    api.get(`/api/courses/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
+  updatePointsConfig: (courseId, config) => api.post(`/api/courses/courses/${courseId}/points-config/`, config, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  adminSingleEnroll: (courseId, data) => api.post(`/courses/enrollments/course/${courseId}/`, data, {
+  adminSingleEnroll: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/courses/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
+  adminBulkEnrollCourse: (courseId, userIds) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, { user_ids: userIds }, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  adminBulkEnroll: (enrollmentsData) => api.post('/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
+  adminBulkEnroll: (enrollmentsData) => api.post('/api/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  getAllEnrollments: () => api.get('/courses/enrollments/all_enrollments/'),
-  selfEnroll: (courseId) => api.post(`/courses/enrollments/self-enroll/${courseId}/`, {}, {
+  getAllEnrollments: () => api.get('/api/courses/enrollments/all/'),
+  selfEnroll: (courseId) => api.post(`/api/courses/enrollments/self-enroll/${courseId}/`, {}, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
   getEnrollments: (courseId = null) => {
-    const url = courseId ? `/courses/enrollments/course/${courseId}/` : '/enrollments/';
+    const url = courseId ? `/api/courses/enrollments/course/${courseId}/` : '/api/courses/enrollments/';
     return api.get(url);
   },
   getUserEnrollments: (userId = null) => {
-    const url = userId ? `/courses/enrollments/user_enrollments/${userId}/` : '/courses/enrollments/user_enrollments/';
+    const url = userId ? `/api/courses/enrollments/user/${userId}/` : '/api/courses/enrollments/user/';
     return api.get(url);
   },
-  getCourseEnrollmentsAdmin: (courseId) => api.get(`/courses/enrollments/course-enrollments/${courseId}/`),
-  deleteEnrollment: (id) => api.delete(`/courses/enrollments/${id}/`, {
+  getCourseEnrollmentsAdmin: (courseId) => api.get(`/api/courses/enrollments/course/${courseId}/`),
+  deleteEnrollment: (id) => api.delete(`/api/courses/enrollments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
   getRatings: (courseId = null) => {
-    const url = courseId ? `/courses/ratings/course/${courseId}/` : '/courses/ratings/';
+    const url = courseId ? `/api/courses/ratings/course/${courseId}/` : '/api/courses/ratings/';
     return api.get(url);
   },
-  submitRating: (courseId, data) => api.post(`/courses/ratings/course/${courseId}/`, data, {
+  submitRating: (courseId, data) => api.post(`/api/courses/ratings/course/${courseId}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  getLearningPaths: (params = {}) => api.get('/courses/learning-paths/', { params }),
-  getLearningPath: (id) => api.get(`/courses/learning-paths/${id}/`),
-  createLearningPath: (data) => api.post('/courses/learning-paths/', data, {
+  getLearningPaths: (params = {}) => api.get('/api/courses/learning-paths/', { params }),
+  getLearningPath: (id) => api.get(`/api/courses/learning-paths/${id}/`),
+  createLearningPath: (data) => api.post('/api/courses/learning-paths/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  updateLearningPath: (id, data) => api.patch(`/courses/learning-paths/${id}/`, data, {
+  updateLearningPath: (id, data) => api.patch(`/api/courses/learning-paths/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteLearningPath: (id) => api.delete(`/courses/learning-paths/${id}/`, {
+  deleteLearningPath: (id) => api.delete(`/api/courses/learning-paths/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
   getCertificates: (courseId = null) => {
-    const url = courseId ? `/courses/certificates/course/${courseId}/` : '/courses/certificates/';
+    const url = courseId ? `/api/courses/certificates/course/${courseId}/` : '/api/courses/certificates/';
     return api.get(url);
   },
-  getFAQStats: () => api.get('/courses/faqs/stats/'),
-  getFAQs: (courseId, params = {}) => api.get(`/courses/courses/${courseId}/faqs/`, { params }),
-  createFAQ: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/`, data, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  createCertificate: (courseId, formData) => api.post(`/api/courses/certificates/course/${courseId}/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  updateFAQ: (courseId, faqId, data) => api.patch(`/courses/courses/${courseId}/faqs/${faqId}/`, data, {
-    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  updateCertificate: (courseId, formData) => api.patch(`/api/courses/certificates/course/${courseId}/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  deleteFAQ: (courseId, faqId) => api.delete(`/courses/courses/${courseId}/faqs/${faqId}/`, {
+  deleteCertificate: (courseId) => api.delete(`/api/courses/certificates/course/${courseId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  reorderFAQs: (courseId, data) => api.post(`/courses/courses/${courseId}/faqs/reorder/`, data, {
+  getFAQStats: () => api.get('/api/courses/faqs/stats/'),
+  getFAQs: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/faqs/`, { params }),
+  createFAQ: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  updateFAQ: (courseId, faqId, data) => api.patch(`/api/courses/courses/${courseId}/faqs/${faqId}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  deleteFAQ: (courseId, faqId) => api.delete(`/api/courses/courses/${courseId}/faqs/${faqId}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() },
+  }),
+  reorderFAQs: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/reorder/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  // SCORM/xAPI Endpoints
+  getSCORMSettings: (courseId) => api.get(`/api/courses/scorm/${courseId}/`),
+  updateSCORMSettings: (courseId, formData) => api.patch(`/api/courses/scorm/${courseId}/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+  }),
+  uploadSCORMPackage: (courseId, formData) => api.post(`/api/courses/scorm/${courseId}/upload/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteSCORMSettings: (courseId) => api.delete(`/api/courses/scorm/${courseId}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() },
   }),
 };
 
@@ -516,26 +548,26 @@ export const paymentAPI = {
 
 // Forum API
 export const forumAPI = {
-  getForums: (params) => api.get('/forums/api/forums/', { params }),
-  createForum: (data) => api.post('/forums/api/forums/', data, {
+  getForums: (params) => api.get('/api/forums/forums/', { params }),
+  createForum: (data) => api.post('/api/forums/forums/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  updateForum: (id, data) => api.patch(`/forums/api/forums/${id}/`, data, {
+  updateForum: (id, data) => api.patch(`/api/forums/forums/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteForum: (id) => api.delete(`/forums/api/forums/${id}/`, {
+  deleteForum: (id) => api.delete(`/api/forums/forums/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  getForumStats: () => api.get('/forums/api/forums/stats/'),
+  getForumStats: () => api.get('/api/forums/forums/stats/'),
 };
 
 // Moderation API
 export const moderationAPI = {
-  getModerationQueue: (params) => api.get('/forums/api/queue/', { params }),
-  moderateItem: (id, data) => api.patch(`/forums/api/queue/${id}/`, data, {
+  getModerationQueue: (params) => api.get('/api/forums/queue/', { params }),
+  moderateItem: (id, data) => api.patch(`/api/forums/queue/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  getPendingCount: () => api.get('/forums/api/queue/pending_count/'),
+  getPendingCount: () => api.get('/api/forums/queue/pending_count/'),
 };
 
 // Quality API
@@ -656,17 +688,20 @@ export const qualityAPI = {
 };
 
 // Utility functions
-export const setAuthTokens = () => {
-  // No need to set tokens manually; backend sets HttpOnly cookies
+export const setAuthTokens = (accessToken, refreshToken) => {
+  localStorage.setItem('access_token', accessToken);
+  localStorage.setItem('refresh_token', refreshToken);
 };
 
 export const clearAuthTokens = () => {
-  // No need to clear tokens manually; handled by logout API
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
 };
 
-export const getAuthHeader = () => ({
-  // No need for Authorization header; cookies are sent automatically
-});
+export const getAuthHeader = () => {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export default {
   API_BASE_URL,

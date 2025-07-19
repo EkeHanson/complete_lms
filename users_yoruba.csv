@@ -1,0 +1,11 @@
+firstName,lastName,email,password,role,phone,title,bio,status
+Ayotunde,Adewale,ayotunde.adewale@netwiver.com,qwerty123,carer,+2348012345678,Carer,Devoted caregiver with years of experience,active
+Bamidele,Ogunleye,bamidele.ogunleye@netwiver.com,qwerty123,admin,+2348023456789,Admin Manager,Oversees operations and admin duties,active
+Funmilayo,Akinyemi,funmilayo.akinyemi@netwiver.com,qwerty123,learner,+2348071234567,Student,Eager to learn and grow professionally,pending
+Tolulope,Adebayo,tolulope.adebayo@netwiver.com,qwerty123,tutor,+2348034567890,Tutor,Skilled in adult education and training,active
+Mobolaji,Adedayo,mobolaji.adedayo@netwiver.com,qwerty123,assessor,+2348098765432,Assessor,Experienced in learner assessments,pending
+Ireti,Olayemi,ireti.olayemi@netwiver.com,qwerty123,iqa,+2348045678901,IQA,Internal quality systems specialist,active
+Yetunde,Balogun,yetunde.balogun@netwiver.com,qwerty123,client,+2348087654321,Client,Long-standing client of Proliance Ltd,active
+Kehinde,Ajayi,kehinde.ajayi@netwiver.com,qwerty123,hr,+2348056789012,HR Specialist,Handles employee relations and onboarding,active
+Temitope,Salako,temitope.salako@netwiver.com,qwerty123,eqa,+2348076543210,EQA,Conducts independent quality checks,pending
+Adekunle,Alabi,adekunle.alabi@netwiver.com,qwerty123,family,+2348067890123,Family Member,Acts as a next of kin and support system,active

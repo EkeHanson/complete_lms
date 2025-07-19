@@ -1,20 +1,20 @@
-import { coursesAPI, userAPI } from '../../../../config';
+import React, { useState, useEffect, useReducer, useCallback, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { ModuleForm, DraggableModule } from './ModuleForm';
-import React, { useState, useEffect } from 'react';
 import {
-  Save, Cancel, CloudUpload, AddCircle, Delete,
-  Link as LinkIcon, PictureAsPdf, VideoLibrary,
-  InsertDriveFile, Edit, Person, People, School,
-  Menu as MenuIcon, ArrowBack, Add, Star, CheckCircle
+  Save, Cancel, CloudUpload, AddCircle, Delete, Link as LinkIcon,
+  PictureAsPdf, VideoLibrary, InsertDriveFile, Edit, Person, People,
+  School, Menu as MenuIcon, ArrowBack, Add, Star, CheckCircle
 } from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { coursesAPI, userAPI } from '../../../../config';
+import { DraggableModule, ModuleForm } from './ModuleForm';
 import LearningPaths from './LearningPaths';
 import SCORMxAPISettings from './SCORMxAPISettings';
 import CertificateSettings from './CertificateSettings';
 import GamificationManager from './GamificationManager';
 import InstructorAssignmentDialog from './InstructorAssignmentDialog';
+import DraftEditor from './DraftEditor';
 import './CourseForm.css';
 
 const resourceTypes = [
@@ -24,73 +24,90 @@ const resourceTypes = [
   { value: 'file', label: 'File', icon: <InsertDriveFile /> }
 ];
 
+const initialCourseState = {
+  title: '',
+  code: '',
+  description: '',
+  category_id: '',
+  level: 'Beginner',
+  status: 'Draft',
+  duration: '',
+  price: 0,
+  discountPrice: null,
+  currency: 'NGN',
+  learningOutcomes: [],
+  prerequisites: [],
+  thumbnail: null,
+  modules: [],
+  resources: [],
+  instructors: [],
+  learningPaths: [],
+  certificateSettings: {
+    enabled: false,
+    template: 'default',
+    customText: '',
+    signature: null,
+    signatureName: '',
+    showDate: true,
+    showCourseName: true,
+    showCompletionHours: true,
+    customLogo: null
+  },
+  scormSettings: {
+    enabled: false,
+    standard: 'scorm12',
+    version: '1.2',
+    completionThreshold: 80,
+    scoreThreshold: 70,
+    tracking: { completion: true, score: true, time: true, progress: true },
+    package: null,
+    packageName: ''
+  }
+};
+
+const courseReducer = (state, action) => {
+  switch (action.type) {
+    case 'UPDATE_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'UPDATE_NESTED':
+      return { ...state, [action.field]: { ...state[action.field], ...action.value } };
+    case 'ADD_ITEM':
+      return { ...state, [action.field]: [...state[action.field], action.value] };
+    case 'REMOVE_ITEM':
+      return { ...state, [action.field]: state[action.field].filter((_, i) => i !== action.index) };
+    case 'UPDATE_ITEM':
+      return {
+        ...state,
+        [action.field]: state[action.field].map(item =>
+          item.id === action.id ? { ...item, ...action.value } : item
+        )
+      };
+    case 'SET_COURSE':
+      return { ...state, ...action.payload };
+    case 'RESET':
+      return initialCourseState;
+    default:
+      return state;
+  }
+};
+
 const CourseForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
+  const [course, dispatch] = useReducer(courseReducer, initialCourseState);
+  const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedModules, setSelectedModules] = useState([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
-
-  const [course, setCourse] = useState({
-    title: '',
-    code: '',
-    description: '',
-    category_id: '',
-    level: 'Beginner',
-    status: 'Draft',
-    duration: '',
-    price: 0,
-    discountPrice: null,
-    currency: 'NGN',
-    learningOutcomes: [],
-    prerequisites: [],
-    thumbnail: null,
-    modules: [],
-    resources: [],
-    instructors: [],
-    learningPaths: [],
-    certificateSettings: {
-      enabled: false,
-      template: 'default',
-      customText: '',
-      signature: null,
-      signatureName: '',
-      showDate: true,
-      showCourseName: true,
-      showCompletionHours: true,
-      customLogo: null
-    },
-    scormSettings: {
-      enabled: false,
-      standard: 'scorm12',
-      version: '1.2',
-      completionThreshold: 80,
-      scoreThreshold: 70,
-      tracking: {
-        completion: true,
-        score: true,
-        time: true,
-        progress: true
-      },
-      package: null,
-      packageName: ''
-    }
-  });
-
-  const [categories, setCategories] = useState([]);
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [newOutcome, setNewOutcome] = useState('');
-  const [newPrerequisite, setNewPrerequisite] = useState('');
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+  const [editingCategory, setEditingCategory] = useState(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
-  const [instructorDialogOpen, setInstructorDialogOpen] = useState(false);
   const [currentResource, setCurrentResource] = useState({
     id: null,
     title: '',
@@ -98,157 +115,268 @@ const CourseForm = () => {
     url: '',
     file: null
   });
+  const [instructorDialogOpen, setInstructorDialogOpen] = useState(false);
+  const [learningOutcomeInput, setLearningOutcomeInput] = useState('');
+  const [prerequisiteInput, setPrerequisiteInput] = useState('');
+  const categoryNameInputRef = useRef(null);
+
+
+const fetchData = useCallback(async () => {
+  setLoading(true);
+  try {
+    const [categoriesRes, courseRes] = await Promise.all([
+      coursesAPI.getCategories(),
+      isEdit ? coursesAPI.getCourse(id) : Promise.resolve(null)
+    ]);
+
+    const fetchedCategories = categoriesRes.data.results || categoriesRes.data;
+    setCategories(fetchedCategories);
+
+    if (isEdit && courseRes?.data) {
+      console.log('Fetched course data:', courseRes.data); // Debug full response
+      console.log('Fetched modules:', courseRes.data.modules); // Debug modules
+      dispatch({
+        type: 'SET_COURSE',
+        payload: {
+          ...courseRes.data,
+          category_id: courseRes.data.category?.id || courseRes.data.category_id || '',
+          description: courseRes.data.description || JSON.stringify(convertToRaw(EditorState.createEmpty().getCurrentContent())),
+          learningOutcomes: Array.isArray(courseRes.data.learning_outcomes) ? courseRes.data.learning_outcomes : [],
+          prerequisites: Array.isArray(courseRes.data.prerequisites) ? courseRes.data.prerequisites : [],
+          modules: (courseRes.data.modules || []).map((module, idx) => ({
+            ...module,
+            order: module.order ?? idx,
+            lessons: (module.lessons || []).map((lesson, lessonIdx) => ({
+              ...lesson,
+              order: lesson.order ?? lessonIdx
+            }))
+          })),
+          resources: courseRes.data.resources || [],
+          instructors: courseRes.data.instructors || []
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching data:', error.response?.data || error.message);
+    setApiError('Failed to load data');
+  } finally {
+    setLoading(false);
+  }
+}, [id, isEdit]);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      setCategoryLoading(true);
-      try {
-        const response = await coursesAPI.getCategories();
-        setCategories(response.data.results || response.data);
-      } catch (error) {
-        setApiError('Failed to load categories');
-      } finally {
-        setCategoryLoading(false);
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (categoryDialogOpen && categoryNameInputRef.current) {
+      categoryNameInputRef.current.focus();
+    }
+  }, [categoryDialogOpen]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!course.title.trim()) newErrors.title = 'Title is required';
+    if (!course.code.trim()) newErrors.code = 'Course code is required';
+    if (!course.description.trim()) newErrors.description = 'Description is required';
+    if (!course.category_id) newErrors.category = 'Category is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async (e, redirect = false) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setApiError('');
+
+    try {
+      const formData = new FormData();
+      Object.entries(course).forEach(([key, value]) => {
+        if (key === 'learningOutcomes' || key === 'prerequisites') {
+          value.forEach(item => formData.append(key, item));
+        } else if (key === 'thumbnail' && value instanceof File) {
+          formData.append(key, value);
+        } else if (['modules', 'instructors', 'learningPaths', 'certificateSettings', 'scormSettings'].includes(key)) {
+          // Handled separately by their respective APIs
+        } else if (value !== null && value !== undefined) {
+          formData.append(key, value);
+        }
+      });
+
+      const response = isEdit
+        ? await coursesAPI.updateCourse(id, formData)
+        : await coursesAPI.createCourse(formData);
+
+      if (!isEdit) {
+        dispatch({ type: 'SET_COURSE', payload: { ...course, id: response.data.id } });
+        navigate(`/admin/courses/edit/${response.data.id}`, { replace: true });
       }
-    };
 
-    const fetchCourseData = async () => {
-      if (!isEdit) return;
-      setLoading(true);
-      try {
-        const response = await coursesAPI.getCourse(id);
-        const courseData = response.data;
-        setCourse({
-          ...course,
-          title: courseData.title || '',
-          code: courseData.code || '',
-          description: courseData.description || '',
-          category_id: courseData.category?.id || courseData.category_id || '',
-          level: courseData.level || 'Beginner',
-          status: courseData.status || 'Draft',
-          duration: courseData.duration || '',
-          price: courseData.price || 0,
-          discountPrice: courseData.discount_price || null,
-          currency: courseData.currency || 'NGN',
-          learningOutcomes: Array.isArray(courseData.learning_outcomes) ? courseData.learning_outcomes : [],
-          prerequisites: Array.isArray(courseData.prerequisites) ? courseData.prerequisites : [],
-          thumbnail: null,
-          modules: courseData.modules || [],
-          resources: courseData.resources || [],
-          instructors: courseData.instructors || []
-        });
-      } catch (error) {
-        setApiError('Failed to load course data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-    fetchCourseData();
-  }, [id, isEdit]);
-
-  const toggleModuleSelection = (moduleId) => {
-    setSelectedModules(prev => 
-      prev.includes(moduleId) 
-        ? prev.filter(id => id !== moduleId)
-        : [...prev, moduleId]
-    );
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      if (redirect) navigate('/admin/courses');
+    } catch (error) {
+      setApiError(error.response?.data?.detail || 'Failed to save course');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const moveModule = (dragIndex, hoverIndex) => {
-    setCourse(prev => {
-      const newModules = [...prev.modules];
-      const draggedModule = newModules[dragIndex];
-      newModules.splice(dragIndex, 1);
-      newModules.splice(hoverIndex, 0, draggedModule);
-      const updatedModules = newModules.map((module, idx) => ({
-        ...module,
-        order: idx
-      }));
-      return { ...prev, modules: updatedModules };
-    });
+  const handleChange = (field, value) => {
+    dispatch({ type: 'UPDATE_FIELD', field, value });
   };
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+  const handleDraftEditorChange = (rawContent) => {
+    handleChange('description', JSON.stringify(rawContent));
   };
 
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-    if (mobileOpen) setMobileOpen(false);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCourse(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePriceChange = (e) => {
-    const value = parseFloat(e.target.value) || 0;
-    setCourse(prev => ({ ...prev, price: value }));
-  };
-
-  const handleDiscountChange = (e) => {
-    const value = e.target.value === '' ? null : parseFloat(e.target.value);
-    setCourse(prev => ({ ...prev, discountPrice: value }));
-  };
-
-  const addLearningOutcome = () => {
-    if (newOutcome.trim()) {
-      setCourse(prev => ({
-        ...prev,
-        learningOutcomes: [...prev.learningOutcomes, newOutcome.trim()]
-      }));
-      setNewOutcome('');
+  const addLearningOutcome = (outcome) => {
+    if (outcome.trim()) {
+      dispatch({ type: 'ADD_ITEM', field: 'learningOutcomes', value: outcome.trim() });
+      setLearningOutcomeInput('');
     }
   };
 
   const removeLearningOutcome = (index) => {
-    setCourse(prev => ({
-      ...prev,
-      learningOutcomes: prev.learningOutcomes.filter((_, i) => i !== index)
-    }));
+    dispatch({ type: 'REMOVE_ITEM', field: 'learningOutcomes', index });
   };
 
-  const addPrerequisite = () => {
-    if (newPrerequisite.trim()) {
-      setCourse(prev => ({
-        ...prev,
-        prerequisites: [...prev.prerequisites, newPrerequisite.trim()]
-      }));
-      setNewPrerequisite('');
+  const addPrerequisite = (prereq) => {
+    if (prereq.trim()) {
+      dispatch({ type: 'ADD_ITEM', field: 'prerequisites', value: prereq.trim() });
+      setPrerequisiteInput('');
     }
   };
 
   const removePrerequisite = (index) => {
-    setCourse(prev => ({
-      ...prev,
-      prerequisites: prev.prerequisites.filter((_, i) => i !== index)
-    }));
+    dispatch({ type: 'REMOVE_ITEM', field: 'prerequisites', index });
   };
 
-  const openResourceDialog = (resource = null) => {
-    setCurrentResource(resource || {
-      id: null,
-      title: '',
-      type: 'link',
-      url: '',
-      file: null
+const addModule = async () => {
+  try {
+    setLoading(true);
+    let courseId = id || course.id;
+
+    // Ensure course is created
+    if (!isEdit && !courseId) {
+      if (!categories.length) {
+        setApiError('No categories available. Please create a category first.');
+        return;
+      }
+      if (!course.title.trim()) {
+        setApiError('Course title is required to create a new course.');
+        return;
+      }
+      if (!course.code.trim()) {
+        setApiError('Course code is required to create a new course.');
+        return;
+      }
+
+      const response = await coursesAPI.createCourse({
+        title: course.title,
+        code: course.code,
+        description: course.description || '',
+        category_id: course.category_id || categories[0].id,
+        level: course.level,
+        status: 'Draft'
+      });
+      courseId = response.data.id;
+      dispatch({ type: 'SET_COURSE', payload: { ...course, id: courseId } });
+      navigate(`/admin/courses/edit/${courseId}`, { replace: true });
+    }
+
+    // Fetch existing modules
+    const existingModulesResponse = await coursesAPI.getModules(courseId);
+    const existingModules = existingModulesResponse.data.results || existingModulesResponse.data || [];
+    const maxOrder = existingModules.length > 0
+      ? Math.max(...existingModules.map(m => m.order)) + 1
+      : 0;
+
+    const response = await coursesAPI.createModule(courseId, {
+      course: courseId,
+      title: 'New Module',
+      description: '',
+      order: maxOrder,
+      is_published: false
     });
-    setResourceDialogOpen(true);
+
+    dispatch({
+      type: 'ADD_ITEM',
+      field: 'modules',
+      value: { ...response.data, lessons: [] }
+    });
+  } catch (error) {
+    console.error('Error in addModule:', error.response?.data || error.message);
+    setApiError(error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create module');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleModuleChange = (moduleId, updatedModule) => {
+    dispatch({ type: 'UPDATE_ITEM', field: 'modules', id: moduleId, value: updatedModule });
   };
 
-  const handleResourceChange = (e) => {
-    const { name, value } = e.target;
-    setCurrentResource(prev => ({ ...prev, [name]: value }));
+const deleteModule = async (moduleId) => {
+  try {
+    setLoading(true);
+    if (!isNaN(moduleId)) await coursesAPI.deleteModule(courseId, moduleId);
+    
+    // Filter out the deleted module
+    const remainingModules = course.modules.filter(m => m.id !== moduleId);
+    
+    // Reassign order values starting from 0
+    const updatedModules = remainingModules.map((module, idx) => ({
+      ...module,
+      order: idx
+    }));
+
+    // Update order in the backend for each module
+    await Promise.all(
+      updatedModules.map(module =>
+        coursesAPI.updateModule(courseId, module.id, { order: module.order })
+      )
+    );
+
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'modules',
+      value: updatedModules
+    });
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'instructors',
+      value: course.instructors.map(instructor => ({
+        ...instructor,
+        assignedModules: instructor.assignedModules === 'all'
+          ? 'all'
+          : instructor.assignedModules.filter(id => id !== moduleId)
+      }))
+    });
+  } catch (error) {
+    console.error('Error deleting module:', error.response?.data || error.message);
+    setApiError('Failed to delete module');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const moveModule = (dragIndex, hoverIndex) => {
+    const newModules = [...course.modules];
+    const draggedModule = newModules[dragIndex];
+    newModules.splice(dragIndex, 1);
+    newModules.splice(hoverIndex, 0, draggedModule);
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'modules',
+      value: newModules.map((module, idx) => ({ ...module, order: idx }))
+    });
   };
 
-  const handleResourceFileChange = (e) => {
-    setCurrentResource(prev => ({ ...prev, file: e.target.files[0] }));
-  };
-
-  const saveResource = async () => {
+  const saveResource = async (e) => {
+    e.preventDefault();
     if (!currentResource.title.trim()) {
       setApiError('Resource title is required');
       return;
@@ -263,8 +391,6 @@ const CourseForm = () => {
     }
 
     setLoading(true);
-    setApiError('');
-
     try {
       const formData = new FormData();
       formData.append('title', currentResource.title);
@@ -276,175 +402,124 @@ const CourseForm = () => {
       }
       formData.append('order', course.resources.length);
 
-      let updatedResource;
-      if (currentResource.id && !isNaN(currentResource.id)) {
-        const response = await coursesAPI.updateResource(id, currentResource.id, formData);
-        updatedResource = response.data;
-        setCourse(prev => ({
-          ...prev,
-          resources: prev.resources.map(r => (r.id === currentResource.id ? updatedResource : r)),
-        }));
-      } else {
-        const response = await coursesAPI.createResource(id, formData);
-        updatedResource = response.data;
-        setCourse(prev => ({
-          ...prev,
-          resources: [...prev.resources, updatedResource],
-        }));
-      }
+      const response = currentResource.id
+        ? await coursesAPI.updateResource(id, currentResource.id, formData)
+        : await coursesAPI.createResource(id, formData);
+
+      dispatch({
+        type: currentResource.id ? 'UPDATE_ITEM' : 'ADD_ITEM',
+        field: 'resources',
+        id: currentResource.id,
+        value: response.data
+      });
 
       setResourceDialogOpen(false);
-      setCurrentResource({
-        id: null,
-        title: '',
-        type: 'link',
-        url: '',
-        file: null,
+      setCurrentResource({ id: null, title: '', type: 'link', url: '', file: null });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setApiError(error.response?.data?.detail || 'Failed to save resource');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteResource = async (resourceId) => {
+    try {
+      setLoading(true);
+      await coursesAPI.deleteResource(id, resourceId);
+      dispatch({
+        type: 'UPDATE_FIELD',
+        field: 'resources',
+        value: course.resources.filter(r => r.id !== resourceId)
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      setApiError(error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || 'Failed to save resource');
+      setApiError('Failed to delete resource');
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteResource = async (id) => {
-    setLoading(true);
-    setApiError('');
-
-    try {
-      await coursesAPI.deleteResource(course.id || id, id);
-      setCourse(prev => ({
-        ...prev,
-        resources: prev.resources.filter(r => r.id !== id),
-      }));
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      setApiError(error.response?.data?.detail || 'Failed to delete resource');
-    } finally {
-      setLoading(false);
+  const saveCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategory.name.trim()) {
+      setErrors({ categoryName: 'Category name is required' });
+      return;
     }
-  };
 
-  const addModule = async () => {
     try {
       setLoading(true);
+      const payload = {
+        name: newCategory.name.trim(),
+        description: newCategory.description.trim()
+      };
+      const response = editingCategory
+        ? await coursesAPI.updateCategory(editingCategory.id, payload)
+        : await coursesAPI.createCategory(payload);
 
-      if (!isEdit) {
-        const courseResponse = await coursesAPI.createCourse({
-          title: course.title || 'New Course',
-          code: course.code || `TEMP-${Date.now()}`,
-          description: course.description || '',
-          category_id: course.category_id || categories[0]?.id,
-          level: course.level,
-          status: 'Draft',
-        });
-
-        setCourse(prev => ({ ...prev, id: courseResponse.data.id }));
-        navigate(`/admin/courses/${courseResponse.data.id}/edit`, { replace: true });
-      }
-
-      const courseId = id || course.id;
-      if (!courseId) {
-        throw new Error('Course ID is not available');
-      }
-
-      const response = await coursesAPI.createModule(courseId, {
-        course: courseId,
-        title: 'New Module',
-        description: '',
-        order: course.modules.length,
-        is_published: false
-      });
-
-      setCourse(prev => ({
-        ...prev,
-        modules: [...prev.modules, {
-          ...response.data,
-          lessons: []
-        }]
-      }));
+      setCategories(prev =>
+        editingCategory
+          ? prev.map(cat => (cat.id === editingCategory.id ? response.data : cat))
+          : [...prev, response.data]
+      );
+      setCategoryDialogOpen(false);
+      setNewCategory({ name: '', description: '' });
+      setEditingCategory(null);
+      setErrors({});
     } catch (error) {
-      setApiError(error.response?.data?.detail || error.message || 'Failed to create module');
+      setApiError(error.response?.data?.detail || 'Failed to save category');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleModuleChange = (moduleId, updatedModule) => {
-    setCourse(prev => ({
-      ...prev,
-      modules: prev.modules.map(m => m.id === moduleId ? updatedModule : m)
-    }));
-  };
-
-  const deleteModule = async (moduleId) => {
+  const deleteCategory = async (categoryId) => {
     try {
       setLoading(true);
-      if (!isNaN(moduleId)) {
-        await coursesAPI.deleteModule(moduleId);
-      }
-      setCourse(prev => ({
-        ...prev,
-        modules: prev.modules.filter(m => m.id !== moduleId),
-        instructors: prev.instructors.map(instructor => {
-          if (instructor.assignedModules !== 'all') {
-            return {
-              ...instructor,
-              assignedModules: instructor.assignedModules.filter(id => id !== moduleId)
-            };
-          }
-          return instructor;
-        })
-      }));
+      await coursesAPI.deleteCategory(categoryId);
+      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
     } catch (error) {
-      setApiError('Failed to delete module');
+      setApiError('Failed to delete category');
     } finally {
       setLoading(false);
     }
   };
 
   const handleInstructorAssignment = (instructor, assignedModules) => {
-    const existingIndex = course.instructors.findIndex(i => i.instructorId === instructor.id);
     const newInstructor = {
       instructorId: instructor.id,
       name: instructor.name,
       email: instructor.email,
       isActive: true,
-      assignedModules: assignedModules
+      assignedModules
     };
-
-    if (existingIndex >= 0) {
-      const updatedInstructors = [...course.instructors];
-      updatedInstructors[existingIndex] = newInstructor;
-      setCourse(prev => ({ ...prev, instructors: updatedInstructors }));
-    } else {
-      setCourse(prev => ({
-        ...prev,
-        instructors: [...prev.instructors, newInstructor]
-      }));
-    }
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'instructors',
+      value: course.instructors.some(i => i.instructorId === instructor.id)
+        ? course.instructors.map(i => (i.instructorId === instructor.id ? newInstructor : i))
+        : [...course.instructors, newInstructor]
+    });
   };
 
   const toggleInstructorStatus = (instructorId) => {
-    setCourse(prev => ({
-      ...prev,
-      instructors: prev.instructors.map(instructor => 
-        instructor.instructorId === instructorId 
-          ? { ...instructor, isActive: !instructor.isActive }
-          : instructor
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'instructors',
+      value: course.instructors.map(i =>
+        i.instructorId === instructorId ? { ...i, isActive: !i.isActive } : i
       )
-    }));
+    });
   };
 
   const removeInstructor = (instructorId) => {
-    setCourse(prev => ({
-      ...prev,
-      instructors: prev.instructors.filter(i => i.instructorId !== instructorId)
-    }));
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'instructors',
+      value: course.instructors.filter(i => i.instructorId !== instructorId)
+    });
   };
 
   const getAssignedModulesText = (instructor) => {
@@ -457,211 +532,6 @@ const CourseForm = () => {
     return `${instructor.assignedModules.length} modules`;
   };
 
-  const handleCategoryDialogOpen = (category = null) => {
-    setEditingCategory(category);
-    setNewCategory(category ? { name: category.name, description: category.description } : { name: '', description: '' });
-    setCategoryDialogOpen(true);
-  };
-
-  const handleCategoryChange = (e) => {
-    const { name, value } = e.target;
-    setNewCategory(prev => ({ ...prev, [name]: value }));
-  };
-
-  const saveCategory = async () => {
-    if (!newCategory.name.trim()) {
-      setErrors({ categoryName: 'Category name is required' });
-      return;
-    }
-
-    setCategoryLoading(true);
-    setErrors({});
-    try {
-      const payload = {
-        name: newCategory.name.trim(),
-        description: newCategory.description.trim() || ''
-      };
-
-      if (editingCategory) {
-        const response = await coursesAPI.updateCategory(editingCategory.id, payload);
-        setCategories(prev => prev.map(cat => cat.id === editingCategory.id ? response.data : cat));
-        setApiError('');
-      } else {
-        const response = await coursesAPI.createCategory(payload);
-        setCategories(prev => [...prev, response.data]);
-        setApiError('');
-      }
-      setCategoryDialogOpen(false);
-      setNewCategory({ name: '', description: '' });
-      setEditingCategory(null);
-    } catch (error) {
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.name?.[0] || 
-                          'Failed to save category';
-      setApiError(errorMessage);
-    } finally {
-      setCategoryLoading(false);
-    }
-  };
-
-  const deleteCategory = async (id) => {
-    setCategoryLoading(true);
-    try {
-      await coursesAPI.deleteCategory(id);
-      setCategories(prev => prev.filter(cat => cat.id !== id));
-      setApiError('');
-    } catch (error) {
-      setApiError(error.response?.data?.detail || 'Failed to delete category');
-    } finally {
-      setCategoryLoading(false);
-    }
-  };
-
-  const handleNext = () => {
-    if (activeTab < tabLabels.length - 1) {
-      setActiveTab(activeTab + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (activeTab > 0) {
-      setActiveTab(activeTab - 1);
-    }
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    const newErrors = {};
-    if (!course.title.trim()) newErrors.title = 'Title is required';
-    if (!course.code.trim()) newErrors.code = 'Course code is required';
-    if (!course.description.trim()) newErrors.description = 'Description is required';
-    if (!course.category_id) newErrors.category = 'Category is required';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setLoading(true);
-    setApiError('');
-
-    try {
-      const formData = new FormData();
-      formData.append('title', course.title);
-      formData.append('code', course.code);
-      formData.append('description', course.description);
-      formData.append('category_id', course.category_id);
-      formData.append('level', course.level);
-      formData.append('status', course.status);
-      formData.append('duration', course.duration);
-      formData.append('price', course.price);
-      if (course.discountPrice) formData.append('discount_price', course.discountPrice);
-      formData.append('currency', course.currency || 'NGN');
-      course.learningOutcomes.forEach(outcome => formData.append('learning_outcomes', outcome));
-      course.prerequisites.forEach(prereq => formData.append('prerequisites', prereq));
-      if (course.thumbnail instanceof File) formData.append('thumbnail', course.thumbnail);
-
-      let response;
-      if (isEdit) {
-        response = await coursesAPI.updateCourse(id, formData);
-      } else {
-        response = await coursesAPI.createCourse(formData);
-        navigate(`/admin/courses/edit/${response.data.id}`, { replace: true });
-      }
-
-      if (!response || !response.data) {
-        throw new Error('Invalid response from server');
-      }
-
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-
-      if (isEdit) {
-        setCourse(prev => ({
-          ...prev,
-          title: response.data.title || prev.title,
-          code: response.data.code || prev.code,
-          description: response.data.description || prev.description,
-          category_id: response.data.category_id || prev.category_id,
-          level: response.data.level || prev.level,
-          status: response.data.status || prev.status,
-          duration: response.data.duration || prev.duration,
-          price: response.data.price || prev.price,
-          discountPrice: response.data.discount_price || prev.discountPrice,
-          currency: response.data.currency || prev.currency,
-          learningOutcomes: prev.learningOutcomes,
-          prerequisites: prev.prerequisites,
-          modules: prev.modules,
-          resources: prev.resources,
-          instructors: prev.instructors,
-          thumbnail: prev.thumbnail
-        }));
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to save course';
-      setApiError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = {};
-    if (!course.title.trim()) newErrors.title = 'Title is required';
-    if (!course.code.trim()) newErrors.code = 'Course code is required';
-    if (!course.description.trim()) newErrors.description = 'Description is required';
-    if (!course.category_id) newErrors.category = 'Category is required';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setLoading(true);
-    setApiError('');
-
-    try {
-      const formData = new FormData();
-      formData.append('title', course.title);
-      formData.append('code', course.code);
-      formData.append('description', course.description);
-      formData.append('category_id', course.category_id);
-      formData.append('level', course.level);
-      formData.append('status', course.status);
-      formData.append('duration', course.duration);
-      formData.append('price', course.price);
-      if (course.discountPrice) formData.append('discount_price', course.discountPrice);
-      formData.append('currency', course.currency || 'NGN');
-      course.learningOutcomes.forEach(outcome => formData.append('learning_outcomes', outcome));
-      course.prerequisites.forEach(prereq => formData.append('prerequisites', prereq));
-      if (course.thumbnail instanceof File) formData.append('thumbnail', course.thumbnail);
-
-      if (isEdit) {
-        await coursesAPI.updateCourse(id, formData);
-      } else {
-        await coursesAPI.createCourse(formData);
-      }
-      navigate('/admin/courses');
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to save course';
-      setApiError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getResourceIcon = (type) => {
-    const resourceType = resourceTypes.find(t => t.value === type);
-    return resourceType ? resourceType.icon : <InsertDriveFile />;
-  };
-
   const tabLabels = [
     { label: 'Details', icon: <Edit fontSize="small" /> },
     { label: 'Modules', icon: <School fontSize="small" /> },
@@ -670,30 +540,33 @@ const CourseForm = () => {
     { label: 'Paths', icon: <LinkIcon fontSize="small" /> },
     { label: 'Certificates', icon: <PictureAsPdf fontSize="small" /> },
     { label: 'SCORM', icon: <VideoLibrary fontSize="small" /> },
-    { label: 'Gamification', icon: <Star fontSize="small" /> },
+    { label: 'Gamification', icon: <Star fontSize="small" /> }
   ];
+
+  const handleCloseCategoryDialog = () => {
+    setCategoryDialogOpen(false);
+    setNewCategory({ name: '', description: '' });
+    setEditingCategory(null);
+    setErrors({});
+  };
 
   return (
     <div className="CourseForm">
-      <div className="CourseForm-Header">
+      <header className="CourseForm-Header">
         <div className="CourseForm-Header-Grid">
-          <div className="CourseForm-Header-Title">
-            <h2>
-              <Edit className="icon" /> {isEdit ? 'Edit Course' : 'Create New Course'}
-            </h2>
-          </div>
-          <div className="CourseForm-Header-Actions">
-            <button className="action-btn" onClick={() => navigate('/admin/courses')}>
-              <ArrowBack className="icon" /> Back to Courses
-            </button>
-          </div>
+          <h2>
+            <Edit className="icon" /> {isEdit ? 'Edit Course' : 'Create New Course'}
+          </h2>
+          <button className="action-btn" onClick={() => navigate('/admin/courses')}>
+            <ArrowBack className="icon" /> Back to Courses
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div className="CourseForm-Main">
-        <div className={`CourseForm-Sidebar ${mobileOpen ? 'open' : ''}`}>
+      <main className="CourseForm-Main">
+        <aside className={`CourseForm-Sidebar ${mobileOpen ? 'open' : ''}`}>
           <div className="CourseForm-Sidebar-Header">
-            <button className="sidebar-toggle" onClick={handleDrawerToggle}>
+            <button className="sidebar-toggle" onClick={() => setMobileOpen(!mobileOpen)}>
               <MenuIcon className="icon" />
             </button>
             <h3>Course Sections</h3>
@@ -703,16 +576,19 @@ const CourseForm = () => {
               <li
                 key={index}
                 className={`sidebar-item ${activeTab === index ? 'active' : ''}`}
-                onClick={() => handleTabChange(null, index)}
+                onClick={() => {
+                  setActiveTab(index);
+                  if (mobileOpen) setMobileOpen(false);
+                }}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </aside>
 
-        <div className="CourseForm-Content">
+        <section className="CourseForm-Content">
           {apiError && (
             <div className="notification error">
               <span>{apiError}</span>
@@ -724,229 +600,258 @@ const CourseForm = () => {
             </div>
           )}
 
-          <div className="CourseForm-Section">
-            {loading ? (
-              <div className="loading">Loading...</div>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                {activeTab === 0 && (
-                  <div className="CourseForm-Grid">
-                    <div className="CourseForm-Left">
-                      <label className="label">Course Title</label>
+          {loading ? (
+            <div className="loading">Loading...</div>
+          ) : (
+            <form>
+              {activeTab === 0 && (
+                <div className="CourseForm-Grid">
+                  <div className="CourseForm-Left">
+                    <label className="label">Course Title</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={course.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      placeholder="Enter course title"
+                      aria-describedby="title-error"
+                    />
+                    {errors.title && <span id="title-error" className="error-text">{errors.title}</span>}
+
+                    <label className="label">Course Code</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={course.code}
+                      onChange={(e) => handleChange('code', e.target.value)}
+                      placeholder="Enter course code"
+                      aria-describedby="code-error"
+                    />
+                    {errors.code && <span id="code-error" className="error-text">{errors.code}</span>}
+
+                    <label className="label">Description</label>
+                    <DraftEditor
+                      value={course.description ? JSON.parse(course.description) : null}
+                      onChange={handleDraftEditorChange}
+                    />
+                    {errors.description && <span id="description-error" className="error-text">{errors.description}</span>}
+
+                    <div className="section-divider" />
+
+                    <h3>Learning Outcomes</h3>
+                    <div className="chip-list">
+                      {course.learningOutcomes.map((outcome, index) => (
+                        <span key={index} className="chip">
+                          {outcome}
+                          <Delete className="chip-icon" onClick={() => removeLearningOutcome(index)} />
+                        </span>
+                      ))}
+                    </div>
+                    <div className="input-group">
                       <input
                         type="text"
                         className="input"
-                        name="title"
-                        value={course.title}
-                        onChange={handleChange}
-                        placeholder="Enter course title"
+                        value={learningOutcomeInput}
+                        onChange={(e) => setLearningOutcomeInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome(learningOutcomeInput)}
+                        placeholder="What will students learn?"
+                        aria-describedby="learning-outcomes-error"
                       />
-                      {errors.title && <span className="error-text">{errors.title}</span>}
-
-                      <label className="label">Course Code</label>
-                      <input
-                        type="text"
-                        className="input"
-                        name="code"
-                        value={course.code}
-                        onChange={handleChange}
-                        placeholder="Enter course code"
-                      />
-                      {errors.code && <span className="error-text">{errors.code}</span>}
-
-                      <label className="label">Description</label>
-                      <textarea
-                        className="textarea"
-                        name="description"
-                        value={course.description}
-                        onChange={handleChange}
-                        placeholder="Enter course description"
-                        rows={4}
-                      />
-                      {errors.description && <span className="error-text">{errors.description}</span>}
-
-                      <div className="section-divider"></div>
-
-                      <h3>Learning Outcomes</h3>
-                      <div className="chip-list">
-                        {course.learningOutcomes.map((outcome, index) => (
-                          <span key={index} className="chip">
-                            {outcome}
-                            <Delete
-                              className="chip-icon"
-                              onClick={() => removeLearningOutcome(index)}
-                            />
-                          </span>
-                        ))}
-                      </div>
-                      <div className="input-group">
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="What will students learn?"
-                          value={newOutcome}
-                          onChange={(e) => setNewOutcome(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome()}
-                        />
-                        <button
-                          className="action-btn"
-                          onClick={addLearningOutcome}
-                          disabled={!newOutcome.trim()}
-                        >
-                          <Add className="icon" /> Add
-                        </button>
-                      </div>
-
-                      <div className="section-divider"></div>
-
-                      <h3>Prerequisites</h3>
-                      <div className="chip-list">
-                        {course.prerequisites.map((prereq, index) => (
-                          <span key={index} className="chip">
-                            {prereq}
-                            <Delete
-                              className="chip-icon"
-                              onClick={() => removePrerequisite(index)}
-                            />
-                          </span>
-                        ))}
-                      </div>
-                      <div className="input-group">
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="What should students know beforehand?"
-                          value={newPrerequisite}
-                          onChange={(e) => setNewPrerequisite(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addPrerequisite()}
-                        />
-                        <button
-                          className="action-btn"
-                          onClick={addPrerequisite}
-                          disabled={!newPrerequisite.trim()}
-                        >
-                          <Add className="icon" /> Add
-                        </button>
-                      </div>
+                      <button
+                        className="action-btn"
+                        type="button"
+                        onClick={() => addLearningOutcome(learningOutcomeInput)}
+                      >
+                        <Add className="icon" /> Add
+                      </button>
                     </div>
 
-                    <div className="CourseForm-Right">
-                      <div className="input-group">
-                        <label className="label">Category</label>
-                        <select
-                          className="select"
-                          name="category_id"
-                          value={course.category_id || ''}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select a category</option>
-                          {categories.map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </select>
-                        {errors.category && <span className="error-text">{errors.category}</span>}
-                        <button
-                          className="action-btn"
-                          onClick={() => handleCategoryDialogOpen()}
-                        >
-                          <Add className="icon" /> Add Category
-                        </button>
-                      </div>
+                    <div className="section-divider" />
 
-                      {categoryLoading && <div className="loading">Loading categories...</div>}
-
-                      <ul className="category-list">
-                        {categories.map(category => (
-                          <li key={category.id} className="category-item">
-                            <span>{category.name}</span>
-                            <div className="category-actions">
-                              <button
-                                className="icon-btn"
-                                onClick={() => handleCategoryDialogOpen(category)}
-                              >
-                                <Edit className="icon" />
-                              </button>
-                              <button
-                                className="icon-btn danger"
-                                onClick={() => deleteCategory(category.id)}
-                              >
-                                <Delete className="icon" />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <label className="label">Level</label>
-                      <select
-                        className="select"
-                        name="level"
-                        value={course.level}
-                        onChange={handleChange}
-                      >
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                      </select>
-
-                      <label className="label">Status</label>
-                      <select
-                        className="select"
-                        name="status"
-                        value={course.status}
-                        onChange={handleChange}
-                      >
-                        <option value="Draft">Draft</option>
-                        <option value="Published">Published</option>
-                        <option value="Archived">Archived</option>
-                      </select>
-
-                      <label className="label">Duration</label>
+                    <h3>Prerequisites</h3>
+                    <div className="chip-list">
+                      {course.prerequisites.map((prereq, index) => (
+                        <span key={index} className="chip">
+                          {prereq}
+                          <Delete className="chip-icon" onClick={() => removePrerequisite(index)} />
+                        </span>
+                      ))}
+                    </div>
+                    <div className="input-group">
                       <input
                         type="text"
                         className="input"
-                        name="duration"
-                        value={course.duration}
-                        onChange={handleChange}
-                        placeholder="e.g. 8 weeks, 30 hours"
+                        value={prerequisiteInput}
+                        onChange={(e) => setPrerequisiteInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addPrerequisite(prerequisiteInput)}
+                        placeholder="What should students know beforehand?"
+                        aria-describedby="prerequisites-error"
                       />
-
-                      <div className="section-divider"></div>
-
-                      <h3>Pricing</h3>
-                      <label className="label">Price ({course.currency})</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={course.price}
-                        onChange={handlePriceChange}
-                      />
-                      <label className="label">Discount Price (optional)</label>
-                      <input
-                        type="number"
-                        className="input"
-                        value={course.discountPrice || ''}
-                        onChange={handleDiscountChange}
-                        placeholder="Enter discount price"
-                      />
-
-                      <div className="section-divider"></div>
-
-                      <button className="action-btn" component="label">
-                        <CloudUpload className="icon" /> Upload Thumbnail
-                        <input
-                          type="file"
-                          hidden
-                          onChange={(e) => setCourse(prev => ({ ...prev, thumbnail: e.target.files[0] }))}
-                          accept="image/*"
-                        />
+                      <button
+                        className="action-btn"
+                        type="button"
+                        onClick={() => addPrerequisite(prerequisiteInput)}
+                      >
+                        <Add className="icon" /> Add
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="CourseForm-Right">
+                    <div className="input-group">
+                      <label className="label">Category</label>
+                      <select
+                        className="select"
+                        value={course.category_id || ''}
+                        onChange={(e) => handleChange('category_id', e.target.value)}
+                        aria-describedby="category-error"
+                      >
+                        <option value="">Select a category</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                      {errors.category && <span id="category-error" className="error-text">{errors.category}</span>}
+                      <button
+                        className="action-btn"
+                        type="button"
+                        onClick={() => setCategoryDialogOpen(true)}
+                      >
+                        <Add className="icon" /> Add Category
+                      </button>
+                    </div>
+
+                    <ul className="category-list">
+                      {categories.map(category => (
+                        <li key={category.id} className="category-item">
+                          <span>{category.name}</span>
+                          <div className="category-actions">
+                            <button
+                              className="icon-btn"
+                              type="button"
+                              onClick={() => {
+                                setEditingCategory(category);
+                                setNewCategory({ name: category.name, description: category.description });
+                                setCategoryDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="icon" />
+                            </button>
+                            <button
+                              className="icon-btn danger"
+                              type="button"
+                              onClick={() => deleteCategory(category.id)}
+                            >
+                              <Delete className="icon" />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <label className="label">Level</label>
+                    <select
+                      className="select"
+                      value={course.level}
+                      onChange={(e) => handleChange('level', e.target.value)}
+                    >
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+
+                    <label className="label">Status</label>
+                    <select
+                      className="select"
+                      value={course.status}
+                      onChange={(e) => handleChange('status', e.target.value)}
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Published">Published</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+
+                    <label className="label">Duration</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={course.duration}
+                      onChange={(e) => handleChange('duration', e.target.value)}
+                      placeholder="e.g. 8 weeks, 30 hours"
+                      aria-describedby="duration-error"
+                    />
+
+                    <div className="section-divider" />
+
+                    <h3>Pricing</h3>
+                    <label className="label">Price ({course.currency})</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={course.price}
+                      onChange={(e) => handleChange('price', parseFloat(e.target.value) || 0)}
+                      aria-describedby="price-error"
+                    />
+                    <label className="label">Discount Price (optional)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={course.discountPrice || ''}
+                      onChange={(e) => handleChange('discountPrice', e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="Enter discount price"
+                      aria-describedby="discount-price-error"
+                    />
+
+                    <div className="section-divider" />
+{/* 
+                    <button className="action-btn" type="button" component="label">
+                      <CloudUpload className="icon" /> Upload Thumbnail
+                      <input
+                        type="file"
+                        hidden
+                        onChange={(e) => handleChange('thumbnail', e.target.files[0])}
+                        accept="image/*"
+                      />
+                    </button>
+                    {course.thumbnail && (
+                      <div className="upload-preview">
+                        <span>{course.thumbnail.name || 'Thumbnail selected'}</span>
+                        <button
+                          className="icon-btn danger"
+                          type="button"
+                          onClick={() => handleChange('thumbnail', null)}
+                        >
+                          <Delete className="icon" />
+                        </button>
+                      </div>
+                    )}
+
+                     */}
+
+                     <div className="thumbnail-upload">
+                      <label htmlFor="thumbnail-upload" className="action-btn" style={{ cursor: 'pointer' }}>
+                        <CloudUpload className="icon" /> Upload Thumbnail
+                      </label>
+                      <input
+                        id="thumbnail-upload"
+                        type="file"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          console.log('Thumbnail selected:', e.target.files[0]?.name); // Debug log
+                          handleChange('thumbnail', e.target.files[0]);
+                        }}
+                        accept="image/*"
+                      />
                       {course.thumbnail && (
                         <div className="upload-preview">
                           <span>{course.thumbnail.name || 'Thumbnail selected'}</span>
                           <button
                             className="icon-btn danger"
-                            onClick={() => setCourse(prev => ({ ...prev, thumbnail: null }))}
+                            type="button"
+                            onClick={() => {
+                              console.log('Thumbnail removed'); // Debug log
+                              handleChange('thumbnail', null);
+                            }}
                           >
                             <Delete className="icon" />
                           </button>
@@ -954,386 +859,364 @@ const CourseForm = () => {
                       )}
                     </div>
                   </div>
-                )}
 
-                {activeTab === 1 && (
-                  <div>
-                    <h3>Course Modules</h3>
-                    {course.modules.length === 0 && (
-                      <div className="empty-state">
-                        <School className="empty-icon" />
-                        <h4>No modules added yet</h4>
-                        <p>Add modules to structure your course content</p>
-                        <button className="action-btn primary" onClick={addModule}>
-                          <AddCircle className="icon" /> Add First Module
-                        </button>
-                      </div>
-                    )}
-                    {selectedModules.length > 0 && (
-                      <div className="module-actions">
-                        <span>{selectedModules.length} selected</span>
-                        <button
-                          className="action-btn"
-                          onClick={() => togglePublishSelectedModules(true)}
-                          disabled={loading}
-                        >
-                          Publish
-                        </button>
-                        <button
-                          className="action-btn"
-                          onClick={() => togglePublishSelectedModules(false)}
-                          disabled={loading}
-                        >
-                          Unpublish
-                        </button>
-                        <button
-                          className="action-btn"
-                          onClick={duplicateSelectedModules}
-                          disabled={loading}
-                        >
-                          Duplicate
-                        </button>
-                        <button
-                          className="action-btn danger"
-                          onClick={deleteSelectedModules}
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
 
-                    <DndProvider backend={HTML5Backend}>
-                      {course.modules.map((module, index) => (
-                        <DraggableModule
-                          key={module.id}
-                          index={index}
-                          module={module}
-                          moveModule={moveModule}
-                          selectedModules={selectedModules}
-                          toggleModuleSelection={toggleModuleSelection}
-                          onChange={handleModuleChange}
-                          onDelete={deleteModule}
-                          isMobile={window.innerWidth <= 768}
-                          courseId={id}
-                        />
-                      ))}
-                    </DndProvider>
+                </div>
+              )}
 
-                    {course.modules.length > 0 && (
-                      <button className="action-btn" onClick={addModule}>
-                        <AddCircle className="icon" /> Add Another Module
+              {activeTab === 1 && (
+                <div>
+                  <h3>Course Modules</h3>
+                  {course.modules.length === 0 && (
+                    <div className="empty-state">
+                      <School className="empty-icon" />
+                      <h4>No modules added yet</h4>
+                      <p>Add modules to structure your course content</p>
+                      <button className="action-btn primary" type="button" onClick={addModule}>
+                        <AddCircle className="icon" /> Add First Module
                       </button>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                  <DndProvider backend={HTML5Backend}>
+                    {course.modules.map((module, index) => (
+                      <DraggableModule
+                        key={module.id}
+                        index={index}
+                        module={module}
+                        moveModule={moveModule}
+                        selectedModules={selectedModules}
+                        toggleModuleSelection={setSelectedModules}
+                        onChange={handleModuleChange}
+                        onDelete={deleteModule}
+                        isMobile={window.innerWidth <= 768}
+                        courseId={id}
+                      />
+                    ))}
+                  </DndProvider>
+                  {course.modules.length > 0 && (
+                    <button className="action-btn" type="button" onClick={addModule}>
+                      <AddCircle className="icon" /> Add Another Module
+                    </button>
+                  )}
+                </div>
+              )}
 
-                {activeTab === 2 && (
-                  <div>
-                    <div className="section-header">
-                      <h3>Course Instructors</h3>
+              {activeTab === 2 && (
+                <div>
+                  <div className="section-header">
+                    <h3>Course Instructors</h3>
+                    <button
+                      className="action-btn primary"
+                      type="button"
+                      onClick={() => setInstructorDialogOpen(true)}
+                    >
+                      <People className="icon" /> Assign Instructor
+                    </button>
+                  </div>
+                  {course.instructors.length === 0 && (
+                    <div className="empty-state">
+                      <Person className="empty-icon" />
+                      <h4>No instructors assigned</h4>
+                      <p>Assign instructors to teach this course</p>
                       <button
                         className="action-btn primary"
+                        type="button"
                         onClick={() => setInstructorDialogOpen(true)}
                       >
                         <People className="icon" /> Assign Instructor
                       </button>
                     </div>
-
-                    {course.instructors.length === 0 && (
-                      <div className="empty-state">
-                        <Person className="empty-icon" />
-                        <h4>No instructors assigned</h4>
-                        <p>Assign instructors to teach this course</p>
-                        <button
-                          className="action-btn primary"
-                          onClick={() => setInstructorDialogOpen(true)}
-                        >
-                          <People className="icon" /> Assign Instructor
-                        </button>
-                      </div>
-                    )}
-
-                    <ul className="instructor-list">
-                      {course.instructors.map((instructor) => (
-                        <li key={instructor.instructorId} className="instructor-item">
-                          <div className="instructor-info">
-                            <span className="avatar">{instructor.name.charAt(0)}</span>
-                            <div>
-                              <span className="instructor-name">{instructor.name}</span>
-                              <p className="instructor-details">
-                                {instructor.email} • Assigned to: {getAssignedModulesText(instructor)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="instructor-actions">
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={instructor.isActive}
-                                onChange={() => toggleInstructorStatus(instructor.instructorId)}
-                                className="checkbox"
-                              />
-                              Active
-                            </label>
-                            <button
-                              className="icon-btn"
-                              onClick={() => {
-                                const instructorData = course.instructors.find(
-                                  (i) => i.instructorId === instructor.instructorId
-                                );
-                                setCurrentResource({
-                                  ...instructorData,
-                                  assignedModules: instructorData.assignedModules,
-                                });
-                                setInstructorDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="icon" />
-                            </button>
-                            <button
-                              className="icon-btn danger"
-                              onClick={() => removeInstructor(instructor.instructorId)}
-                            >
-                              <Delete className="icon" />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {activeTab === 3 && (
-                  <div>
-                    <h3>Course Resources</h3>
-                    <ul className="resource-list">
-                      {course.resources.map((resource) => (
-                        <li key={resource.id} className="resource-item">
-                          <span className="resource-icon">{getResourceIcon(resource.type)}</span>
+                  )}
+                  <ul className="instructor-list">
+                    {course.instructors.map((instructor) => (
+                      <li key={instructor.instructorId} className="instructor-item">
+                        <div className="instructor-info">
+                          <span className="avatar">{instructor.name.charAt(0)}</span>
                           <div>
-                            <span className="resource-title">{resource.title}</span>
-                            <p className="resource-details">
-                              {resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
+                            <span className="instructor-name">{instructor.name}</span>
+                            <p className="instructor-details">
+                              {instructor.email} • Assigned to: {getAssignedModulesText(instructor)}
                             </p>
                           </div>
-                          <div className="resource-actions">
-                            <button
-                              className="icon-btn"
-                              onClick={() => openResourceDialog(resource)}
-                            >
-                              <Edit className="icon" />
-                            </button>
-                            <button
-                              className="icon-btn danger"
-                              onClick={() => deleteResource(resource.id)}
-                            >
-                              <Delete className="icon" />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      className="action-btn"
-                      onClick={() => openResourceDialog()}
-                    >
-                      <AddCircle className="icon" /> Add Resource
-                    </button>
-                  </div>
-                )}
+                        </div>
+                        <div className="instructor-actions">
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={instructor.isActive}
+                              onChange={() => toggleInstructorStatus(instructor.instructorId)}
+                              className="checkbox"
+                            />
+                            Active
+                          </label>
+                          <button
+                            className="icon-btn"
+                            type="button"
+                            onClick={() => {
+                              setCurrentResource(instructor);
+                              setInstructorDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="icon" />
+                          </button>
+                          <button
+                            className="icon-btn danger"
+                            type="button"
+                            onClick={() => removeInstructor(instructor.instructorId)}
+                          >
+                            <Delete className="icon" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-                {activeTab === 4 && <LearningPaths courseId={id} isMobile={window.innerWidth <= 768} />}
-                {activeTab === 5 && <CertificateSettings courseId={id} isMobile={window.innerWidth <= 768} />}
-                {activeTab === 6 && <SCORMxAPISettings courseId={id} isMobile={window.innerWidth <= 768} />}
-                {activeTab === 7 && <GamificationManager courseId={id} isMobile={window.innerWidth <= 768} />}
-
-                <div className="action-buttons">
+              {activeTab === 3 && (
+                <div>
+                  <h3>Course Resources</h3>
+                  <ul className="resource-list">
+                    {course.resources.map((resource) => (
+                      <li key={resource.id} className="resource-item">
+                        <span className="resource-icon">
+                          {resourceTypes.find(t => t.value === resource.type)?.icon || <InsertDriveFile />}
+                        </span>
+                        <div>
+                          <span className="resource-title">{resource.title}</span>
+                          <p className="resource-details">
+                            {resource.type === 'link' ? resource.url : resource.file?.name || resource.file}
+                          </p>
+                        </div>
+                        <div className="resource-actions">
+                          <button
+                            className="icon-btn"
+                            type="button"
+                            onClick={() => {
+                              setCurrentResource(resource);
+                              setResourceDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="icon" />
+                          </button>
+                          <button
+                            className="icon-btn danger"
+                            type="button"
+                            onClick={() => deleteResource(resource.id)}
+                          >
+                            <Delete className="icon" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                   <button
                     className="action-btn"
-                    onClick={handlePrevious}
-                    disabled={activeTab === 0}
+                    type="button"
+                    onClick={() => {
+                      setCurrentResource({ id: null, title: '', type: 'link', url: '', file: null });
+                      setResourceDialogOpen(true);
+                    }}
                   >
-                    <ArrowBack className="icon" /> Previous
+                    <AddCircle className="icon" /> Add Resource
+                  </button>
+                </div>
+              )}
+
+              {activeTab === 4 && <LearningPaths courseId={id} isMobile={window.innerWidth <= 768} />}
+              {activeTab === 5 && <CertificateSettings courseId={id} isMobile={window.innerWidth <= 768} />}
+              {activeTab === 6 && <SCORMxAPISettings courseId={id} isMobile={window.innerWidth <= 768} />}
+              {activeTab === 7 && <GamificationManager courseId={id} isMobile={window.innerWidth <= 768} />}
+
+              <div className="action-buttons">
+                <button
+                  className="action-btn"
+                  type="button"
+                  onClick={() => setActiveTab(prev => Math.max(prev - 1, 0))}
+                  disabled={activeTab === 0}
+                >
+                  <ArrowBack className="icon" /> Previous
+                </button>
+                <button
+                  className="action-btn primary"
+                  type="button"
+                  onClick={(e) => handleSave(e, false)}
+                  disabled={loading}
+                >
+                  {loading ? <span className="loading-spinner" /> : <><Save className="icon" /> Save</>}
+                </button>
+                {activeTab === tabLabels.length - 1 ? (
+                  <button
+                    className="action-btn primary"
+                    type="button"
+                    onClick={(e) => handleSave(e, true)}
+                    disabled={loading}
+                  >
+                    {loading ? <span className="loading-spinner" /> : <><Save className="icon" /> {isEdit ? 'Update & Finish' : 'Create & Finish'}</>}
+                  </button>
+                ) : (
+                  <button
+                    className="action-btn primary"
+                    type="button"
+                    onClick={() => setActiveTab(prev => Math.min(prev + 1, tabLabels.length - 1))}
+                  >
+                    <ArrowBack className="icon rotate" /> Next
+                  </button>
+                )}
+                <button
+                  className="action-btn cancel"
+                  type="button"
+                  onClick={() => navigate('/admin/courses')}
+                >
+                  <Cancel className="icon" /> Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className={`dialog ${resourceDialogOpen ? 'open' : ''}`} role="dialog" aria-labelledby="resource-dialog-title">
+            <div className="dialog-overlay" onClick={() => setResourceDialogOpen(false)} />
+            <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
+              <div className="dialog-header">
+                <h3 id="resource-dialog-title">{currentResource.id ? 'Edit Resource' : 'Add Resource'}</h3>
+                <button className="dialog-close" type="button" onClick={() => setResourceDialogOpen(false)}>
+                  <Cancel className="icon" />
+                </button>
+              </div>
+              <form onSubmit={saveResource}>
+                <div className="dialog-body">
+                  <label className="label">Resource Title</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={currentResource.title}
+                    onChange={(e) => {
+                      console.log('Resource Title:', e.target.value);
+                      setCurrentResource({ ...currentResource, title: e.target.value });
+                    }}
+                    onClick={() => console.log('Resource Title input clicked')}
+                    placeholder="Enter resource title"
+                    autoFocus
+                    aria-describedby="resource-title-error"
+                  />
+                  <label className="label">Resource Type</label>
+                  <select
+                    className="select"
+                    value={currentResource.type}
+                    onChange={(e) => setCurrentResource({ ...currentResource, type: e.target.value })}
+                    aria-describedby="resource-type-error"
+                  >
+                    {resourceTypes.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                  {currentResource.type === 'link' && (
+                    <>
+                      <label className="label">URL</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={currentResource.url}
+                        onChange={(e) => {
+                          console.log('Resource URL:', e.target.value);
+                          setCurrentResource({ ...currentResource, url: e.target.value });
+                        }}
+                        onClick={() => console.log('Resource URL input clicked')}
+                        placeholder="Enter resource URL"
+                        aria-describedby="resource-url-error"
+                      />
+                    </>
+                  )}
+                  {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
+                    <button className="action-btn" type="button" component="label">
+                      <CloudUpload className="icon" /> Upload File
+                      <input
+                        type="file"
+                        hidden
+                        onChange={(e) => setCurrentResource({ ...currentResource, file: e.target.files[0] })}
+                        accept={currentResource.type === 'pdf' ? 'application/pdf' : currentResource.type === 'video' ? 'video/*' : '*'}
+                      />
+                    </button>
+                  )}
+                  {currentResource.file && (
+                    <span className="file-info">Selected: {currentResource.file.name}</span>
+                  )}
+                </div>
+                <div className="dialog-actions">
+                  <button className="action-btn" type="button" onClick={() => setResourceDialogOpen(false)}>
+                    Cancel
                   </button>
                   <button
                     className="action-btn primary"
-                    onClick={handleSave}
-                    disabled={loading}
+                    type="submit"
+                    disabled={loading || !currentResource.title.trim()}
                   >
-                    {loading ? (
-                      <span className="loading-spinner"></span>
-                    ) : (
-                      <>
-                        <Save className="icon" /> Save
-                      </>
-                    )}
-                  </button>
-                  {activeTab === tabLabels.length - 1 ? (
-                    <button
-                      className="action-btn primary"
-                      type="submit"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <span className="loading-spinner"></span>
-                      ) : (
-                        <>
-                          <Save className="icon" /> {isEdit ? 'Update & Finish' : 'Create & Finish'}
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      className="action-btn primary"
-                      onClick={handleNext}
-                    >
-                      <ArrowBack className="icon rotate" /> Next
-                    </button>
-                  )}
-                  <button
-                    className="action-btn cancel"
-                    onClick={() => navigate('/admin/courses')}
-                  >
-                    <Cancel className="icon" /> Cancel
+                    {loading ? <span className="loading-spinner" /> : 'Save'}
                   </button>
                 </div>
               </form>
-            )}
-          </div>
-
-          <div className={`dialog ${resourceDialogOpen ? 'open' : ''}`}>
-            <div className="dialog-overlay" onClick={() => setResourceDialogOpen(false)}></div>
-            <div className="dialog-content">
-              <div className="dialog-header">
-                <h3>{currentResource.id ? 'Edit Resource' : 'Add Resource'}</h3>
-                <button className="dialog-close" onClick={() => setResourceDialogOpen(false)}>
-                  <Cancel className="icon" />
-                </button>
-              </div>
-              <div className="dialog-body">
-                <label className="label">Resource Title</label>
-                <input
-                  type="text"
-                  className="input"
-                  name="title"
-                  value={currentResource.title}
-                  onChange={handleResourceChange}
-                  placeholder="Enter resource title"
-                />
-                {errors.resourceTitle && <span className="error-text">{errors.resourceTitle}</span>}
-
-                <label className="label">Resource Type</label>
-                <select
-                  className="select"
-                  name="type"
-                  value={currentResource.type}
-                  onChange={handleResourceChange}
-                >
-                  {resourceTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-
-                {currentResource.type === 'link' && (
-                  <>
-                    <label className="label">URL</label>
-                    <input
-                      type="text"
-                      className="input"
-                      name="url"
-                      value={currentResource.url}
-                      onChange={handleResourceChange}
-                      placeholder="Enter resource URL"
-                    />
-                    {errors.resourceUrl && <span className="error-text">{errors.resourceUrl}</span>}
-                  </>
-                )}
-
-                {(currentResource.type === 'pdf' || currentResource.type === 'video' || currentResource.type === 'file') && (
-                  <button className="action-btn" component="label">
-                    <CloudUpload className="icon" /> Upload File
-                    <input
-                      type="file"
-                      hidden
-                      onChange={handleResourceFileChange}
-                      accept={
-                        currentResource.type === 'pdf' ? 'application/pdf' : 
-                        currentResource.type === 'video' ? 'video/*' : '*'
-                      }
-                    />
-                  </button>
-                )}
-
-                {currentResource.file && (
-                  <span className="file-info">Selected: {currentResource.file.name || currentResource.file}</span>
-                )}
-              </div>
-              <div className="dialog-actions">
-                <button
-                  className="action-btn"
-                  onClick={() => setResourceDialogOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="action-btn primary"
-                  onClick={saveResource}
-                  disabled={loading || !currentResource.title.trim()}
-                >
-                  {loading ? <span className="loading-spinner"></span> : 'Save'}
-                </button>
-              </div>
             </div>
           </div>
 
-          <div className={`dialog ${categoryDialogOpen ? 'open' : ''}`}>
-            <div className="dialog-overlay" onClick={() => setCategoryDialogOpen(false)}></div>
-            <div className="dialog-content">
+          <div
+            key={`category-dialog-${categoryDialogOpen}`}
+            className={`dialog ${categoryDialogOpen ? 'open' : ''}`}
+            role="dialog"
+            aria-labelledby="category-dialog-title"
+          >
+            <div className="dialog-overlay" onClick={handleCloseCategoryDialog} />
+            <div className="dialog-content" tabIndex="0" onClick={(e) => e.stopPropagation()}>
               <div className="dialog-header">
-                <h3>{editingCategory ? 'Edit Category' : 'Add Category'}</h3>
-                <button className="dialog-close" onClick={() => setCategoryDialogOpen(false)}>
+                <h3 id="category-dialog-title">{editingCategory ? 'Edit Category' : 'Add Category'}</h3>
+                <button className="dialog-close" type="button" onClick={handleCloseCategoryDialog}>
                   <Cancel className="icon" />
                 </button>
               </div>
               <div className="dialog-body">
-                <label className="label">Category Name</label>
-                <input
-                  type="text"
-                  className="input"
-                  name="name"
-                  value={newCategory.name}
-                  onChange={handleCategoryChange}
-                  placeholder="Enter category name"
-                />
-                {errors.categoryName && <span className="error-text">{errors.categoryName}</span>}
-
-                <label className="label">Description</label>
-                <textarea
-                  className="textarea"
-                  name="description"
-                  value={newCategory.description}
-                  onChange={handleCategoryChange}
-                  placeholder="Enter category description"
-                  rows={3}
-                />
-              </div>
-              <div className="dialog-actions">
-                <button
-                  className="action-btn"
-                  onClick={() => setCategoryDialogOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="action-btn primary"
-                  onClick={saveCategory}
-                  disabled={categoryLoading || !newCategory.name.trim()}
-                >
-                  {categoryLoading ? <span className="loading-spinner"></span> : (editingCategory ? 'Update' : 'Add')}
-                </button>
+                <form onSubmit={saveCategory}>
+                  <label className="label">Category Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    key={`category-name-${categoryDialogOpen}`}
+                    ref={categoryNameInputRef}
+                    value={newCategory.name}
+                    onChange={(e) => {
+                      console.log('Category Name:', e.target.value);
+                      setNewCategory({ ...newCategory, name: e.target.value });
+                    }}
+                    onClick={() => console.log('Category Name input clicked')}
+                    placeholder="Enter category name"
+                    aria-describedby="category-name-error"
+                  />
+                  {errors.categoryName && <span id="category-name-error" className="error-text">{errors.categoryName}</span>}
+                  <label className="label">Description</label>
+                  <textarea
+                    className="textarea"
+                    key={`category-description-${categoryDialogOpen}`}
+                    value={newCategory.description}
+                    onChange={(e) => {
+                      console.log('Category Description:', e.target.value);
+                      setNewCategory({ ...newCategory, description: e.target.value });
+                    }}
+                    onClick={() => console.log('Category Description textarea clicked')}
+                    placeholder="Enter category description"
+                    rows={3}
+                    aria-describedby="category-description-error"
+                  />
+                  <div className="dialog-actions">
+                    <button className="action-btn" type="button" onClick={handleCloseCategoryDialog}>
+                      Cancel
+                    </button>
+                    <button
+                      className="action-btn primary"
+                      type="submit"
+                      disabled={loading || !newCategory.name.trim()}
+                    >
+                      {loading ? <span className="loading-spinner" /> : (editingCategory ? 'Update' : 'Add')}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
@@ -1346,8 +1229,8 @@ const CourseForm = () => {
             onAssign={handleInstructorAssignment}
             isMobile={window.innerWidth <= 768}
           />
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 };
