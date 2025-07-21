@@ -26,6 +26,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import './NotificationsDashboard.css';
 
 const NotificationsDashboard = () => {
+
+  console.log("NotificationsDashboard")
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState([null, null]);
   const [searchQuery, setSearchQuery] = useState('');

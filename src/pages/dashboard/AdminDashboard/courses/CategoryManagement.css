@@ -1,0 +1,211 @@
+.CategoryManagement {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.CategoryManagement-Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.CategoryManagement-Header h2 {
+  font-size: 18px;
+  color: #372580;
+}
+
+.CategoryManagement-Content {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.Add-Category-Section {
+  margin-bottom: 20px;
+}
+
+.Add-Category-Button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: #7226FF;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.Add-Category-Button:hover {
+  background-color: #450CD5;
+}
+
+.Add-Category-Form {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.Category-Input {
+  padding: 8px;
+  border: 1px solid #eeeafa;
+  border-radius: 5px;
+  font-size: 12px;
+  flex: 1;
+}
+
+.Save-Category-Button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #7226FF;
+  background-color: #7226FF;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.Save-Category-Button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.Categories-Table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.Table-Header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  padding: 10px;
+  background: #f7f5ff;
+  border-radius: 5px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #372580;
+}
+
+.Table-Row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  padding: 10px;
+  border-bottom: 1px solid #eeeafa;
+  align-items: center;
+}
+
+.Table-Row span {
+  font-size: 12px;
+  color: #5d5677;
+}
+
+.Actions {
+  display: flex;
+  gap: 10px;
+}
+
+.Edit-Button, .Delete-Button, .Save-Button, .Cancel-Button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.Edit-Button {
+  border: 1px solid #7226FF;
+  background-color: transparent;
+  color: #7226FF;
+}
+
+.Edit-Button:hover {
+  background-color: #decdfd;
+}
+
+.Delete-Button {
+  border: 1px solid #b91c1c;
+  background-color: transparent;
+  color: #b91c1c;
+}
+
+.Delete-Button:hover {
+  background-color: #fee2e2;
+}
+
+.Save-Button {
+  border: 1px solid #065f46;
+  background-color: transparent;
+  color: #065f46;
+}
+
+.Save-Button:hover {
+  background-color: #d1fae5;
+}
+
+.Save-Button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.Cancel-Button {
+  border: 1px solid #5d5677;
+  background-color: transparent;
+  color: #5d5677;
+}
+
+.Cancel-Button:hover {
+  background-color: #e2e8f0;
+}
+
+.Close-Button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  border-radius: 30px;
+  border: 1px solid #b91c1c;
+  background-color: transparent;
+  color: #b91c1c;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.Close-Button:hover {
+  background-color: #fee2e2;
+}
+
+@media (max-width: 768px) {
+  .CategoryManagement-Content {
+    padding: 15px;
+  }
+
+  .Table-Header, .Table-Row {
+    grid-template-columns: 1.5fr 1fr 1.5fr;
+  }
+
+  .CategoryManagement-Header h2 {
+    font-size: 16px;
+  }
+}

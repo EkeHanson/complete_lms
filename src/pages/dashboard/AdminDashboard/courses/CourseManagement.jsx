@@ -4,11 +4,11 @@ import {
   Add, School, People, CheckCircle, TrendingUp, Warning,
   Star, Category, Assignment
 } from '@mui/icons-material';
-
 import CourseList from './CourseList';
 import CourseContentManagement from './CourseContentManagement';
+import CategoryManagement from './CategoryManagement';
 import { useNavigate } from 'react-router-dom';
-import { coursesAPI } from '../../../../config'; // Adjust the import path as needed
+import { coursesAPI } from '../../../../config';
 
 const CourseManagement = () => {
   const navigate = useNavigate();
@@ -17,80 +17,77 @@ const CourseManagement = () => {
   const [courseStats, setCourseStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCategoryManagement, setShowCategoryManagement] = useState(false);
 
   useEffect(() => {
-  const fetchCourseStats = async () => {
-    try {
-      setLoading(true);
-      const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
-        coursesAPI.getCourses(),
-        coursesAPI.getAllEnrollments(),
-        coursesAPI.getMostPopularCourses(),
-        coursesAPI.getLeastPopularCourses(),
-        coursesAPI.getCategories()
-      ]);
+    const fetchCourseStats = async () => {
+      try {
+        setLoading(true);
+        const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
+          coursesAPI.getCourses(),
+          coursesAPI.getAllEnrollments(),
+          coursesAPI.getMostPopularCourses(),
+          coursesAPI.getLeastPopularCourses(),
+          coursesAPI.getCategories()
+        ]);
 
+        const totalCourses = coursesRes.data.count || 0;
+        const totalEnrollments = enrollmentsRes.data.count || 0;
 
-      const totalCourses = coursesRes.data.count || 0;
-      const totalEnrollments = enrollmentsRes.data.count || 0;
+        const mostPopularCourse = mostPopularRes.data && mostPopularRes.status === 200 ? {
+          id: mostPopularRes.data.course.id,
+          title: mostPopularRes.data.course.title,
+          enrollments: mostPopularRes.data.enrollment_count || 0,
+          instructor: mostPopularRes.data.course.instructor || "No instructor assigned"
+        } : {
+          title: "No popular course data",
+          enrollments: 0,
+          instructor: "No instructor assigned"
+        };
 
-      const mostPopularCourse = mostPopularRes.data && mostPopularRes.status === 200 ? {
-        id: mostPopularRes.data.course.id,
-        title: mostPopularRes.data.course.title,
-        enrollments: mostPopularRes.data.enrollment_count || 0,
-        instructor: mostPopularRes.data.course.instructor || "No instructor assigned"
-      } : {
-        title: "No popular course data",
-        enrollments: 0,
-        instructor: "No instructor assigned"
-      };
+        const leastPopularCourse = leastPopularRes.data && leastPopularRes.status === 200 ? {
+          id: leastPopularRes.data.course.id,
+          title: leastPopularRes.data.course.title,
+          enrollments: leastPopularRes.data.enrollment_count || 0,
+          instructor: leastPopularRes.data.course.instructor || "No instructor assigned"
+        } : {
+          title: "No least popular course data",
+          enrollments: 0,
+          instructor: "No instructor assigned"
+        };
 
-      // console.log("mostPopularCourse")
-      // console.log(mostPopularCourse)
-      // console.log("mostPopularCourse")
+        const completedCourses = enrollmentsRes.data.results.filter(e => e.completed).length;
+        const averageCompletionRate = totalEnrollments > 0 
+          ? Math.round((completedCourses / totalEnrollments) * 100) 
+          : 0;
 
-      const leastPopularCourse = leastPopularRes.data && leastPopularRes.status === 200 ? {
-        id: leastPopularRes.data.course.id,
-        title: leastPopularRes.data.course.title,
-        enrollments: leastPopularRes.data.enrollment_count || 0,
-        instructor: leastPopularRes.data.course.instructor || "No instructor assigned"
-      } : {
-        title: "No least popular course data",
-        enrollments: 0,
-        instructor: "No instructor assigned"
-      };
+        const categories = categoriesRes.data.results.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          count: cat.course_count || 0
+        }));
 
-      const completedCourses = enrollmentsRes.data.results.filter(e => e.completed).length;
-      const averageCompletionRate = totalEnrollments > 0 
-        ? Math.round((completedCourses / totalEnrollments) * 100) 
-        : 0;
-
-      const categories = categoriesRes.data.results.map(cat => ({
-        name: cat.name,
-        count: cat.course_count || 0
-      }));
-
-      setCourseStats({
-        totalCourses,
-        totalEnrollments,
-        mostPopularCourse,
-        leastPopularCourse,
-        completedCourses,
-        ongoingCourses: totalEnrollments - completedCourses,
-        averageCompletionRate,
-        categories,
-        noEnrollmentCourses: 0,
-        recentCourses: [],
-        averageRating: 0,
-        attentionNeeded: []
-      });
-    } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch course statistics');
-      console.error('Error fetching course stats:', err.response || err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        setCourseStats({
+          totalCourses,
+          totalEnrollments,
+          mostPopularCourse,
+          leastPopularCourse,
+          completedCourses,
+          ongoingCourses: totalEnrollments - completedCourses,
+          averageCompletionRate,
+          categories,
+          noEnrollmentCourses: 0,
+          recentCourses: [],
+          averageRating: 0,
+          attentionNeeded: []
+        });
+      } catch (err) {
+        setError(err.response?.data?.detail || err.message || 'Failed to fetch course statistics');
+        console.error('Error fetching course stats:', err.response || err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchCourseStats();
   }, []);
@@ -209,14 +206,17 @@ const CourseManagement = () => {
             </div>
           </div>
 
-          <div className="Categories-Card">
+          <div 
+            className="Categories-Card"
+            onClick={() => setShowCategoryManagement(true)}
+          >
             <div className="Categories-Card-Content">
               <span className="Course-Card-Header">
                 <Category className="icon purple" /> Categories
               </span>
               <div className="Categories-List">
                 {courseStats.categories.map((category) => (
-                  <div key={category.name} className="Category-Item">
+                  <div key={category.id} className="Category-Item">
                     <span>{category.name} ({category.count})</span>
                     <div className="Progress-Bar">
                       <div
@@ -234,6 +234,13 @@ const CourseManagement = () => {
         <div className="Course-List-Card">
           <CourseList />
         </div>
+
+        {showCategoryManagement && (
+          <CategoryManagement 
+            categories={courseStats.categories}
+            onClose={() => setShowCategoryManagement(false)}
+          />
+        )}
       </>
     );
   };

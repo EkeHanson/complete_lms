@@ -13,7 +13,6 @@ export const CMVP_SITE_URL = isLocalhost
 
 export const CMVP_API_URL = API_BASE_URL;
 
-
 // Payment Methods Configuration
 export const paymentMethods = [
   {
@@ -445,13 +444,12 @@ export const coursesAPI = {
   adminSingleEnroll: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/enroll/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-
-adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, data, {
-  headers: { 
-    'X-CSRFToken': getCSRFToken(), 
-    'Content-Type': 'application/json' 
-  },
-}),
+  adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, data, {
+    headers: { 
+      'X-CSRFToken': getCSRFToken(), 
+      'Content-Type': 'application/json' 
+    },
+  }),
   adminBulkEnroll: (enrollmentsData) => api.post('/api/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
@@ -516,7 +514,6 @@ adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/co
   reorderFAQs: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/reorder/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  // SCORM/xAPI Endpoints
   getSCORMSettings: (courseId) => api.get(`/api/courses/scorm/${courseId}/`),
   updateSCORMSettings: (courseId, formData) => api.patch(`/api/courses/scorm/${courseId}/`, formData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
@@ -576,7 +573,6 @@ export const moderationAPI = {
 
 // Quality API
 export const qualityAPI = {
-  // Qualifications
   getQualifications: (params = {}) => api.get('/quality/api/qualifications/', { params }),
   createQualification: (data) => api.post('/quality/api/qualifications/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -587,7 +583,6 @@ export const qualityAPI = {
   deleteQualification: (id) => api.delete(`/quality/api/qualifications/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // Assessors
   getAssessors: (params = {}) => api.get('/quality/api/assessors/', { params }),
   createAssessor: (data) => api.post('/quality/api/assessors/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -598,7 +593,6 @@ export const qualityAPI = {
   deleteAssessor: (id) => api.delete(`/quality/api/assessors/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // IQAs
   getIQAs: (params = {}) => api.get('/quality/api/iqas/', { params }),
   createIQA: (data) => api.post('/quality/api/iqas/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -609,7 +603,6 @@ export const qualityAPI = {
   deleteIQA: (id) => api.delete(`/quality/api/iqas/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // EQAs
   getEQAs: (params = {}) => api.get('/quality/api/eqas/', { params }),
   createEQA: (data) => api.post('/quality/api/eqas/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -620,7 +613,6 @@ export const qualityAPI = {
   deleteEQA: (id) => api.delete(`/quality/api/eqas/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // Learners
   getLearners: (params = {}) => api.get('/quality/api/learners/', { params }),
   createLearner: (data) => api.post('/quality/api/learners/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -631,7 +623,6 @@ export const qualityAPI = {
   deleteLearner: (id) => api.delete(`/quality/api/learners/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // Assessments
   getAssessments: (params = {}) => api.get('/quality/api/assessments/', { params }),
   getAssessment: (id) => api.get(`/quality/api/assessments/${id}/`),
   createAssessment: (data) => api.post('/quality/api/assessments/', data, {
@@ -643,7 +634,6 @@ export const qualityAPI = {
   deleteAssessment: (id) => api.delete(`/quality/api/assessments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // IQA Samples
   getIQASamples: (params = {}) => api.get('/quality/api/iqasamples/', { params }),
   createIQASample: (data) => api.post('/quality/api/iqasamples/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -654,7 +644,6 @@ export const qualityAPI = {
   deleteIQASample: (id) => api.delete(`/quality/api/iqasamples/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // IQA Sampling Plans
   getIQASamplingPlans: (params = {}) => api.get('/quality/api/iqasamplingplans/', { params }),
   createIQASamplingPlan: (data) => api.post('/quality/api/iqasamplingplans/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -665,7 +654,6 @@ export const qualityAPI = {
   deleteIQASamplingPlan: (id) => api.delete(`/quality/api/iqasamplingplans/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // EQA Visits
   getEQAVisits: (params = {}) => api.get('/quality/api/eqavisits/', { params }),
   createEQAVisit: (data) => api.post('/quality/api/eqavisits/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -676,7 +664,6 @@ export const qualityAPI = {
   deleteEQAVisit: (id) => api.delete(`/quality/api/eqavisits/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // EQA Samples
   getEQASamples: (params = {}) => api.get('/quality/api/eqasamples/', { params }),
   createEQASample: (data) => api.post('/quality/api/eqasamples/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -687,8 +674,54 @@ export const qualityAPI = {
   deleteEQASample: (id) => api.delete(`/quality/api/eqasamples/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  // Dashboard
   getQualityDashboard: () => api.get('/quality/api/dashboard/'),
+};
+
+// Security Compliance API
+export const securityComplianceAPI = {
+  // Failed Logins
+  getFailedLogins: (params = {}) => api.get('/api/users/failed-logins/', { params }),
+  blockIP: (ip) => api.post('/api/users/blocked-ips/', {
+      ip_address: ip,
+      action: 'manual-block',
+      reason: 'Blocked due to multiple failed login attempts'
+    }, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+  getFailedLoginDetails: (id) => api.get(`/api/users/failed-logins/${id}/`),
+
+  // Blocked IPs
+  getBlockedIPs: (params = {}) => api.get('/api/users/blocked-ips/', { params }),
+  unblockIP: (ip) => api.post('/api/users/blocked-ips/unblock/', { ip }, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  getBlockedIPDetails: (id) => api.get(`/api/users/blocked-ips/${id}/`),
+
+  // Audit Logs
+  getAuditLogs: (params = {}) => api.get('/api/users/user-activities/', { params }),
+  getAuditLogDetails: (id) => api.get(`/api/users/audit-logs/${id}/`),
+
+  // Vulnerability Alerts
+  getVulnerabilityAlerts: (params = {}) => api.get('/api/users/vulnerability-alerts/', { params }),
+  resolveVulnerabilityAlert: (id) => api.patch(`/api/users/vulnerability-alerts/${id}/resolve/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  getVulnerabilityAlertDetails: (id) => api.get(`/api/users/vulnerability-alerts/${id}/`),
+
+  // Compliance Reports
+  getComplianceReports: (params = {}) => api.get('/api/users/compliance-reports/', { params }),
+  generateComplianceReport: (id) => api.post(`/api/users/compliance-reports/${id}/generate/`, {}, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  scheduleComplianceAudit: (id, data) => api.post(`/api/users/compliance-reports/${id}/schedule-audit/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+
+  // Recent Security Events
+  getRecentSecurityEvents: (params = {}) => api.get('/api/users/recent-events/', { params }),
+
+  // Dashboard Statistics
+  getSecurityDashboardStats: () => api.get('/api/users/dashboard/stats/'),
 };
 
 // Utility functions
@@ -727,7 +760,10 @@ export default {
   forumAPI,
   moderationAPI,
   qualityAPI,
+  securityComplianceAPI,
   setAuthTokens,
   clearAuthTokens,
   getAuthHeader,
 };
+
+

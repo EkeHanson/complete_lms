@@ -650,3 +650,205 @@
         grid-template-columns: 1fr;
     }
 }
+/* ... (existing styles remain unchanged) ... */
+
+.msg-dialog {
+    z-index: 2000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.msg-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.msg-dialog-content {
+    position: relative;
+    background-color: #fff;
+    border: 1px solid #e9dcff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 2100;
+    box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.msg-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.msg-dialog-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #7226FF;
+}
+
+.msg-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.msg-dialog-close svg {
+    width: 15px;
+    color: #6251a4;
+}
+
+.msg-dialog-body {
+    padding: 10px 0;
+    flex: 1;
+}
+
+.msg-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.msg-form-field-full {
+    grid-column: 1 / -1;
+}
+
+.msg-form-field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6251a4;
+}
+
+.msg-form-field input,
+.msg-form-field select,
+.msg-form-field textarea {
+    padding: 8px 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.msg-form-field input:focus,
+.msg-form-field select:focus,
+.msg-form-field textarea:focus {
+    border-color: #cfb8fa;
+}
+
+.msg-form-field textarea {
+    resize: vertical;
+}
+
+.msg-recipients {
+    padding: 10px;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    background-color: #f7f5ff;
+}
+
+.msg-autocomplete {
+    position: relative;
+}
+
+.msg-autocomplete input {
+    width: 100%;
+}
+
+.msg-autocomplete-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #fff;
+    border: 1px solid #e3defc;
+    border-radius: 5px;
+    z-index: 2200;
+    display: none;
+}
+
+.msg-autocomplete:hover .msg-autocomplete-options,
+.msg-autocomplete input:focus + .msg-autocomplete-options {
+    display: block;
+}
+
+.msg-autocomplete-option {
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.msg-autocomplete-option:hover,
+.msg-autocomplete-option.selected {
+    background-color: #e6fffa;
+}
+
+.msg-autocomplete-option svg {
+    width: 15px;
+}
+
+.msg-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 10px;
+}
+
+@media (max-width: 600px) {
+    .msg-dialog-content {
+        width: 95vw;
+        padding: 16px;
+        max-height: 95vh;
+    }
+
+    .msg-dialog-header h3 {
+        font-size: 16px;
+    }
+
+    .msg-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .msg-form-field select {
+        font-size: 14px; /* Ensure readability on small screens */
+    }
+}
+
+@media (max-width: 480px) {
+    .msg-dialog-content {
+        padding: 12px;
+        width: 98vw;
+    }
+
+    .msg-dialog-header h3 {
+        font-size: 14px;
+    }
+
+    .msg-form-field label {
+        font-size: 11px;
+    }
+
+    .msg-form-field input,
+    .msg-form-field select,
+    .msg-form-field textarea {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+}

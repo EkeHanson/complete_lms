@@ -7,6 +7,7 @@ import {
   CheckBoxOutlineBlank, CheckBox, Delete
 } from '@mui/icons-material';
 import CheckCircle from '@mui/icons-material/CheckCircle';
+import { Tooltip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
@@ -636,21 +637,31 @@ const CourseList = () => {
                   </td>
                   <td>
                     <div className="action-icons">
-                      <button onClick={() => handleEnrollClick(course)} aria-label={`Enroll user in ${course.title}`}>
-                        <PersonAdd className="icon" />
-                      </button>
-                      <button onClick={() => handleBulkEnrollClick(course)} aria-label={`Bulk enroll users in ${course.title}`}>
-                        <GroupAdd className="icon" />
-                      </button>
-                      <button onClick={() => handleEdit(course.id)}>
-                        <Edit className="icon" />
-                      </button>
-                      <button onClick={() => handleView(course.id)}>
-                        <Visibility className="icon" />
-                      </button>
-                      <button onClick={() => handleDelete(course.id)}>
-                        <Delete className="icon" style={{ color: '#b91c1c' }} />
-                      </button>
+                      <Tooltip title="Enroll a single user" placement="top">
+                        <button onClick={() => handleEnrollClick(course)} aria-label={`Enroll user in ${course.title}`}>
+                          <PersonAdd className="icon" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Enroll multiple users" placement="top">
+                        <button onClick={() => handleBulkEnrollClick(course)} aria-label={`Bulk enroll users in ${course.title}`}>
+                          <GroupAdd className="icon" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Edit course" placement="top">
+                        <button onClick={() => handleEdit(course.id)} aria-label={`Edit ${course.title}`}>
+                          <Edit className="icon" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="View course details" placement="top">
+                        <button onClick={() => handleView(course.id)} aria-label={`View ${course.title}`}>
+                          <Visibility className="icon" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip title="Delete course" placement="top">
+                        <button onClick={() => handleDelete(course.id)} aria-label={`Delete ${course.title}`}>
+                          <Delete className="icon" style={{ color: '#b91c1c' }} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
@@ -725,11 +736,11 @@ const CourseList = () => {
                         className="select"
                         value={selectedUser?.id || ''}
                         onChange={(e) => {
-                          const user = filteredUsers.find(u => u.id === parseInt(e.target.value));
+                          const user = filteredUsers.find(u => window.parseInt(e.target.value) === u.id);
                           setSelectedUser(user || null);
                         }}
                         autoFocus
-                        style={{ marginTop: '10px', width: '100%' }}
+                        style={{ marginTop: '10px', window: '100%' }}
                       >
                         <option value="">Select User</option>
                         {filteredUsers.length > 0 ? (

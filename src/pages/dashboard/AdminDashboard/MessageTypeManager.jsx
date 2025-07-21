@@ -13,14 +13,18 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
   const [currentType, setCurrentType] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [valueError, setValueError] = useState(''); // New state for validation error
 
   const fetchMessageTypes = async () => {
     setLoading(true);
     try {
       const response = await messagingAPI.getMessageTypes();
-      setMessageTypes(response.data.results);
+      console.log('API Response:', response.data);
+      setMessageTypes(Array.isArray(response.data.results) ? response.data.results : []);
     } catch (error) {
+      console.error('Failed to load message types:', error);
       enqueueSnackbar('Failed to load message types', { variant: 'error' });
+      setMessageTypes([]);
     } finally {
       setLoading(false);
     }
@@ -32,8 +36,31 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
     }
   }, [open]);
 
+  // Validate value: only lowercase letters, numbers, and underscores
+  const validateValue = (value) => {
+    const regex = /^[a-z0-9_]+$/;
+    if (!value) return 'Value is required';
+    if (!regex.test(value)) return 'Value may contain only lowercase letters, numbers and underscores';
+    return '';
+  };
+
+  const handleValueChange = (e) => {
+    const newValue = e.target.value;
+    setCurrentType({ ...currentType, value: newValue });
+    setValueError(validateValue(newValue));
+  };
+
+  const handleLabelChange = (e) => {
+    setCurrentType({ ...currentType, label: e.target.value });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const valueErrorMsg = validateValue(currentType.value);
+    if (valueErrorMsg) {
+      enqueueSnackbar(valueErrorMsg, { variant: 'error' });
+      return;
+    }
     try {
       if (editMode) {
         await messagingAPI.updateMessageType(currentType.id, {
@@ -53,7 +80,8 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
       fetchMessageTypes();
       onUpdate();
     } catch (error) {
-      enqueueSnackbar(error.response?.data?.detail || 'Operation failed', { variant: 'error' });
+      const errorMsg = error.response?.data?.value?.[0] || error.response?.data?.detail || 'Operation failed';
+      enqueueSnackbar(errorMsg, { variant: 'error' });
     }
   };
 
@@ -80,7 +108,7 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="mtm-dialog" style={{ display: open ? 'block' : 'none' }}>
+    <div className={`mtm-dialog ${open ? 'mtm-dialog-open' : 'mtm-dialog-closed'}`}>
       <div className="mtm-dialog-backdrop" onClick={onClose}></div>
       <div className="mtm-dialog-content">
         <div className="mtm-dialog-header">
@@ -101,18 +129,19 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
                 <input
                   type="text"
                   value={currentType.value}
-                  onChange={(e) => setCurrentType({ ...currentType, value: e.target.value })}
+                  onChange={handleValueChange}
                   disabled={editMode}
                   required
                 />
-                <span className="mtm-helper-text">Lowercase letters, numbers and underscores only</span>
+                {valueError && <span className="mtm-helper-text mtm-error">{valueError}</span>}
+                {!valueError && <span className="mtm-helper-text">Lowercase letters, numbers and underscores only</span>}
               </div>
               <div className="mtm-form-field">
                 <label>Display Label</label>
                 <input
                   type="text"
                   value={currentType.label}
-                  onChange={(e) => setCurrentType({ ...currentType, label: e.target.value })}
+                  onChange={handleLabelChange}
                   required
                 />
               </div>
@@ -123,11 +152,12 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
                   onClick={() => {
                     setCurrentType(null);
                     setEditMode(false);
+                    setValueError('');
                   }}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="mtm-btn mtm-btn-confirm">
+                <button type="submit" className="mtm-btn mtm-btn-confirm" disabled={!!valueError}>
                   {editMode ? 'Update' : 'Create'}
                 </button>
               </div>
@@ -164,6 +194,7 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
                               onClick={() => {
                                 setCurrentType(type);
                                 setEditMode(true);
+                                setValueError('');
                               }}
                             >
                               <EditIcon />

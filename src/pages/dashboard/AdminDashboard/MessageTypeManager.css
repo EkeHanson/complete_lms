@@ -4,10 +4,22 @@
     left: 0;
     width: 100%;
     height: 100%;
+    min-height: 100vh;
+    min-width: 100vw;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
+    /* background-color: rgba(255, 0, 0, 0.1); Remove after debugging */
+    /* border: 2px solid yellow; Remove after debugging */
+}
+
+.mtm-dialog-open {
+    display: flex;
+}
+
+.mtm-dialog-closed {
+    display: none;
 }
 
 .mtm-dialog-backdrop {
@@ -22,9 +34,11 @@
     background-color: #fff;
     border: 1px solid #e9dcff;
     border-radius: 8px;
-    padding: 24px;
-    max-width: 800px;
-    width: 95%;
+    padding: 16px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
     z-index: 2100;
     box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
 }
@@ -33,11 +47,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .mtm-dialog-header h3 {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
     color: #7226FF;
 }
@@ -50,12 +64,24 @@
 }
 
 .mtm-dialog-close svg {
-    width: 15px;
+    width: 14px;
     color: #6251a4;
 }
 
 .mtm-dialog-body {
-    padding: 10px 0;
+    padding: 8px 0;
+}
+
+@media (max-width: 480px) {
+    .mtm-dialog-content {
+        padding: 12px;
+        max-width: 95%;
+        min-width: 300px;
+    }
+
+    .mtm-dialog-header h3 {
+        font-size: 14px;
+    }
 }
 
 .mtm-loading {
@@ -244,13 +270,9 @@
 .mtm-action-btns svg {
     width: 15px;
 }
-
-@media (max-width: 480px) {
-    .mtm-dialog-content {
-        padding: 16px;
-    }
-
-    .mtm-dialog-header h3 {
-        font-size: 16px;
-    }
+/* Add this to your existing CSS */
+.mtm-error {
+  color: #991b1b; /* Red color for errors */
+  font-weight: 500;
 }
+

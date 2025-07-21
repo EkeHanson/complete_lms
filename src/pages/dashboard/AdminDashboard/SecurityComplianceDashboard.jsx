@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import {
   Security as SecurityIcon,
   Warning as WarningIcon,
@@ -12,51 +13,60 @@ import {
   CheckCircle as ResolveIcon,
   ArrowForward as DetailsIcon,
   CalendarToday as CalendarIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  LockOpen as UnblockIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { securityComplianceAPI } from '../../../config';
 import './SecurityComplianceDashboard.css';
 
 const SecurityComplianceDashboard = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState([null, null]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [failedLogins, setFailedLogins] = useState([]);
+  const [blockedIPs, setBlockedIPs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [vulnerabilityAlerts, setVulnerabilityAlerts] = useState([]);
+  const [complianceReports, setComplianceReports] = useState([]);
+  const [recentEvents, setRecentEvents] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedDetails, setSelectedDetails] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const failedLogins = [
-    { id: 1, ip: '192.168.1.45', username: 'admin', timestamp: '2023-06-15 14:32:45', attempts: 5, status: 'active' },
-    { id: 2, ip: '203.113.117.89', username: 'user123', timestamp: '2023-06-15 11:15:22', attempts: 3, status: 'blocked' },
-    { id: 3, ip: '45.67.89.123', username: 'test_account', timestamp: '2023-06-14 09:45:10', attempts: 10, status: 'active' },
-    { id: 4, ip: '118.92.156.72', username: 'admin', timestamp: '2023-06-13 22:18:37', attempts: 7, status: 'blocked' },
-    { id: 5, ip: '91.204.33.156', username: 'service_account', timestamp: '2023-06-13 18:05:14', attempts: 4, status: 'active' }
-  ];
-
-  const blockedIPs = [
-    { id: 1, ip: '203.113.117.89', reason: 'Repeated failed login attempts', timestamp: '2023-06-15 11:20:00', action: 'Auto-blocked' },
-    { id: 2, ip: '45.67.89.123', reason: 'Known malicious IP', timestamp: '2023-06-14 10:00:00', action: 'Manual block' },
-    { id: 3, ip: '118.92.156.72', reason: 'Brute force attack detected', timestamp: '2023-06-13 22:20:00', action: 'Auto-blocked' },
-    { id: 4, ip: '185.143.223.67', reason: 'Suspected bot activity', timestamp: '2023-06-12 15:45:00', action: 'Manual block' }
-  ];
-
-  const auditLogs = [
-    { id: 1, admin: 'superadmin@example.com', action: 'Modified user permissions', target: 'user@example.com', timestamp: '2023-06-15 16:20:12' },
-    { id: 2, admin: 'admin@example.com', action: 'Approved listing', target: 'Listing #4587', timestamp: '2023-06-15 14:05:33' },
-    { id: 3, admin: 'superadmin@example.com', action: 'Reset password', target: 'manager@example.com', timestamp: '2023-06-15 10:12:45' },
-    { id: 4, admin: 'admin@example.com', action: 'Deleted comment', target: 'Comment #8912', timestamp: '2023-06-14 18:30:21' }
-  ];
-
-  const vulnerabilityAlerts = [
-    { id: 1, severity: 'high', title: 'Outdated library detected', component: 'Payment processor', detected: '2023-06-15 09:15:00', status: 'pending' },
-    { id: 2, severity: 'medium', title: 'Missing CORS headers', component: 'API Gateway', detected: '2023-06-14 14:30:00', status: 'in-progress' },
-    { id: 3, severity: 'low', title: 'Deprecated function usage', component: 'User service', detected: '2023-06-13 11:45:00', status: 'resolved' }
-  ];
-
-  const complianceReports = [
-    { id: 1, type: 'GDPR', status: 'compliant', lastAudit: '2023-05-30', nextAudit: '2023-11-30' },
-    { id: 2, type: 'CCPA', status: 'compliant', lastAudit: '2023-04-15', nextAudit: '2023-10-15' },
-    { id: 3, type: 'PCI DSS', status: 'pending-review', lastAudit: '2023-03-20', nextAudit: '2023-09-20' }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [failedLoginsRes, blockedIPsRes, auditLogsRes, alertsRes, reportsRes, eventsRes, statsRes] = await Promise.all([
+          securityComplianceAPI.getFailedLogins({ search: searchQuery, date_from: dateRange[0], date_to: dateRange[1] }),
+          securityComplianceAPI.getBlockedIPs({ search: searchQuery, date_from: dateRange[0], date_to: dateRange[1] }),
+          securityComplianceAPI.getAuditLogs({ search: searchQuery, date_from: dateRange[0], date_to: dateRange[1] }),
+          securityComplianceAPI.getVulnerabilityAlerts({ search: searchQuery, date_from: dateRange[0], date_to: dateRange[1] }),
+          securityComplianceAPI.getComplianceReports({ search: searchQuery }),
+          securityComplianceAPI.getRecentSecurityEvents(),
+          securityComplianceAPI.getSecurityDashboardStats(),
+        ]);
+        setFailedLogins(failedLoginsRes.data.results || []);
+        setBlockedIPs(blockedIPsRes.data.results || []);
+        setAuditLogs(auditLogsRes.data.results || []);
+        setVulnerabilityAlerts(alertsRes.data.results || []);
+        setComplianceReports(reportsRes.data.results || []);
+        setRecentEvents(eventsRes.data.results || []);
+        setDashboardStats(statsRes.data || {});
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [searchQuery, dateRange]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -68,12 +78,91 @@ const SecurityComplianceDashboard = () => {
     setDateRange(newDateRange);
   };
 
-  const handleResolveAlert = (id) => {
-    console.log(`Resolving alert ${id}`);
+  const handleViewDetails = (item, type) => {
+    setSelectedDetails({ ...item, type });
+    setIsModalOpen(true);
   };
 
-  const handleBlockIP = (ip) => {
-    console.log(`Blocking IP ${ip}`);
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedDetails(null);
+  };
+
+  const handleResolveAlert = async (id) => {
+    try {
+      await securityComplianceAPI.resolveVulnerabilityAlert(id);
+      setVulnerabilityAlerts(prev => prev.map(alert => alert.id === id ? { ...alert, status: 'resolved' } : alert));
+      toast.success('Vulnerability alert resolved');
+    } catch (err) {
+      console.error('Failed to resolve alert:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to resolve alert');
+      toast.error(`Failed to resolve alert: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleGenerateReport = async (id) => {
+    try {
+      const response = await securityComplianceAPI.generateComplianceReport(id);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `compliance_report_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Compliance report generated successfully');
+    } catch (err) {
+      console.error('Failed to generate report:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to generate report');
+      toast.error(`Failed to generate report: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleScheduleAudit = async (id) => {
+    try {
+      const auditDate = prompt('Enter audit date (YYYY-MM-DD):');
+      if (!auditDate) return;
+      const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+      if (!datePattern.test(auditDate)) {
+        throw new Error('Invalid date format. Use YYYY-MM-DD.');
+      }
+      await securityComplianceAPI.scheduleAudit(id, auditDate);
+      setComplianceReports(prev => prev.map(report => report.id === id ? { ...report, nextAudit: auditDate } : report));
+      toast.success('Audit scheduled successfully');
+    } catch (err) {
+      console.error('Failed to schedule audit:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to schedule audit');
+      toast.error(`Failed to schedule audit: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleBlockIP = async (ip) => {
+    try {
+      await securityComplianceAPI.blockIP(ip);
+      setFailedLogins(prev => prev.map(login => login.ip_address === ip ? { ...login, status: 'blocked' } : login));
+      const blockedIPsRes = await securityComplianceAPI.getBlockedIPs({ search: searchQuery, date_from: dateRange[0], date_to: dateRange[1] });
+      setBlockedIPs(blockedIPsRes.data.results || []);
+      toast.success(`IP ${ip} blocked successfully`);
+    } catch (err) {
+      console.error('Failed to block IP:', err);
+      const errorMessage = err.response?.data?.ip_address?.[0] || err.response?.data?.detail || err.message || 'Failed to block IP';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleUnblockIP = async (ip) => {
+    try {
+      await securityComplianceAPI.unblockIP(ip);
+      setBlockedIPs(prev => prev.filter(blocked => blocked.ip_address !== ip));
+      setFailedLogins(prev => prev.map(login => login.ip_address === ip ? { ...login, status: 'active' } : login));
+      toast.success(`IP ${ip} unblocked successfully`);
+    } catch (err) {
+      console.error('Failed to unblock IP:', err);
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to unblock IP';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
   };
 
   const severityColor = (severity) => {
@@ -112,327 +201,404 @@ const SecurityComplianceDashboard = () => {
           </button>
         </div>
 
-        <div className="scd-top-cards">
-          <div className="scd-card">
-            <h5>Failed Logins (24h)</h5>
-            <div className="scd-card-content">
-              <WarningIcon className="scd-icon-large" />
-              <h3>12</h3>
+        {loading ? (
+          <div>Loading...</div>
+        ) : error ? (
+          <div className="error-message">{error}</div>
+        ) : (
+          <>
+            <div className="scd-top-cards">
+              <div className="scd-card">
+                <h5>Failed Logins (24h)</h5>
+                <div className="scd-card-content">
+                  <WarningIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.failed_logins || 0}</h3>
+                </div>
+              </div>
+              <div className="scd-card">
+                <h5>Blocked IPs</h5>
+                <div className="scd-card-content">
+                  <LockIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.blocked_ips || 0}</h3>
+                </div>
+              </div>
+              <div className="scd-card">
+                <h5>Active Alerts</h5>
+                <div className="scd-card-content">
+                  <WarningIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.active_alerts || 0}</h3>
+                </div>
+              </div>
+              <div className="scd-card">
+                <h5>Audit Events (7d)</h5>
+                <div className="scd-card-content">
+                  <VisibilityIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.audit_events || 0}</h3>
+                </div>
+              </div>
+              <div className="scd-card">
+                <h5>Compliance Status</h5>
+                <div className="scd-card-content">
+                  <ComplianceIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.compliance_status || '0/0'}</h3>
+                </div>
+              </div>
+              <div className="scd-card">
+                <h5>Data Requests (30d)</h5>
+                <div className="scd-card-content">
+                  <HistoryIcon className="scd-icon-large" />
+                  <h3>{dashboardStats.data_requests || 0}</h3>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="scd-card">
-            <h5>Blocked IPs</h5>
-            <div className="scd-card-content">
-              <LockIcon className="scd-icon-large" />
-              <h3>8</h3>
-            </div>
-          </div>
-          <div className="scd-card">
-            <h5>Active Alerts</h5>
-            <div className="scd-card-content">
-              <WarningIcon className="scd-icon-large" />
-              <h3>3</h3>
-            </div>
-          </div>
-          <div className="scd-card">
-            <h5>Audit Events (7d)</h5>
-            <div className="scd-card-content">
-              <VisibilityIcon className="scd-icon-large" />
-              <h3>42</h3>
-            </div>
-          </div>
-          <div className="scd-card">
-            <h5>Compliance Status</h5>
-            <div className="scd-card-content">
-              <ComplianceIcon className="scd-icon-large" />
-              <h3>2/3</h3>
-            </div>
-          </div>
-          <div className="scd-card">
-            <h5>Data Requests (30d)</h5>
-            <div className="scd-card-content">
-              <HistoryIcon className="scd-icon-large" />
-              <h3>5</h3>
-            </div>
-          </div>
-        </div>
 
-        <div className="scd-main-content">
-          <div className="scd-tabs">
-            <button className={`scd-tab ${tabValue === 0 ? 'active' : ''}`} onClick={() => handleTabChange(null, 0)}>
-              <WarningIcon />
-              Failed Logins
-            </button>
-            <button className={`scd-tab ${tabValue === 1 ? 'active' : ''}`} onClick={() => handleTabChange(null, 1)}>
-              <BlockIcon />
-              Blocked IPs
-            </button>
-            <button className={`scd-tab ${tabValue === 2 ? 'active' : ''}`} onClick={() => handleTabChange(null, 2)}>
-              <VisibilityIcon />
-              Audit Logs
-            </button>
-            <button className={`scd-tab ${tabValue === 3 ? 'active' : ''}`} onClick={() => handleTabChange(null, 3)}>
-              <SecurityIcon />
-              Vulnerability Alerts
-            </button>
-            <button className={`scd-tab ${tabValue === 4 ? 'active' : ''}`} onClick={() => handleTabChange(null, 4)}>
-              <ComplianceIcon />
-              Compliance Reports
-            </button>
-          </div>
+            <div className="scd-main-content">
+              <div className="scd-tabs">
+                <button className={`scd-tab ${tabValue === 0 ? 'active' : ''}`} onClick={() => handleTabChange(null, 0)}>
+                  <WarningIcon />
+                  Failed Logins
+                </button>
+                <button className={`scd-tab ${tabValue === 1 ? 'active' : ''}`} onClick={() => handleTabChange(null, 1)}>
+                  <BlockIcon />
+                  Blocked IPs
+                </button>
+                <button className={`scd-tab ${tabValue === 2 ? 'active' : ''}`} onClick={() => handleTabChange(null, 2)}>
+                  <VisibilityIcon />
+                  Audit Logs
+                </button>
+                <button className={`scd-tab ${tabValue === 3 ? 'active' : ''}`} onClick={() => handleTabChange(null, 3)}>
+                  <SecurityIcon />
+                  Vulnerability Alerts
+                </button>
+                <button className={`scd-tab ${tabValue === 4 ? 'active' : ''}`} onClick={() => handleTabChange(null, 4)}>
+                  <ComplianceIcon />
+                  Compliance Reports
+                </button>
+              </div>
 
-          <div className="scd-filter-bar">
-            <div className="scd-search-input">
-              <SearchIcon />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="scd-date-picker">
-              <CalendarIcon />
-              <DatePicker
-                label="From"
-                value={dateRange[0]}
-                onChange={(newValue) => handleDateChange(newValue, 0)}
-                renderInput={(params) => <input {...params} />}
-              />
-              <span>-</span>
-              <DatePicker
-                label="To"
-                value={dateRange[1]}
-                onChange={(newValue) => handleDateChange(newValue, 1)}
-                renderInput={(params) => <input {...params} />}
-              />
-            </div>
-            <button className="scd-btn scd-btn-filter">
-              <FilterIcon />
-              Filters
-            </button>
-          </div>
+              <div className="scd-filter-bar">
+                <div className="scd-search-input">
+                  <SearchIcon />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="scd-date-picker">
+                  <CalendarIcon />
+                  <DatePicker
+                    label="From"
+                    value={dateRange[0]}
+                    onChange={(newValue) => handleDateChange(newValue, 0)}
+                    renderInput={(params) => <input {...params} />}
+                  />
+                  <span>-</span>
+                  <DatePicker
+                    label="To"
+                    value={dateRange[1]}
+                    onChange={(newValue) => handleDateChange(newValue, 1)}
+                    renderInput={(params) => <input {...params} />}
+                  />
+                </div>
+                <button className="scd-btn scd-btn-filter">
+                  <FilterIcon />
+                  Filters
+                </button>
+              </div>
 
-          <div className="scd-table-container">
-            {tabValue === 0 && (
-              <table className="scd-table">
-                <thead>
-                  <tr>
-                    <th><span>Timestamp</span></th>
-                    <th><span>IP Address</span></th>
-                    <th><span>Username</span></th>
-                    <th><span>Attempts</span></th>
-                    <th><span>Status</span></th>
-                    <th><span>Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {failedLogins.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.timestamp}</td>
-                      <td>{row.ip}</td>
-                      <td>{row.username}</td>
-                      <td>{row.attempts}</td>
-                      <td>
-                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
-                      </td>
-                      <td>
-                        <div className="scd-action-btns">
-                          <button className="scd-btn scd-btn-block" onClick={() => handleBlockIP(row.ip)} title="Block IP">
-                            <BlockIcon />
-                          </button>
-                          <button className="scd-btn scd-btn-details" title="View details">
-                            <DetailsIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tabValue === 1 && (
-              <table className="scd-table">
-                <thead>
-                  <tr>
-                    <th><span>IP Address</span></th>
-                    <th><span>Reason</span></th>
-                    <th><span>Blocked At</span></th>
-                    <th><span>Action</span></th>
-                    <th><span>Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {blockedIPs.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.ip}</td>
-                      <td>{row.reason}</td>
-                      <td>{row.timestamp}</td>
-                      <td>{row.action}</td>
-                      <td>
-                        <div className="scd-action-btns">
-                          <button className="scd-btn scd-btn-resolve" title="Unblock">
-                            <ResolveIcon />
-                          </button>
-                          <button className="scd-btn scd-btn-details" title="View details">
-                            <DetailsIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tabValue === 2 && (
-              <table className="scd-table">
-                <thead>
-                  <tr>
-                    <th><span>Admin</span></th>
-                    <th><span>Action</span></th>
-                    <th><span>Target</span></th>
-                    <th><span>Timestamp</span></th>
-                    <th><span>Details</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.admin}</td>
-                      <td>{row.action}</td>
-                      <td>{row.target}</td>
-                      <td>{row.timestamp}</td>
-                      <td>
-                        <div className="scd-action-btns">
-                          <button className="scd-btn scd-btn-details" title="View details">
-                            <DetailsIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tabValue === 3 && (
-              <table className="scd-table">
-                <thead>
-                  <tr>
-                    <th><span>Severity</span></th>
-                    <th><span>Title</span></th>
-                    <th><span>Component</span></th>
-                    <th><span>Detected</span></th>
-                    <th><span>Status</span></th>
-                    <th><span>Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vulnerabilityAlerts.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <span className="scd-chip" style={{ backgroundColor: severityColor(row.severity), color: '#fff' }}>
-                          {row.severity}
-                        </span>
-                      </td>
-                      <td>{row.title}</td>
-                      <td>{row.component}</td>
-                      <td>{row.detected}</td>
-                      <td>
-                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
-                      </td>
-                      <td>
-                        <div className="scd-action-btns">
-                          {row.status !== 'resolved' && (
-                            <button
-                              className="scd-btn scd-btn-resolve"
-                              onClick={() => handleResolveAlert(row.id)}
-                              title="Mark as resolved"
-                            >
-                              <ResolveIcon />
-                            </button>
-                          )}
-                          <button className="scd-btn scd-btn-details" title="View details">
-                            <DetailsIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tabValue === 4 && (
-              <table className="scd-table">
-                <thead>
-                  <tr>
-                    <th><span>Standard</span></th>
-                    <th><span>Status</span></th>
-                    <th><span>Last Audit</span></th>
-                    <th><span>Next Audit</span></th>
-                    <th><span>Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complianceReports.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.type}</td>
-                      <td>
-                        <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
-                      </td>
-                      <td>{row.lastAudit}</td>
-                      <td>{row.nextAudit}</td>
-                      <td>
-                        <div className="scd-action-btns">
-                          <button className="scd-btn scd-btn-view" title="Generate Report">
-                            <VisibilityIcon />
-                          </button>
-                          <button className="scd-btn scd-btn-schedule" title="Schedule Audit">
-                            <CalendarIcon />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+              <div className="scd-table-container">
+                {tabValue === 0 && (
+                  <table className="scd-table">
+                    <thead>
+                      <tr>
+                        <th><span>Timestamp</span></th>
+                        <th><span>IP Address</span></th>
+                        <th><span>Username</span></th>
+                        <th><span>Attempts</span></th>
+                        <th><span>Status</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {failedLogins.map((row) => {
+                        const isBlocked = blockedIPs.some(blocked => blocked.ip_address === row.ip_address);
+                        return (
+                          <tr key={row.id}>
+                            <td>{row.timestamp}</td>
+                            <td>{row.ip_address}</td>
+                            <td>{row.username}</td>
+                            <td>{row.attempts}</td>
+                            <td>
+                              <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                            </td>
+                            <td>
+                              <div className="scd-action-btns">
+                                <button
+                                  className={`scd-btn scd-btn-block ${isBlocked ? 'scd-btn-disabled' : ''}`}
+                                  onClick={() => !isBlocked && handleBlockIP(row.ip_address)}
+                                  title={isBlocked ? 'IP Already Blocked' : 'Block IP'}
+                                  disabled={isBlocked}
+                                >
+                                  <BlockIcon />
+                                </button>
+                                <button className="scd-btn scd-btn-details" title="View details" onClick={() => handleViewDetails(row, 'failed_login')}>
+                                  <DetailsIcon />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                {tabValue === 1 && (
+                  <table className="scd-table">
+                    <thead>
+                      <tr>
+                        <th><span>IP Address</span></th>
+                        <th><span>Reason</span></th>
+                        <th><span>Blocked At</span></th>
+                        <th><span>Action</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {blockedIPs.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.ip_address}</td>
+                          <td>{row.reason}</td>
+                          <td>{row.timestamp}</td>
+                          <td>{row.action}</td>
+                          <td>
+                            <div className="scd-action-btns">
+                              <button
+                                className="scd-btn scd-btn-unblock"
+                                onClick={() => handleUnblockIP(row.ip_address)}
+                                title="Unblock IP"
+                              >
+                                <UnblockIcon />
+                              </button>
+                              <button className="scd-btn scd-btn-details" title="View details" onClick={() => handleViewDetails(row, 'blocked_ip')}>
+                                <DetailsIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {tabValue === 2 && (
+                  <table className="scd-table">
+                    <thead>
+                      <tr>
+                        <th><span>Admin</span></th>
+                        <th><span>Action</span></th>
+                        <th><span>Target</span></th>
+                        <th><span>Timestamp</span></th>
+                        <th><span>Details</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.admin}</td>
+                          <td>{row.action}</td>
+                          <td>{row.target}</td>
+                          <td>{row.timestamp}</td>
+                          <td>
+                            <div className="scd-action-btns">
+                              <button className="scd-btn scd-btn-details" title="View details" onClick={() => handleViewDetails(row, 'audit_log')}>
+                                <DetailsIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {tabValue === 3 && (
+                  <table className="scd-table">
+                    <thead>
+                      <tr>
+                        <th><span>Severity</span></th>
+                        <th><span>Title</span></th>
+                        <th><span>Component</span></th>
+                        <th><span>Detected</span></th>
+                        <th><span>Status</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vulnerabilityAlerts.map((row) => (
+                        <tr key={row.id}>
+                          <td>
+                            <span className="scd-chip" style={{ backgroundColor: severityColor(row.severity), color: '#fff' }}>
+                              {row.severity}
+                            </span>
+                          </td>
+                          <td>{row.title}</td>
+                          <td>{row.component}</td>
+                          <td>{row.detected}</td>
+                          <td>
+                            <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                          </td>
+                          <td>
+                            <div className="scd-action-btns">
+                              {row.status !== 'resolved' && (
+                                <button
+                                  className="scd-btn scd-btn-resolve"
+                                  onClick={() => handleResolveAlert(row.id)}
+                                  title="Mark as resolved"
+                                >
+                                  <ResolveIcon />
+                                </button>
+                              )}
+                              <button className="scd-btn scd-btn-details" title="View details" onClick={() => handleViewDetails(row, 'vulnerability_alert')}>
+                                <DetailsIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {tabValue === 4 && (
+                  <table className="scd-table">
+                    <thead>
+                      <tr>
+                        <th><span>Standard</span></th>
+                        <th><span>Status</span></th>
+                        <th><span>Last Audit</span></th>
+                        <th><span>Next Audit</span></th>
+                        <th><span>Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {complianceReports.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.type}</td>
+                          <td>
+                            <span className={`scd-status ${statusColor(row.status)}`}>{row.status}</span>
+                          </td>
+                          <td>{row.lastAudit}</td>
+                          <td>{row.nextAudit}</td>
+                          <td>
+                            <div className="scd-action-btns">
+                              <button className="scd-btn scd-btn-view" title="Generate Report" onClick={() => handleGenerateReport(row.id)}>
+                                <DownloadIcon />
+                              </button>
+                              <button className="scd-btn scd-btn-schedule" title="Schedule Audit" onClick={() => handleScheduleAudit(row.id)}>
+                                <CalendarIcon />
+                              </button>
+                              <button className="scd-btn scd-btn-details" title="View details" onClick={() => handleViewDetails(row, 'compliance_report')}>
+                                <DetailsIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
 
-        <div className="scd-sidebar">
-          <h2>Recent Security Events</h2>
-          <div className="scd-event-list">
-            <div className="scd-event-item">
-              <div className="scd-event-icon">
-                <WarningIcon />
-              </div>
-              <div className="scd-event-text">
-                <span>Multiple failed login attempts</span>
-                <span className="scd-text-secondary">5 minutes ago - IP: 192.168.1.45</span>
-              </div>
-            </div>
-            <div className="scd-event-divider"></div>
-            <div className="scd-event-item">
-              <div className="scd-event-icon">
-                <ResolveIcon />
-              </div>
-              <div className="scd-event-text">
-                <span>Vulnerability resolved</span>
-                <span className="scd-text-secondary">1 hour ago - Outdated library updated</span>
-              </div>
-            </div>
-            <div className="scd-event-divider"></div>
-            <div className="scd-event-item">
-              <div className="scd-event-icon">
-                <VisibilityIcon />
-              </div>
-              <div className="scd-event-text">
-                <span>Admin permissions modified</span>
-                <span className="scd-text-secondary">2 hours ago - User: admin@example.com</span>
+              <div className="scd-sidebar">
+                <h2>Recent Security Events</h2>
+                <div className="scd-event-list">
+                  {recentEvents.map((event, index) => (
+                    <React.Fragment key={index}>
+                      <div className="scuserdata: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    role: string;
+    phone?: string;
+    title?: string;
+    bio?: string;
+    status?: string;
+  }d-event-item">
+                        <div className="scd-event-icon">
+                          <WarningIcon />
+                        </div>
+                        <div className="scd-event-text">
+                          <span>{event.title}</span>
+                          <span className="scd-text-secondary">{event.timestamp} - {event.details}</span>
+                        </div>
+                      </div>
+                      {index < recentEvents.length - 1 && <div className="scd-event-divider"></div>}
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+
+            {isModalOpen && selectedDetails && (
+              <div className="scd-modal">
+                <div className="scd-modal-content">
+                  <h2>{selectedDetails.type.replace('_', ' ').toUpperCase()} Details</h2>
+                  <div className="scd-modal-body">
+                    {selectedDetails.type === 'audit_log' && (
+                      <>
+                        <p><strong>Admin:</strong> {selectedDetails.admin}</p>
+                        <p><strong>Action:</strong> {selectedDetails.action}</p>
+                        <p><strong>Target:</strong> {selectedDetails.target}</p>
+                        <p><strong>Timestamp:</strong> {selectedDetails.timestamp}</p>
+                        <p><strong>Details:</strong> {selectedDetails.details}</p>
+                        <p><strong>Status:</strong> {selectedDetails.status}</p>
+                      </>
+                    )}
+                    {selectedDetails.type === 'vulnerability_alert' && (
+                      <>
+                        <p><strong>Severity:</strong> {selectedDetails.severity}</p>
+                        <p><strong>Title:</strong> {selectedDetails.title}</p>
+                        <p><strong>Component:</strong> {selectedDetails.component}</p>
+                        <p><strong>Detected:</strong> {selectedDetails.detected}</p>
+                        <p><strong>Status:</strong> {selectedDetails.status}</p>
+                        <p><strong>Description:</strong> {selectedDetails.description || 'No description available'}</p>
+                      </>
+                    )}
+                    {selectedDetails.type === 'compliance_report' && (
+                      <>
+                        <p><strong>Standard:</strong> {selectedDetails.type}</p>
+                        <p><strong>Status:</strong> {selectedDetails.status}</p>
+                        <p><strong>Last Audit:</strong> {selectedDetails.lastAudit}</p>
+                        <p><strong>Next Audit:</strong> {selectedDetails.nextAudit}</p>
+                        <p><strong>Details:</strong> {selectedDetails.details || 'No details available'}</p>
+                      </>
+                    )}
+                    {selectedDetails.type === 'failed_login' && (
+                      <>
+                        <p><strong>Timestamp:</strong> {selectedDetails.timestamp}</p>
+                        <p><strong>IP Address:</strong> {selectedDetails.ip_address}</p>
+                        <p><strong>Username:</strong> {selectedDetails.username}</p>
+                        <p><strong>Attempts:</strong> {selectedDetails.attempts}</p>
+                        <p><strong>Status:</strong> {selectedDetails.status}</p>
+                      </>
+                    )}
+                    {selectedDetails.type === 'blocked_ip' && (
+                      <>
+                        <p><strong>IP Address:</strong> {selectedDetails.ip_address}</p>
+                        <p><strong>Reason:</strong> {selectedDetails.reason}</p>
+                        <p><strong>Blocked At:</strong> {selectedDetails.timestamp}</p>
+                        <p><strong>Action:</strong> {selectedDetails.action}</p>
+                      </>
+                    )}
+                  </div>
+                  <button className="scd-btn scd-btn-close" onClick={handleCloseModal}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </LocalizationProvider>
   );

@@ -11,7 +11,7 @@ import {
   Search as SearchIcon, FilterList as FilterIcon, Refresh as RefreshIcon,
   Close as CloseIcon, Check as CheckIcon
 } from '@mui/icons-material';
-import { TablePagination } from '@mui/material'; // Added import
+import { TablePagination } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -22,11 +22,6 @@ import MessageTypeManager from './MessageTypeManager';
 import { debounce } from 'lodash';
 import './Messaging.css';
 
-const statusOptions = [
-  { value: 'sent', label: 'Sent' },
-  { value: 'draft', label: 'Draft' },
-];
-
 const Messaging = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [messageTypeDialogOpen, setMessageTypeDialogOpen] = useState(false);
@@ -34,6 +29,7 @@ const Messaging = () => {
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [messageTypes, setMessageTypes] = useState([]);
+  const [messageTypesLoading, setMessageTypesLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(null);
@@ -96,14 +92,34 @@ const Messaging = () => {
 
   const fetchMessageTypes = async () => {
     try {
+      setMessageTypesLoading(true);
       const response = await messagingAPI.getMessageTypes();
-      setMessageTypes(Array.isArray(response.data.results) ? response.data.results : []);
+      console.log("fetchMessageTypes full response:", response);
+      if (response.status === 200) {
+        const types = Array.isArray(response.data.results) ? response.data.results : 
+                     Array.isArray(response.data) ? response.data : [];
+        console.log("Parsed messageTypes:", types);
+        setMessageTypes(types);
+      } else {
+        console.error("Unexpected response status:", response.status);
+        setMessageTypes([]);
+      }
     } catch (error) {
+      console.error("Error fetching message types:", error.response ? error.response.data : error.message);
       enqueueSnackbar('Failed to load message types', { variant: 'error' });
-      console.error('Error fetching message types:', error);
       setMessageTypes([]);
+    } finally {
+      setMessageTypesLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMessageTypes();
+  }, []);
+
+  useEffect(() => {
+    console.log("messageTypes updated:", messageTypes);
+  }, [messageTypes, messageTypesLoading]); // Removed currentMessage from dependencies
 
   const fetchData = async () => {
     setLoading(true);
@@ -123,7 +139,6 @@ const Messaging = () => {
         groupsAPI.getGroups(),
         messagingAPI.getUnreadCount(),
       ]);
-      await fetchMessageTypes();
       setMessages(messagesRes.data.results || []);
       setGroups(groupsRes.data.results || []);
       setUnreadCount(unreadRes.data.count || 0);
@@ -178,6 +193,8 @@ const Messaging = () => {
   };
 
   const handleOpenDialog = (message = null, reply = false, forward = false) => {
+    if (messageTypesLoading) return; // Prevent opening until messageTypes are loaded
+    console.log("Opening dialog, messageTypes:", messageTypes);
     const defaultMessage = { 
       subject: '', 
       message_type: messageTypes.length > 0 ? messageTypes[0].id : null, 
@@ -227,7 +244,7 @@ const Messaging = () => {
         setAttachments(message.attachments);
       }
     } else {
-      setCurrentMessage(defaultMessage);
+      setCurrentMessage(defaultMessage); // Set default message_type here
       setSelectedUsers([]);
       setSelectedGroups([]);
       setAttachments([]);
@@ -245,46 +262,64 @@ const Messaging = () => {
     setAttachments([]);
   };
 
-  const handleSendMessage = async () => {
-    try {
-      const formData = new FormData();
-      formData.append('subject', currentMessage.subject);
-      formData.append('content', currentMessage.content);
-      formData.append('message_type', currentMessage.message_type);
-      formData.append('status', 'sent');
-      if (currentMessage.parent_message) {
-        formData.append('parent_message', currentMessage.parent_message);
-      }
-      if (currentMessage.is_forward) {
-        formData.append('is_forward', 'true');
-      }
-      selectedUsers.forEach(user => 
-        formData.append('recipient_users', user.id)
-      );
-      selectedGroups.forEach(group => 
-        formData.append('recipient_groups', group.id)
-      );
-      attachments.forEach(attachment => {
-        if (attachment.file) {
-          formData.append('attachments', attachment.file);
-        }
-      });
-      const response = currentMessage.id 
-        ? await messagingAPI.updateMessage(currentMessage.id, formData)
-        : await messagingAPI.createMessage(formData);
-      enqueueSnackbar(
-        replyMode ? 'Reply sent successfully!' : 
-        forwardMode ? 'Message forwarded successfully!' : 
-        'Message sent successfully!',
-        { variant: 'success' }
-      );
-      fetchData();
-      handleCloseDialog();
-    } catch (error) {
-      enqueueSnackbar('Error sending message', { variant: 'error' });
-      console.error('Error sending message:', error);
+
+const handleSendMessage = async () => {
+  try {
+    const formData = new FormData();
+    formData.append('subject', currentMessage.subject);
+    formData.append('content', currentMessage.content);
+    formData.append('message_type', currentMessage.message_type);
+    formData.append('status', 'sent');
+    
+    if (currentMessage.parent_message) {
+      formData.append('parent_message', currentMessage.parent_message);
     }
-  };
+    if (currentMessage.is_forward) {
+      formData.append('is_forward', 'true');
+    }
+    
+    console.log("selectedUsers", selectedUsers);
+    console.log("selectedGroups", selectedGroups);
+
+    // Validate at least one recipient
+    if (selectedUsers.length === 0 && selectedGroups.length === 0) {
+      throw new Error('Please select at least one recipient.');
+    }
+    
+    // Append each user ID individually to create a list
+    selectedUsers.forEach(user => {
+      formData.append('recipient_users', user.id);
+    });
+    
+    // Append each group ID individually to create a list
+    selectedGroups.forEach(group => {
+      formData.append('recipient_groups', group.id);
+    });
+   
+    attachments.forEach(attachment => {
+      if (attachment.file) {
+        formData.append('attachments', attachment.file);
+      }
+    });
+    const response = currentMessage.id 
+      ? await messagingAPI.updateMessage(currentMessage.id, formData)
+      : await messagingAPI.createMessage(formData);
+    enqueueSnackbar(
+      replyMode ? 'Reply sent successfully!' : 
+      forwardMode ? 'Message forwarded successfully!' : 
+      'Message sent successfully!',
+      { variant: 'success' }
+    );
+    fetchData();
+    handleCloseDialog();
+  } catch (error) {
+    enqueueSnackbar(
+      error.message || 'Error sending message. Please check your input and try again. If the issue persists, contact support.',
+      { variant: 'error' }
+    );
+    console.error('Error sending message:', error.response?.data || error.message);
+  }
+};
 
   const handleSaveDraft = async () => {
     try {
@@ -440,76 +475,76 @@ const Messaging = () => {
             >
               {expandedMessage === message.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </button>
-            </div>
-            <div className="msg-card-meta">
-              <span>From: {message.sender.email}</span>
-              <span>{formatDate(message.sent_at)}</span>
-            </div>
-            <div className={`msg-card-content ${expandedMessage === message.id ? 'expanded' : ''}`}>
-              <div className="msg-card-body">
-                <p>{message.content}</p>
-                {message.attachments.length > 0 && (
-                  <div className="msg-attachments">
-                    <h4>Attachments:</h4>
-                    {message.attachments.map((attachment, index) => (
-                      <div key={index} className="msg-attachment-item">
-                        <AttachmentIcon />
-                        <a href={attachment.file} target="_blank" rel="noopener noreferrer">
-                          {attachment.original_filename}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <h4>Recipients:</h4>
-                <div className="msg-chip-container">
-                  {message.recipients.map((recipient, i) => (
-                    <span key={i} className="msg-chip">
-                      {recipient.recipient ? 
-                        `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                        recipient.recipient_group.name}
-                      {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
-                    </span>
+          </div>
+          <div className="msg-card-meta">
+            <span>From: {message.sender.email}</span>
+            <span>{formatDate(message.sent_at)}</span>
+          </div>
+          <div className={`msg-card-content ${expandedMessage === message.id ? 'expanded' : ''}`}>
+            <div className="msg-card-body">
+              <p>{message.content}</p>
+              {message.attachments.length > 0 && (
+                <div className="msg-attachments">
+                  <h4>Attachments:</h4>
+                  {message.attachments.map((attachment, index) => (
+                    <div key={index} className="msg-attachment-item">
+                      <AttachmentIcon />
+                      <a href={attachment.file} target="_blank" rel="noopener noreferrer">
+                        {attachment.original_filename}
+                      </a>
+                    </div>
                   ))}
                 </div>
-              </div>
-            </div>
-            <div className="msg-card-actions">
-              <div className="msg-action-group">
-                <button
-                  className="msg-btn msg-btn-secondary"
-                  onClick={() => handleOpenDialog(message, true)}
-                >
-                  <ReplyIcon /> Reply
-                </button>
-                <button
-                  className="msg-btn msg-btn-secondary"
-                  onClick={() => handleOpenDialog(message, false, true)}
-                >
-                  <ForwardIcon /> Forward
-                </button>
-              </div>
-              <div className="msg-action-group">
-                {message.status === 'draft' && (
-                  <button
-                    className="msg-btn msg-btn-edit"
-                    onClick={() => handleOpenDialog(message)}
-                  >
-                    <EditIcon /> Edit
-                  </button>
-                )}
-                <button
-                  className="msg-btn msg-btn-delete"
-                  onClick={() => handleDeleteMessage(message.id)}
-                >
-                  <DeleteIcon /> Delete
-                </button>
+              )}
+              <h4>Recipients:</h4>
+              <div className="msg-chip-container">
+                {message.recipients.map((recipient, i) => (
+                  <span key={i} className="msg-chip">
+                    {recipient.recipient ? 
+                      `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
+                      recipient.recipient_group.name}
+                    {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
-        ))}
-      </div>
-    );
+          <div className="msg-card-actions">
+            <div className="msg-action-group">
+              <button
+                className="msg-btn msg-btn-secondary"
+                onClick={() => handleOpenDialog(message, true)}
+              >
+                <ReplyIcon /> Reply
+              </button>
+              <button
+                className="msg-btn msg-btn-secondary"
+                onClick={() => handleOpenDialog(message, false, true)}
+              >
+                <ForwardIcon /> Forward
+              </button>
+            </div>
+            <div className="msg-action-group">
+              {message.status === 'draft' && (
+                <button
+                  className="msg-btn msg-btn-edit"
+                  onClick={() => handleOpenDialog(message)}
+                >
+                  <EditIcon /> Edit
+                </button>
+              )}
+              <button
+                className="msg-btn msg-btn-delete"
+                onClick={() => handleDeleteMessage(message.id)}
+              >
+                <DeleteIcon /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   const renderDesktopMessageTable = () => (
     <div className="msg-table-container">
@@ -707,12 +742,14 @@ const Messaging = () => {
             <button
               className="msg-btn msg-btn-primary"
               onClick={() => handleOpenDialog()}
+              disabled={messageTypesLoading}
             >
               <SendIcon /> New Message
             </button>
             <button
               className="msg-btn msg-btn-outline"
               onClick={() => setMessageTypeDialogOpen(true)}
+              disabled={messageTypesLoading}
             >
               <EditIcon /> Manage Message Types
             </button>
@@ -853,6 +890,7 @@ const Messaging = () => {
                   onChange={(e) => setCurrentMessage({...currentMessage, message_type: e.target.value})}
                   disabled={messageTypes.length === 0}
                 >
+                  <option value="" disabled>Select a type</option>
                   {messageTypes.map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.label}
