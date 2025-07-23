@@ -30,44 +30,46 @@ const InstructorAssignmentDialog = ({
 
   useEffect(() => {
     if (open) {
-      setLoading(true);
-      const tryGroupNames = ['trainers', 'instructors', 'teachers'];
+      const fetchInstructors = async () => {
+        setLoading(true);
+        setError('');
+        try {
+          // Fetch members of the 'instructors' group
+          const response = await groupsAPI.getGroupMembersByName('instructors');
+          const memberships = response.data || [];
+          
+          // Transform memberships to instructor format
+          const instructorsData = memberships.map(membership => ({
+            id: membership.user.id,
+            name: `${membership.user.first_name} ${membership.user.last_name}`.trim() || membership.user.email,
+            email: membership.user.email,
+            expertise: membership.user.expertise || [] // Fallback to empty array if expertise is not available
+          }));
 
-  const fetchMembers = async () => {
-    try {
-      setLoading(true);
-      const groups = ['trainers', 'instructors', 'teachers'];
-      const groupMembers = await Promise.all(
-        groups.map(async (groupName) => {
-          try {
-            const response = await groupsAPI.getGroupMembersByName(groupName);
-            return { groupName, members: response.data };
-          } catch (error) {
-            if (error.response?.status === 404) {
-              console.warn(`Group ${groupName} not found`);
-              return { groupName, members: [] }; // Return empty members for missing groups
-            }
-            throw error; // Re-throw other errors
+          // Remove duplicates by id (in case of multiple memberships)
+          const uniqueInstructors = Array.from(
+            new Map(instructorsData.map(instructor => [instructor.id, instructor])).values()
+          );
+
+          setInstructors(uniqueInstructors);
+          setFilteredInstructors(uniqueInstructors);
+
+          if (uniqueInstructors.length === 0) {
+            setError('No instructors found in the "instructors" group.');
           }
-        })
-      );
-      const membersData = groupMembers.reduce((acc, { groupName, members }) => ({
-        ...acc,
-        [groupName]: members
-      }), {});
-      setMembers(membersData);
-      if (Object.values(membersData).every(members => members.length === 0)) {
-        setError('No instructors found in trainers, instructors, or teachers groups.');
-      }
-    } catch (error) {
-      console.error('Error fetching group members:', error);
-      setError('Failed to load instructors. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        } catch (error) {
+          console.error('Error fetching instructors:', error);
+          if (error.response?.status === 404) {
+            setError('Instructors group not found. Please ensure the group exists.');
+          } else {
+            setError('Failed to load instructors. Please try again.');
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
 
-      fetchMembers();
+      fetchInstructors();
     }
   }, [open]);
 
@@ -129,7 +131,7 @@ const InstructorAssignmentDialog = ({
             {currentAssignment ? 'Edit Instructor Assignment' : 'Assign Instructor'}
           </h3>
           <button className="close-btn" onClick={onClose}>
-            <span>&times;</span>
+            <span>×</span>
           </button>
         </div>
 

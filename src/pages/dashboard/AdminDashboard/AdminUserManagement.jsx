@@ -13,7 +13,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { userAPI, coursesAPI, messagingAPI, authAPI, setAuthTokens } from '../../../config';
+import { userAPI, coursesAPI, messagingAPI, authAPI, groupsAPI, rolesAPI, setAuthTokens } from '../../../config';
 import UserRegistration from './UserRegistration';
 import BulkUserUpload from './BulkUserUpload';
 import UserGroupsManagement from './UserGroupsManagement';
@@ -28,6 +28,8 @@ const AdminUserManagement = () => {
     severity: 'success'
   });
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [pagination, setPagination] = useState({
     count: 0,
     next: null,
@@ -37,7 +39,7 @@ const AdminUserManagement = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState({ main: true, roles: true });
   const [error, setError] = useState(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -66,8 +68,19 @@ const AdminUserManagement = () => {
     type: 'general'
   });
 
+  const PERMISSION_LABELS = {
+    create_content: 'Create Content',
+    edit_content: 'Edit Content',
+    delete_content: 'Delete Content',
+    view_content: 'View Content',
+    grade_assignments: 'Grade Assignments',
+    manage_courses: 'Manage Courses',
+    manage_users: 'Manage Users',
+    view_reports: 'View Reports'
+  };
+
   const fetchUsers = async () => {
-    setLoading(true);
+    setLoading(prev => ({ ...prev, main: true }));
     setError(null);
     try {
       const params = {
@@ -103,7 +116,28 @@ const AdminUserManagement = () => {
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, main: false }));
+    }
+  };
+
+  const fetchRolesAndGroups = async () => {
+    try {
+      setLoading(prev => ({ ...prev, roles: true }));
+      const [rolesResponse, groupsResponse] = await Promise.all([
+        rolesAPI.getRoles(),
+        groupsAPI.getGroups()
+      ]);
+      setRoles(rolesResponse.data || []);
+      setGroups(groupsResponse.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to fetch roles or groups');
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch roles or groups',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, roles: false }));
     }
   };
 
@@ -162,6 +196,7 @@ const AdminUserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchCourses();
+    fetchRolesAndGroups();
   }, [pagination.currentPage, rowsPerPage, filters]);
 
   useEffect(() => {
@@ -220,8 +255,8 @@ const AdminUserManagement = () => {
   const handleImpersonate = async (userId) => {
     try {
       const response = await userAPI.impersonateUser(userId);
-      const { token } = response.data;
-      setAuthTokens(token, null);
+      const { access, refresh, tenant_id } = response.data;
+      setAuthTokens(access, refresh, tenant_id);
       setSnackbar({
         open: true,
         message: 'Successfully impersonated user. Redirecting...',
@@ -251,7 +286,7 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Failed to send password reset email',
+        message: err.response?.data?.detail || 'Failed to send password reset email',
         severity: 'error'
       });
     }
@@ -259,7 +294,8 @@ const AdminUserManagement = () => {
 
   const handleAccountLock = async (userId, lock) => {
     try {
-      await userAPI.updateUser(userId, { is_locked: lock });
+      const endpoint = lock ? userAPI.lockUser : userAPI.unlockUser;
+      await endpoint(userId);
       setUsers(prev => prev.map(user => 
         user.id === userId ? { ...user, is_locked: lock } : user
       ));
@@ -271,7 +307,7 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: `Failed to ${lock ? 'lock' : 'unlock'} account`,
+        message: err.response?.data?.detail || `Failed to ${lock ? 'lock' : 'unlock'} account`,
         severity: 'error'
       });
     }
@@ -289,18 +325,28 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Failed to enroll user in course',
+        message: err.response?.data?.detail || 'Failed to enroll user in course',
         severity: 'error'
       });
     }
   };
 
   const handleDisenrollCourse = async (enrollmentId) => {
-    setSnackbar({
-      open: true,
-      message: 'Course disenrollment not implemented yet',
-      severity: 'warning'
-    });
+    try {
+      await coursesAPI.deleteEnrollment(enrollmentId);
+      await fetchUserEnrollments(selectedUser.id);
+      setSnackbar({
+        open: true,
+        message: 'User disenrolled from course successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.detail || 'Failed to disenroll user from course',
+        severity: 'error'
+      });
+    }
   };
 
   const handleSendMessage = async () => {
@@ -321,7 +367,7 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Failed to send message',
+        message: err.response?.data?.detail || 'Failed to send message',
         severity: 'error'
       });
     }
@@ -341,7 +387,7 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: err.message || 'Failed to reset login attempts',
+        message: err.response?.data?.detail || 'Failed to reset login attempts',
         severity: 'error'
       });
     }
@@ -392,6 +438,7 @@ const AdminUserManagement = () => {
         await userAPI.deleteUser(selectedUser.id);
         setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
         setPagination(prev => ({ ...prev, count: prev.count - 1 }));
+        await fetchRolesAndGroups(); // Refresh groups to update memberships
         setSnackbar({
           open: true,
           message: 'User deleted successfully',
@@ -409,6 +456,13 @@ const AdminUserManagement = () => {
         setUsers(prev => prev.map(user =>
           user.id === selectedUser.id ? { ...user, status: newStatus } : user
         ));
+        if (newStatus === 'active') {
+          await userAPI.getUser(selectedUser.id).then(response => {
+            setUsers(prev => prev.map(user =>
+              user.id === selectedUser.id ? response.data : user
+            ));
+          });
+        }
         setSnackbar({
           open: true,
           message: `User ${newStatus === 'suspended' ? 'suspended' : 'activated'} successfully`,
@@ -419,10 +473,10 @@ const AdminUserManagement = () => {
       setSelectedUser(null);
       setActionType(null);
     } catch (err) {
-      setActionError(err.message || 'Failed to perform action');
+      setActionError(err.response?.data?.detail || 'Failed to perform action');
       setSnackbar({
         open: true,
-        message: err.message || 'Failed to perform action',
+        message: err.response?.data?.detail || 'Failed to perform action',
         severity: 'error'
       });
     }
@@ -437,7 +491,7 @@ const AdminUserManagement = () => {
 
   const handleBulkDelete = async () => {
     try {
-      setLoading(true);
+      setLoading(prev => ({ ...prev, main: true }));
       let successCount = 0;
       let errorCount = 0;
       
@@ -452,7 +506,7 @@ const AdminUserManagement = () => {
       }
       
       await fetchUsers();
-      
+      await fetchRolesAndGroups(); // Refresh groups to update memberships
       setSnackbar({
         open: true,
         message: `Deleted ${successCount} user(s) successfully. ${errorCount > 0 ? `Failed to delete ${errorCount} user(s).` : ''}`,
@@ -464,11 +518,11 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: 'Error during bulk delete operation',
+        message: err.response?.data?.detail || 'Error during bulk delete operation',
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, main: false }));
     }
   };
 
@@ -487,12 +541,10 @@ const AdminUserManagement = () => {
   };
 
   const RoleChip = ({ role }) => {
-    const roleMap = {
-      admin: { className: 'aum-chip primary', label: 'Admin' },
-      instructor: { className: 'aum-chip secondary', label: 'Instructor' },
-      learner: { className: 'aum-chip default', label: 'Learner' },
-      owner: { className: 'aum-chip info', label: 'Owner' }
-    };
+    const roleMap = roles.reduce((acc, r) => ({
+      ...acc,
+      [r.code]: { className: `aum-chip ${r.code}`, label: r.name }
+    }), {});
     return (
       <span className={roleMap[role]?.className || 'aum-chip'}>
         {roleMap[role]?.label || role}
@@ -503,28 +555,22 @@ const AdminUserManagement = () => {
   const handleAddUser = async (newUser) => {
     try {
       const response = await userAPI.createUser(newUser);
-      setUsers(prev => [...prev, {
-        ...response.data,
-        last_login: null,
-        last_login_ip: null,
-        last_login_device: null,
-        signup_date: new Date().toISOString(),
-        login_attempts: 0,
-        status: 'active'
-      }]);
+      setUsers(prev => [...prev, response.data.data]);
       setPagination(prev => ({ ...prev, count: prev.count + 1 }));
       setShowRegistrationForm(false);
+      await fetchRolesAndGroups(); // Refresh groups to reflect new memberships
       setSnackbar({
         open: true,
-        message: 'User created successfully',
+        message: response.data.detail || 'User created successfully',
         severity: 'success'
       });
     } catch (err) {
       setSnackbar({
         open: true,
-        message: err.response?.data?.detail || err.message || 'Failed to add user',
+        message: err.response?.data?.detail || 'Failed to add user',
         severity: 'error'
       });
+      throw err; // Re-throw to let UserRegistration handle field-specific errors
     }
   };
 
@@ -537,6 +583,7 @@ const AdminUserManagement = () => {
   const handleBulkUpload = async () => {
     try {
       await fetchUsers();
+      await fetchRolesAndGroups();
       setShowBulkUpload(false);
       setSnackbar({
         open: true,
@@ -546,7 +593,7 @@ const AdminUserManagement = () => {
     } catch (err) {
       setSnackbar({
         open: true,
-        message: err.message || 'Failed to refresh user list after upload',
+        message: err.response?.data?.detail || 'Failed to refresh user list after upload',
         severity: 'error'
       });
     }
@@ -560,7 +607,7 @@ const AdminUserManagement = () => {
   const getActiveUsersCount = () => users.filter(u => u.status === 'active').length;
   const getNewSignupsCount = () => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    return users.filter(u => u.signup_date && new Date(u.signup_date) > thirtyDaysAgo).length;
+    return users.filter(u => u.date_joined && new Date(u.date_joined) > thirtyDaysAgo).length;
   };
   const getSuspiciousActivityCount = () => users.filter(u => u.login_attempts > 0).length;
 
@@ -570,6 +617,22 @@ const AdminUserManagement = () => {
     { title: 'New Signups', value: getNewSignupsCount(), icon: <PersonAddIcon />, change: 'This month' },
     { title: 'Suspicious Activity', value: getSuspiciousActivityCount(), icon: <WarningIcon />, change: 'Failed login attempts' }
   ];
+
+  const getRoleUserCount = (roleId) => {
+    const roleGroups = groups.filter(group => group.role?.id === roleId);
+    const userIds = new Set();
+    roleGroups.forEach(group => {
+      group.memberships?.forEach(membership => {
+        if (membership.user?.id) userIds.add(membership.user.id);
+      });
+    });
+    return userIds.size;
+  };
+
+  const getPermissionsText = (permissions) => {
+    if (!permissions || permissions.length === 0) return 'No permissions assigned';
+    return permissions.map(p => PERMISSION_LABELS[p] || p).join(', ');
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -634,10 +697,9 @@ const AdminUserManagement = () => {
               onChange={(e) => handleFilterChange('role', e.target.value)}
             >
               <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="instructor">Instructor</option>
-              <option value="learner">Learner</option>
-              <option value="owner">Owner</option>
+              {roles.map(role => (
+                <option key={role.id} value={role.code}>{role.name}</option>
+              ))}
             </select>
           </div>
           <div className="aum-filter-item">
@@ -716,7 +778,7 @@ const AdminUserManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading.main ? (
                 <tr>
                   <td colSpan="8" className="aum-loading">
                     <div className="aum-spinner"></div>
@@ -756,7 +818,7 @@ const AdminUserManagement = () => {
                     </td>
                     <td><RoleChip role={user.role} /></td>
                     <td><StatusChip status={user.status} /></td>
-                    <td>{new Date(user.signup_date).toLocaleDateString()}</td>
+                    <td>{user.date_joined ? new Date(user.date_joined).toLocaleDateString() : '-'}</td>
                     <td>
                       {user.login_attempts > 0 ? (
                         <span
@@ -997,7 +1059,30 @@ const AdminUserManagement = () => {
         )}
 
         <div className="aum-groups">
-          <UserGroupsManagement users={users} />
+          <UserGroupsManagement users={users} roles={roles} groups={groups} onGroupUpdate={fetchRolesAndGroups} />
+        </div>
+
+        <div className="aum-roles-permissions">
+          <h2>User Roles & Permissions Overview</h2>
+          {loading.roles ? (
+            <div className="aum-loading">
+              <div className="aum-spinner"></div>
+            </div>
+          ) : roles.length === 0 ? (
+            <div className="aum-no-data">No roles available</div>
+          ) : (
+            <div className="aum-roles-grid">
+              {roles.map((role) => (
+                <div key={role.id} className="aum-role-card">
+                  <h3>{role.name}</h3>
+                  <p className="aum-text-secondary">
+                    {getRoleUserCount(role.id)} users • {getPermissionsText(role.permissions)}
+                  </p>
+                  <p>{role.description || 'No description provided'}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="aum-dialog" style={{ display: openConfirmModal ? 'block' : 'none' }}>
@@ -1010,7 +1095,7 @@ const AdminUserManagement = () => {
                  actionType === 'impersonate' ? 'Impersonate User' :
                  actionType === 'reset_password' ? 'Reset Password' :
                  actionType === 'lock' ? 'Lock Account' :
-                 actionType === 'unlock' ? 'Unlock Account' : 'Activate User'}
+                 actionType === 'unlock' ? 'Unlock Account' : 'Activate'} User
               </h3>
               <button className="aum-dialog-close" onClick={handleCancelAction}>
                 <CloseIcon />
@@ -1126,33 +1211,6 @@ const AdminUserManagement = () => {
           </div>
         </div>
 
-        <div className="aum-roles-permissions">
-          <h2>User Roles & Permissions Overview</h2>
-          <div className="aum-roles-grid">
-            <div className="aum-role-card">
-              <h3>Administrators</h3>
-              <p className="aum-text-secondary">
-                {users.filter(u => u.role === 'admin').length} users • Full system access
-              </p>
-              <p>Can manage all users, courses, and system settings</p>
-            </div>
-            <div className="aum-role-card">
-              <h3>Instructors</h3>
-              <p className="aum-text-secondary">
-                {users.filter(u => u.role === 'instructor').length} users • Can create and manage courses
-              </p>
-              <p>Can create course content, manage learners, and view analytics</p>
-            </div>
-            <div className="aum-role-card">
-              <h3>Learners</h3>
-              <p className="aum-text-secondary">
-                {users.filter(u => u.role === 'learner').length} users • Can enroll in courses
-              </p>
-              <p>Can browse courses, enroll in programs, and track progress</p>
-            </div>
-          </div>
-        </div>
-
         <div className="aum-dialog" style={{ display: showRegistrationForm ? 'block' : 'none' }}>
           <div className="aum-dialog-backdrop" onClick={() => setShowRegistrationForm(false)}></div>
           <div className="aum-dialog-content aum-dialog-wide">
@@ -1176,7 +1234,7 @@ const AdminUserManagement = () => {
                 <h3>Delete Selected Users</h3>
                 <button className="aum-dialog-close" onClick={() => setBulkDeleteConfirm(false)}>
                   <CloseIcon />
-                </button>
+              </button>
               </div>
               <div className="aum-dialog-body">
                 <p>

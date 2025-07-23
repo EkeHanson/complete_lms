@@ -7,7 +7,7 @@ import {
   PictureAsPdf, VideoLibrary, InsertDriveFile, Edit, Person, People,
   School, Menu as MenuIcon, ArrowBack, Add, Star, CheckCircle
 } from '@mui/icons-material';
-import { coursesAPI, userAPI } from '../../../../config';
+import { coursesAPI } from '../../../../config';
 import { DraggableModule, ModuleForm } from './ModuleForm';
 import LearningPaths from './LearningPaths';
 import SCORMxAPISettings from './SCORMxAPISettings';
@@ -15,6 +15,7 @@ import CertificateSettings from './CertificateSettings';
 import GamificationManager from './GamificationManager';
 import InstructorAssignmentDialog from './InstructorAssignmentDialog';
 import DraftEditor from './DraftEditor';
+import ErrorBoundary from './ErrorBoundary';
 import './CourseForm.css';
 
 const resourceTypes = [
@@ -33,11 +34,14 @@ const initialCourseState = {
   status: 'Draft',
   duration: '',
   price: 0,
-  discountPrice: null,
+  discount_price: null,
   currency: 'NGN',
   learningOutcomes: [],
   prerequisites: [],
+  learningOutcomeInput: '',
+  prerequisiteInput: '',
   thumbnail: null,
+  thumbnailPreview: null,
   modules: [],
   resources: [],
   instructors: [],
@@ -116,53 +120,56 @@ const CourseForm = () => {
     file: null
   });
   const [instructorDialogOpen, setInstructorDialogOpen] = useState(false);
-  const [learningOutcomeInput, setLearningOutcomeInput] = useState('');
-  const [prerequisiteInput, setPrerequisiteInput] = useState('');
   const categoryNameInputRef = useRef(null);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [categoriesRes, courseRes] = await Promise.all([
+        coursesAPI.getCategories(),
+        isEdit ? coursesAPI.getCourse(id) : Promise.resolve(null)
+      ]);
 
-const fetchData = useCallback(async () => {
-  setLoading(true);
-  try {
-    const [categoriesRes, courseRes] = await Promise.all([
-      coursesAPI.getCategories(),
-      isEdit ? coursesAPI.getCourse(id) : Promise.resolve(null)
-    ]);
+      const fetchedCategories = categoriesRes.data.results || categoriesRes.data;
+      setCategories(fetchedCategories);
 
-    const fetchedCategories = categoriesRes.data.results || categoriesRes.data;
-    setCategories(fetchedCategories);
-
-    if (isEdit && courseRes?.data) {
-      console.log('Fetched course data:', courseRes.data); // Debug full response
-      console.log('Fetched modules:', courseRes.data.modules); // Debug modules
-      dispatch({
-        type: 'SET_COURSE',
-        payload: {
-          ...courseRes.data,
-          category_id: courseRes.data.category?.id || courseRes.data.category_id || '',
-          description: courseRes.data.description || JSON.stringify(convertToRaw(EditorState.createEmpty().getCurrentContent())),
-          learningOutcomes: Array.isArray(courseRes.data.learning_outcomes) ? courseRes.data.learning_outcomes : [],
-          prerequisites: Array.isArray(courseRes.data.prerequisites) ? courseRes.data.prerequisites : [],
-          modules: (courseRes.data.modules || []).map((module, idx) => ({
-            ...module,
-            order: module.order ?? idx,
-            lessons: (module.lessons || []).map((lesson, lessonIdx) => ({
-              ...lesson,
-              order: lesson.order ?? lessonIdx
-            }))
-          })),
-          resources: courseRes.data.resources || [],
-          instructors: courseRes.data.instructors || []
-        }
-      });
+      if (isEdit && courseRes?.data) {
+        dispatch({
+          type: 'SET_COURSE',
+          payload: {
+            ...courseRes.data,
+            category_id: courseRes.data.category?.id || courseRes.data.category_id || '',
+            description: courseRes.data.description || '',
+            learningOutcomes: Array.isArray(courseRes.data.learning_outcomes)
+              ? courseRes.data.learning_outcomes.filter(item => typeof item === 'string' && item.trim())
+              : [],
+            prerequisites: Array.isArray(courseRes.data.prerequisites)
+              ? courseRes.data.prerequisites.filter(item => typeof item === 'string' && item.trim())
+              : [],
+            learningOutcomeInput: '',
+            prerequisiteInput: '',
+            thumbnail: null,
+            thumbnailPreview: courseRes.data.thumbnail?.url || null,
+            modules: (courseRes.data.modules || []).map((module, idx) => ({
+              ...module,
+              order: module.order ?? idx,
+              lessons: (module.lessons || []).map((lesson, lessonIdx) => ({
+                ...lesson,
+                order: lesson.order ?? lessonIdx
+              }))
+            })),
+            resources: courseRes.data.resources || [],
+            instructors: courseRes.data.instructors || []
+          }
+        });
+      }
+    } catch (error) {
+      console.error('CourseForm: Error fetching data:', error.response?.data || error.message);
+      setApiError('Failed to load data');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching data:', error.response?.data || error.message);
-    setApiError('Failed to load data');
-  } finally {
-    setLoading(false);
-  }
-}, [id, isEdit]);
+  }, [id, isEdit]);
 
   useEffect(() => {
     fetchData();
@@ -174,68 +181,191 @@ const fetchData = useCallback(async () => {
     }
   }, [categoryDialogOpen]);
 
+  useEffect(() => {
+    let timeout;
+    if (isEdit && activeTab !== 0 && course.description) {
+      timeout = setTimeout(() => {
+        handleSave(new Event('submit'), false);
+      }, 500);
+    }
+    return () => clearTimeout(timeout);
+  }, [course.description, activeTab, isEdit]);
+
+  useEffect(() => {
+    return () => {
+      if (course.thumbnailPreview) {
+        URL.revokeObjectURL(course.thumbnailPreview);
+      }
+    };
+  }, [course.thumbnailPreview]);
+
   const validateForm = () => {
     const newErrors = {};
     if (!course.title.trim()) newErrors.title = 'Title is required';
     if (!course.code.trim()) newErrors.code = 'Course code is required';
     if (!course.description.trim()) newErrors.description = 'Description is required';
     if (!course.category_id) newErrors.category = 'Category is required';
+    if (course.learningOutcomes.length === 0) newErrors.learningOutcomes = 'At least one learning outcome is required';
+    if (course.prerequisites.length === 0) newErrors.prerequisites = 'At least one prerequisite is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async (e, redirect = false) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  const validateDescription = useCallback((value) => {
+    if (!value || !value.trim()) {
+      console.log('CourseForm: validateDescription: Empty description');
+      return '';
+    }
+    return value.trim();
+  }, []);
 
-    setLoading(true);
-    setApiError('');
+const handleSave = async (e, redirect = false) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
+  setLoading(true);
+  setApiError('');
+
+  try {
+    const formData = new FormData();
+    const fieldsToInclude = [
+      'title', 'code', 'description', 'category_id', 'level', 'status',
+      'duration', 'price', 'discount_price', 'currency', 'completion_hours'
+    ];
+
+    fieldsToInclude.forEach(key => {
+      if (key === 'description') {
+        const descriptionValue = validateDescription(course.description);
+        formData.append(key, descriptionValue);
+      } else if (key === 'discount_price' && course[key] === null) {
+        // Skip null discount_price
+      } else if (course[key] !== null && course[key] !== undefined) {
+        formData.append(key, course[key]);
+      }
+    });
+
+    // Send learning_outcomes as a JSON string
+    formData.append('learning_outcomes', JSON.stringify(course.learningOutcomes));
+
+    // Send prerequisites as a JSON string
+    formData.append('prerequisites', JSON.stringify(course.prerequisites));
+
+    if (course.thumbnail instanceof File) {
+      formData.append('thumbnail', course.thumbnail);
+    }
+
+    const response = isEdit
+      ? await coursesAPI.updateCourse(id, formData)
+      : await coursesAPI.createCourse(formData);
+
+    if (!isEdit) {
+      dispatch({ type: 'SET_COURSE', payload: { ...course, id: response.data.id } });
+      navigate(`/admin/courses/edit/${response.data.id}`, { replace: true });
+    }
+
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+    if (redirect) navigate('/admin/courses');
+  } catch (error) {
+    console.error('CourseForm: Save error:', error.response?.data || error.message);
+    setApiError(error.response?.data?.detail || error.response?.data?.description?.[0] || error.response?.data?.thumbnail?.[0] || 'Failed to save course');
+  } finally {
+    setLoading(false);
+  }
+};
+  const addModule = async () => {
     try {
-      const formData = new FormData();
-      Object.entries(course).forEach(([key, value]) => {
-        if (key === 'learningOutcomes' || key === 'prerequisites') {
-          value.forEach(item => formData.append(key, item));
-        } else if (key === 'thumbnail' && value instanceof File) {
-          formData.append(key, value);
-        } else if (['modules', 'instructors', 'learningPaths', 'certificateSettings', 'scormSettings'].includes(key)) {
-          // Handled separately by their respective APIs
-        } else if (value !== null && value !== undefined) {
-          formData.append(key, value);
+      setLoading(true);
+      let courseId = id || course.id;
+
+      if (!isEdit && !courseId) {
+        if (!categories.length) {
+          setApiError('No categories available. Please create a category first.');
+          return;
         }
-      });
+        if (!course.title.trim()) {
+          setApiError('Course title is required to create a new course.');
+          return;
+        }
+        if (!course.code.trim()) {
+          setApiError('Course code is required to create a new course.');
+          return;
+        }
 
-      const response = isEdit
-        ? await coursesAPI.updateCourse(id, formData)
-        : await coursesAPI.createCourse(formData);
+        const formData = new FormData();
+        formData.append('title', course.title);
+        formData.append('code', course.code);
+        formData.append('description', validateDescription(course.description));
+        formData.append('category_id', course.category_id || categories[0].id);
+        formData.append('level', course.level);
+        formData.append('status', 'Draft');
+        course.learningOutcomes.forEach((item, index) => {
+          formData.append(`learning_outcomes[${index}]`, item); // Fixed: Changed from learningOutcomes to learning_outcomes
+        });
+        course.prerequisites.forEach((item, index) => {
+          formData.append(`prerequisites[${index}]`, item);
+        });
 
-      if (!isEdit) {
-        dispatch({ type: 'SET_COURSE', payload: { ...course, id: response.data.id } });
-        navigate(`/admin/courses/edit/${response.data.id}`, { replace: true });
+        const response = await coursesAPI.createCourse(formData);
+        courseId = response.data.id;
+        dispatch({ type: 'SET_COURSE', payload: { ...course, id: courseId } });
+        navigate(`/admin/courses/edit/${courseId}`, { replace: true });
       }
 
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-      if (redirect) navigate('/admin/courses');
+      const existingModulesResponse = await coursesAPI.getModules(courseId);
+      const existingModules = existingModulesResponse.data.results || existingModulesResponse.data || [];
+      const maxOrder = existingModules.length > 0
+        ? Math.max(...existingModules.map(m => m.order)) + 1
+        : 0;
+
+      const response = await coursesAPI.createModule(courseId, {
+        course: courseId,
+        title: 'New Module',
+        description: '',
+        order: maxOrder,
+        is_published: false
+      });
+
+      dispatch({
+        type: 'ADD_ITEM',
+        field: 'modules',
+        value: { ...response.data, lessons: [] }
+      });
     } catch (error) {
-      setApiError(error.response?.data?.detail || 'Failed to save course');
+      console.error('CourseForm: Error in addModule:', error.response?.data || error.message);
+      setApiError(error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create module');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field, value) => {
+  const handleChange = useCallback((field, value) => {
     dispatch({ type: 'UPDATE_FIELD', field, value });
-  };
+  }, []);
 
-  const handleDraftEditorChange = (rawContent) => {
-    handleChange('description', JSON.stringify(rawContent));
+  const handleDraftEditorChange = useCallback((text) => {
+    console.log('CourseForm: handleDraftEditorChange:', text);
+    handleChange('description', validateDescription(text));
+  }, [handleChange, validateDescription]);
+
+  const handleThumbnailChange = (file) => {
+    const previewUrl = file ? URL.createObjectURL(file) : course.thumbnailPreview;
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'thumbnail',
+      value: file
+    });
+    dispatch({
+      type: 'UPDATE_FIELD',
+      field: 'thumbnailPreview',
+      value: previewUrl
+    });
   };
 
   const addLearningOutcome = (outcome) => {
     if (outcome.trim()) {
       dispatch({ type: 'ADD_ITEM', field: 'learningOutcomes', value: outcome.trim() });
-      setLearningOutcomeInput('');
+      dispatch({ type: 'UPDATE_FIELD', field: 'learningOutcomeInput', value: '' });
     }
   };
 
@@ -246,7 +376,7 @@ const fetchData = useCallback(async () => {
   const addPrerequisite = (prereq) => {
     if (prereq.trim()) {
       dispatch({ type: 'ADD_ITEM', field: 'prerequisites', value: prereq.trim() });
-      setPrerequisiteInput('');
+      dispatch({ type: 'UPDATE_FIELD', field: 'prerequisiteInput', value: '' });
     }
   };
 
@@ -254,114 +384,49 @@ const fetchData = useCallback(async () => {
     dispatch({ type: 'REMOVE_ITEM', field: 'prerequisites', index });
   };
 
-const addModule = async () => {
-  try {
-    setLoading(true);
-    let courseId = id || course.id;
-
-    // Ensure course is created
-    if (!isEdit && !courseId) {
-      if (!categories.length) {
-        setApiError('No categories available. Please create a category first.');
-        return;
-      }
-      if (!course.title.trim()) {
-        setApiError('Course title is required to create a new course.');
-        return;
-      }
-      if (!course.code.trim()) {
-        setApiError('Course code is required to create a new course.');
-        return;
-      }
-
-      const response = await coursesAPI.createCourse({
-        title: course.title,
-        code: course.code,
-        description: course.description || '',
-        category_id: course.category_id || categories[0].id,
-        level: course.level,
-        status: 'Draft'
-      });
-      courseId = response.data.id;
-      dispatch({ type: 'SET_COURSE', payload: { ...course, id: courseId } });
-      navigate(`/admin/courses/edit/${courseId}`, { replace: true });
-    }
-
-    // Fetch existing modules
-    const existingModulesResponse = await coursesAPI.getModules(courseId);
-    const existingModules = existingModulesResponse.data.results || existingModulesResponse.data || [];
-    const maxOrder = existingModules.length > 0
-      ? Math.max(...existingModules.map(m => m.order)) + 1
-      : 0;
-
-    const response = await coursesAPI.createModule(courseId, {
-      course: courseId,
-      title: 'New Module',
-      description: '',
-      order: maxOrder,
-      is_published: false
-    });
-
-    dispatch({
-      type: 'ADD_ITEM',
-      field: 'modules',
-      value: { ...response.data, lessons: [] }
-    });
-  } catch (error) {
-    console.error('Error in addModule:', error.response?.data || error.message);
-    setApiError(error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create module');
-  } finally {
-    setLoading(false);
-  }
-};
-
   const handleModuleChange = (moduleId, updatedModule) => {
     dispatch({ type: 'UPDATE_ITEM', field: 'modules', id: moduleId, value: updatedModule });
   };
 
-const deleteModule = async (moduleId) => {
-  try {
-    setLoading(true);
-    if (!isNaN(moduleId)) await coursesAPI.deleteModule(courseId, moduleId);
-    
-    // Filter out the deleted module
-    const remainingModules = course.modules.filter(m => m.id !== moduleId);
-    
-    // Reassign order values starting from 0
-    const updatedModules = remainingModules.map((module, idx) => ({
-      ...module,
-      order: idx
-    }));
+  const deleteModule = async (moduleId) => {
+    try {
+      setLoading(true);
+      if (!isNaN(moduleId)) await coursesAPI.deleteModule(id, moduleId);
 
-    // Update order in the backend for each module
-    await Promise.all(
-      updatedModules.map(module =>
-        coursesAPI.updateModule(courseId, module.id, { order: module.order })
-      )
-    );
+      const remainingModules = course.modules.filter(m => m.id !== moduleId);
+      const updatedModules = remainingModules.map((module, idx) => ({
+        ...module,
+        order: idx
+      }));
 
-    dispatch({
-      type: 'UPDATE_FIELD',
-      field: 'modules',
-      value: updatedModules
-    });
-    dispatch({
-      type: 'UPDATE_FIELD',
-      field: 'instructors',
-      value: course.instructors.map(instructor => ({
-        ...instructor,
-        assignedModules: instructor.assignedModules === 'all'
-          ? 'all'
-          : instructor.assignedModules.filter(id => id !== moduleId)
-      }))
-    });
-  } catch (error) {
-    console.error('Error deleting module:', error.response?.data || error.message);
-    setApiError('Failed to delete module');
-  } finally {
-    setLoading(false);
-  }
-};
+      await Promise.all(
+        updatedModules.map(module =>
+          coursesAPI.updateModule(id, module.id, { order: module.order })
+        )
+      );
+
+      dispatch({
+        type: 'UPDATE_FIELD',
+        field: 'modules',
+        value: updatedModules
+      });
+      dispatch({
+        type: 'UPDATE_FIELD',
+        field: 'instructors',
+        value: course.instructors.map(instructor => ({
+          ...instructor,
+          assignedModules: instructor.assignedModules === 'all'
+            ? 'all'
+            : instructor.assignedModules.filter(id => id !== moduleId)
+        }))
+      });
+    } catch (error) {
+      console.error('CourseForm: Error deleting module:', error.response?.data || error.message);
+      setApiError('Failed to delete module');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const moveModule = (dragIndex, hoverIndex) => {
     const newModules = [...course.modules];
@@ -630,10 +695,12 @@ const deleteModule = async (moduleId) => {
                     {errors.code && <span id="code-error" className="error-text">{errors.code}</span>}
 
                     <label className="label">Description</label>
-                    <DraftEditor
-                      value={course.description ? JSON.parse(course.description) : null}
-                      onChange={handleDraftEditorChange}
-                    />
+                    <ErrorBoundary>
+                      <DraftEditor
+                        value={course.description}
+                        onChange={handleDraftEditorChange}
+                      />
+                    </ErrorBoundary>
                     {errors.description && <span id="description-error" className="error-text">{errors.description}</span>}
 
                     <div className="section-divider" />
@@ -651,20 +718,23 @@ const deleteModule = async (moduleId) => {
                       <input
                         type="text"
                         className="input"
-                        value={learningOutcomeInput}
-                        onChange={(e) => setLearningOutcomeInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome(learningOutcomeInput)}
+                        value={course.learningOutcomeInput}
+                        onChange={(e) => handleChange('learningOutcomeInput', e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addLearningOutcome(course.learningOutcomeInput)}
                         placeholder="What will students learn?"
                         aria-describedby="learning-outcomes-error"
                       />
                       <button
                         className="action-btn"
                         type="button"
-                        onClick={() => addLearningOutcome(learningOutcomeInput)}
+                        onClick={() => addLearningOutcome(course.learningOutcomeInput)}
                       >
                         <Add className="icon" /> Add
                       </button>
                     </div>
+                    {errors.learningOutcomes && (
+                      <span id="learning-outcomes-error" className="error-text">{errors.learningOutcomes}</span>
+                    )}
 
                     <div className="section-divider" />
 
@@ -681,20 +751,23 @@ const deleteModule = async (moduleId) => {
                       <input
                         type="text"
                         className="input"
-                        value={prerequisiteInput}
-                        onChange={(e) => setPrerequisiteInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addPrerequisite(prerequisiteInput)}
+                        value={course.prerequisiteInput}
+                        onChange={(e) => handleChange('prerequisiteInput', e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addPrerequisite(course.prerequisiteInput)}
                         placeholder="What should students know beforehand?"
                         aria-describedby="prerequisites-error"
                       />
                       <button
                         className="action-btn"
                         type="button"
-                        onClick={() => addPrerequisite(prerequisiteInput)}
+                        onClick={() => addPrerequisite(course.prerequisiteInput)}
                       >
                         <Add className="icon" /> Add
                       </button>
                     </div>
+                    {errors.prerequisites && (
+                      <span id="prerequisites-error" className="error-text">{errors.prerequisites}</span>
+                    )}
                   </div>
 
                   <div className="CourseForm-Right">
@@ -796,52 +869,34 @@ const deleteModule = async (moduleId) => {
                     <input
                       type="number"
                       className="input"
-                      value={course.discountPrice || ''}
-                      onChange={(e) => handleChange('discountPrice', e.target.value ? parseFloat(e.target.value) : null)}
+                      value={course.discount_price || ''}
+                      onChange={(e) => handleChange('discount_price', e.target.value ? parseFloat(e.target.value) : null)}
                       placeholder="Enter discount price"
                       aria-describedby="discount-price-error"
                     />
 
                     <div className="section-divider" />
-{/* 
-                    <button className="action-btn" type="button" component="label">
-                      <CloudUpload className="icon" /> Upload Thumbnail
-                      <input
-                        type="file"
-                        hidden
-                        onChange={(e) => handleChange('thumbnail', e.target.files[0])}
-                        accept="image/*"
-                      />
-                    </button>
-                    {course.thumbnail && (
-                      <div className="upload-preview">
-                        <span>{course.thumbnail.name || 'Thumbnail selected'}</span>
-                        <button
-                          className="icon-btn danger"
-                          type="button"
-                          onClick={() => handleChange('thumbnail', null)}
-                        >
-                          <Delete className="icon" />
-                        </button>
-                      </div>
-                    )}
 
-                     */}
-
-                     <div className="thumbnail-upload">
-                      <label htmlFor="thumbnail-upload" className="action-btn" style={{ cursor: 'pointer' }}>
+                    <div className="thumbnail-upload">
+                      <label htmlFor="thumbnail-upload" className="action-btn">
                         <CloudUpload className="icon" /> Upload Thumbnail
                       </label>
                       <input
                         id="thumbnail-upload"
                         type="file"
                         style={{ display: 'none' }}
-                        onChange={(e) => {
-                          console.log('Thumbnail selected:', e.target.files[0]?.name); // Debug log
-                          handleChange('thumbnail', e.target.files[0]);
-                        }}
+                        onChange={(e) => handleThumbnailChange(e.target.files[0])}
                         accept="image/*"
                       />
+                      {course.thumbnailPreview && (
+                        <div className="thumbnail-preview">
+                          <img
+                            src={course.thumbnailPreview}
+                            alt="Thumbnail preview"
+                            style={{ maxWidth: '200px', maxHeight: '200px', marginTop: '8px' }}
+                          />
+                        </div>
+                      )}
                       {course.thumbnail && (
                         <div className="upload-preview">
                           <span>{course.thumbnail.name || 'Thumbnail selected'}</span>
@@ -849,8 +904,7 @@ const deleteModule = async (moduleId) => {
                             className="icon-btn danger"
                             type="button"
                             onClick={() => {
-                              console.log('Thumbnail removed'); // Debug log
-                              handleChange('thumbnail', null);
+                              handleThumbnailChange(null);
                             }}
                           >
                             <Delete className="icon" />
@@ -859,8 +913,6 @@ const deleteModule = async (moduleId) => {
                       )}
                     </div>
                   </div>
-
-
                 </div>
               )}
 
@@ -1091,10 +1143,8 @@ const deleteModule = async (moduleId) => {
                     className="input"
                     value={currentResource.title}
                     onChange={(e) => {
-                      console.log('Resource Title:', e.target.value);
                       setCurrentResource({ ...currentResource, title: e.target.value });
                     }}
-                    onClick={() => console.log('Resource Title input clicked')}
                     placeholder="Enter resource title"
                     autoFocus
                     aria-describedby="resource-title-error"
@@ -1118,10 +1168,8 @@ const deleteModule = async (moduleId) => {
                         className="input"
                         value={currentResource.url}
                         onChange={(e) => {
-                          console.log('Resource URL:', e.target.value);
                           setCurrentResource({ ...currentResource, url: e.target.value });
                         }}
-                        onClick={() => console.log('Resource URL input clicked')}
                         placeholder="Enter resource URL"
                         aria-describedby="resource-url-error"
                       />
@@ -1182,10 +1230,8 @@ const deleteModule = async (moduleId) => {
                     ref={categoryNameInputRef}
                     value={newCategory.name}
                     onChange={(e) => {
-                      console.log('Category Name:', e.target.value);
                       setNewCategory({ ...newCategory, name: e.target.value });
                     }}
-                    onClick={() => console.log('Category Name input clicked')}
                     placeholder="Enter category name"
                     aria-describedby="category-name-error"
                   />
@@ -1196,10 +1242,8 @@ const deleteModule = async (moduleId) => {
                     key={`category-description-${categoryDialogOpen}`}
                     value={newCategory.description}
                     onChange={(e) => {
-                      console.log('Category Description:', e.target.value);
                       setNewCategory({ ...newCategory, description: e.target.value });
                     }}
-                    onClick={() => console.log('Category Description textarea clicked')}
                     placeholder="Enter category description"
                     rows={3}
                     aria-describedby="category-description-error"

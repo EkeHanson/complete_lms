@@ -88,12 +88,9 @@ const ModuleForm = ({
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // console.log("Here")
-  // console.log("Here")
-  // console.log("Here")
   useEffect(() => {
-  console.log('lessonDialogOpen changed:', lessonDialogOpen);
-}, [lessonDialogOpen]);
+    console.log('lessonDialogOpen changed:', lessonDialogOpen);
+  }, [lessonDialogOpen]);
 
   const validateLesson = () => {
     const newErrors = {};
@@ -163,59 +160,62 @@ const ModuleForm = ({
   };
 
   const handleLessonFileChange = (e) => {
+    e.preventDefault();
+    console.log('File selected:', e.target.files[0]); // Debug log
     setNewLesson((prev) => ({ ...prev, content_file: e.target.files[0] }));
     setErrors((prev) => ({ ...prev, content_file: '' }));
   };
 
-const addLesson = async () => {
-  if (!validateLesson()) return;
+  const addLesson = async () => {
+    if (!validateLesson()) return;
 
-  console.log('addLesson called with courseId:', courseId, 'moduleId:', module.id); // Debug log
+    console.log('addLesson called with courseId:', courseId, 'moduleId:', module.id); // Debug log
 
-  if (!courseId || !module.id) {
-    setErrors({ ...errors, submit: 'Invalid course or module ID' });
-    return;
-  }
+    if (!courseId || !module.id) {
+      setErrors({ ...errors, submit: 'Invalid course or module ID' });
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append('title', newLesson.title.trim());
-  formData.append('lesson_type', newLesson.lesson_type);
-  formData.append('order', module.lessons.length);
-  formData.append('is_published', true);
-  if (newLesson.duration) formData.append('duration', newLesson.duration);
-  if (newLesson.lesson_type === 'link') {
-    formData.append('content_url', newLesson.content_url);
-  } else if (newLesson.content_file) {
-    formData.append('content_file', newLesson.content_file);
-  }
+    const formData = new FormData();
+    formData.append('title', newLesson.title.trim());
+    formData.append('lesson_type', newLesson.lesson_type);
+    formData.append('order', module.lessons.length);
+    formData.append('is_published', true);
+    if (newLesson.duration) formData.append('duration', newLesson.duration);
+    if (newLesson.lesson_type === 'link') {
+      formData.append('content_url', newLesson.content_url);
+    } else if (newLesson.content_file) {
+      formData.append('content_file', newLesson.content_file);
+      console.log('FormData content_file:', newLesson.content_file); // Debug log
+    }
 
-  try {
-    setLoading(true);
-    const response = await coursesAPI.createLesson(courseId, module.id, formData);
-    console.log('Lesson created:', response.data);
-    onChange(module.id, {
-      ...module,
-      lessons: [...module.lessons, { ...response.data, order: module.lessons.length }]
-    });
-    setNewLesson({
-      title: '',
-      lesson_type: 'video',
-      content_url: '',
-      content_file: null,
-      duration: ''
-    });
-    setLessonDialogOpen(false);
-    setErrors({});
-  } catch (error) {
-    console.error('Error creating lesson:', error.response?.data || error.message);
-    setErrors({
-      ...errors,
-      submit: error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create lesson'
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const response = await coursesAPI.createLesson(courseId, module.id, formData);
+      console.log('Lesson created:', response.data);
+      onChange(module.id, {
+        ...module,
+        lessons: [...module.lessons, { ...response.data, order: module.lessons.length }]
+      });
+      setNewLesson({
+        title: '',
+        lesson_type: 'video',
+        content_url: '',
+        content_file: null,
+        duration: ''
+      });
+      setLessonDialogOpen(false);
+      setErrors({});
+    } catch (error) {
+      console.error('Error creating lesson:', error.response?.data || error.message);
+      setErrors({
+        ...errors,
+        submit: error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create lesson'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateLesson = async () => {
     if (!validateLesson()) return;
@@ -390,27 +390,11 @@ const addLesson = async () => {
 
                 <div className="lessons-header">
                   <h4>Lessons</h4>
-                  {/* <button
-                    className="action-btn"
-                    onClick={() => {
-                      setEditingLesson(null);
-                      setNewLesson({
-                        title: '',
-                        lesson_type: 'video',
-                        content_url: '',
-                        content_file: null,
-                        duration: ''
-                      });
-                      setLessonDialogOpen(true);
-                    }}
-                  >
-                    <AddCircle /> Add Lesson
-                  </button> */}
                   <button
                     className="action-btn"
                     type="button"
-                    onClick={(e) => { // Add 'e' as a parameter
-                      e.preventDefault(); // Prevent form submission
+                    onClick={(e) => {
+                      e.preventDefault();
                       console.log('Add Lesson button clicked');
                       setEditingLesson(null);
                       setNewLesson({
@@ -530,7 +514,7 @@ const addLesson = async () => {
           {(newLesson.lesson_type === 'video' || newLesson.lesson_type === 'file') && (
             <div className="form-group">
               <label className="label">Upload {newLesson.lesson_type === 'video' ? 'Video' : 'File'}</label>
-              <button className="action-btn upload" component="label">
+              <label className="action-btn upload">
                 <CloudUpload /> Upload {newLesson.lesson_type === 'video' ? 'Video' : 'File'}
                 <input
                   type="file"
@@ -538,7 +522,7 @@ const addLesson = async () => {
                   onChange={handleLessonFileChange}
                   accept={newLesson.lesson_type === 'video' ? 'video/*' : '*'}
                 />
-              </button>
+              </label>
               {newLesson.content_file && (
                 <span className="file-info">Selected: {newLesson.content_file.name}</span>
               )}
@@ -592,5 +576,3 @@ const addLesson = async () => {
 };
 
 export { ModuleForm, DraggableModule };
-
-

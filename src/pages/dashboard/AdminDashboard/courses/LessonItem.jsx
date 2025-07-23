@@ -20,7 +20,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
   const [editedLesson, setEditedLesson] = useState({
     title: lesson.title || '',
     description: lesson.description || '',
-    lesson_type: lesson.lesson_type || 'video', // Align with ModuleForm
+    lesson_type: lesson.lesson_type || 'video',
     content_url: lesson.content_url || '',
     content_file: null,
     duration: lesson.duration || ''
@@ -52,6 +52,8 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
   };
 
   const handleFileChange = (e) => {
+    e.preventDefault();
+    console.log('File selected:', e.target.files[0]); // Debug log
     setEditedLesson(prev => ({ ...prev, content_file: e.target.files[0] }));
     setError(null);
   };
@@ -76,7 +78,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
       formData.append('title', editedLesson.title);
       formData.append('description', editedLesson.description);
       formData.append('lesson_type', editedLesson.lesson_type);
-      formData.append('order', lesson.order ?? index); // Ensure order is set
+      formData.append('order', lesson.order ?? index);
       if (editedLesson.lesson_type === 'link') {
         formData.append('content_url', editedLesson.content_url);
       } else if (editedLesson.content_file) {
@@ -204,7 +206,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
               ) : (
                 <>
                   <label className="label">Upload Content</label>
-                  <button className="upload-btn" component="label">
+                  <label className="upload-btn">
                     <CloudUpload className="icon" /> Upload Content
                     <input
                       type="file"
@@ -215,7 +217,7 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
                         editedLesson.lesson_type === 'video' ? 'video/*' : '*'
                       }
                     />
-                  </button>
+                  </label>
                   {editedLesson.content_file && (
                     <span className="file-info">Selected: {editedLesson.content_file.name}</span>
                   )}
@@ -291,4 +293,3 @@ const LessonItem = ({ lesson, index, moduleId, courseId, onUpdate, onDelete, isM
 };
 
 export default LessonItem;
-

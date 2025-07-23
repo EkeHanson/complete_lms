@@ -1,43 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { EditorState, convertToRaw, convertFromRaw } from 'draft-js';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import React, { useState, useEffect, useRef } from 'react';
+import SimpleMDE from 'react-simplemde-editor';
+import 'simplemde/dist/simplemde.min.css';
+import './DraftEditor.css';
 
 const DraftEditor = ({ value, onChange }) => {
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  const [text, setText] = useState(value || '');
+  const simpleMdeRef = useRef(null);
 
+  // Sync prop value with local state
   useEffect(() => {
-    if (value) {
-      try {
-        const parsedContent = JSON.parse(value);
-        if (parsedContent && parsedContent.blocks && parsedContent.entityMap) {
-          const content = convertFromRaw(parsedContent);
-          setEditorState(EditorState.createWithContent(content));
-        } else {
-          setEditorState(EditorState.createEmpty());
-        }
-      } catch (error) {
-        console.warn('Failed to parse description JSON:', error);
-        setEditorState(EditorState.createEmpty());
-      }
-    } else {
-      setEditorState(EditorState.createEmpty());
-    }
+    setText(value || '');
   }, [value]);
 
-  const handleChange = (state) => {
-    setEditorState(state);
-    const content = convertToRaw(state.getCurrentContent());
-    onChange(JSON.stringify(content));
+  // Handle text changes and pass to parent
+  const handleChange = (newValue) => {
+    setText(newValue);
+    onChange(newValue);
   };
 
   return (
-    <Editor
-      editorState={editorState}
-      onEditorStateChange={handleChange}
-      wrapperClassName="wrapper-class"
-      editorClassName="editor-class"
-      toolbarClassName="toolbar-class"
+    <SimpleMDE
+      value={text}
+      onChange={handleChange}
+      ref={simpleMdeRef}
+      options={{
+        toolbar: [
+          'bold', 'italic', 'heading', '|',
+          'quote', 'unordered-list', 'ordered-list', '|',
+          'link', 'image', '|',
+          'preview', 'side-by-side', 'fullscreen'
+        ],
+        spellChecker: false,
+        placeholder: 'Enter course description in Markdown'
+      }}
+      className="simple-mde-editor"
     />
   );
 };

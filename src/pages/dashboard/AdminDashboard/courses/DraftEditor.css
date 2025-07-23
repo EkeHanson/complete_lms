@@ -1,0 +1,14 @@
+.simple-mde-editor {
+  width: 100%;
+  font-family: Arial, sans-serif;
+}
+.simple-mde-editor .CodeMirror {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-height: 200px;
+}
+.simple-mde-editor .editor-toolbar {
+  border: 1px solid #ccc;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}

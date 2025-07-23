@@ -26,8 +26,8 @@ const CourseManagement = () => {
         const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
           coursesAPI.getCourses(),
           coursesAPI.getAllEnrollments(),
-          coursesAPI.getMostPopularCourses(),
-          coursesAPI.getLeastPopularCourses(),
+          coursesAPI.getMostPopularCourses().catch((err) => ({ data: null, status: err.response?.status || 500 })), // Handle 404
+          coursesAPI.getLeastPopularCourses().catch((err) => ({ data: null, status: err.response?.status || 500 })), // Handle 404
           coursesAPI.getCategories()
         ]);
 
@@ -40,9 +40,10 @@ const CourseManagement = () => {
           enrollments: mostPopularRes.data.enrollment_count || 0,
           instructor: mostPopularRes.data.course.instructor || "No instructor assigned"
         } : {
-          title: "No popular course data",
+          title: "No courses with enrollments",
           enrollments: 0,
-          instructor: "No instructor assigned"
+          instructor: "N/A",
+          id: null
         };
 
         const leastPopularCourse = leastPopularRes.data && leastPopularRes.status === 200 ? {
@@ -51,21 +52,22 @@ const CourseManagement = () => {
           enrollments: leastPopularRes.data.enrollment_count || 0,
           instructor: leastPopularRes.data.course.instructor || "No instructor assigned"
         } : {
-          title: "No least popular course data",
+          title: "No courses with enrollments",
           enrollments: 0,
-          instructor: "No instructor assigned"
+          instructor: "N/A",
+          id: null
         };
 
-        const completedCourses = enrollmentsRes.data.results.filter(e => e.completed).length;
+        const completedCourses = enrollmentsRes.data.results?.filter(e => e.completed).length || 0;
         const averageCompletionRate = totalEnrollments > 0 
           ? Math.round((completedCourses / totalEnrollments) * 100) 
           : 0;
 
-        const categories = categoriesRes.data.results.map(cat => ({
+        const categories = categoriesRes.data.results?.map(cat => ({
           id: cat.id,
           name: cat.name,
           count: cat.course_count || 0
-        }));
+        })) || [];
 
         setCourseStats({
           totalCourses,
@@ -76,7 +78,7 @@ const CourseManagement = () => {
           ongoingCourses: totalEnrollments - completedCourses,
           averageCompletionRate,
           categories,
-          noEnrollmentCourses: 0,
+          noEnrollmentCourses: totalCourses - totalEnrollments,
           recentCourses: [],
           averageRating: 0,
           attentionNeeded: []
@@ -169,28 +171,34 @@ const CourseManagement = () => {
 
         <div className="Detailed-Stats">
           {courseStats.mostPopularCourse && (
-            <div className="Course-Card" onClick={() => navigate(`/admin/course-details/${courseStats.mostPopularCourse.id}`, {
-              state: { enrollments: courseStats.mostPopularCourse.enrollments }
-            })}>
+            <div 
+              className="Course-Card" 
+              onClick={() => courseStats.mostPopularCourse.id && navigate(`/admin/course-details/${courseStats.mostPopularCourse.id}`, {
+                state: { enrollments: courseStats.mostPopularCourse.enrollments }
+              })}
+            >
               <div className="Course-Card-Content">
                 <span className="Course-Card-Header">
                   <Star className="icon warning" /> Most Popular
                 </span>
-                <h3>{courseStats.mostPopularCourse?.title || 'No popular course'}</h3>
+                <h3>{courseStats.mostPopularCourse.title}</h3>
                 <span className="Course-Card-Subtitle">
-                  Instructor: {courseStats.mostPopularCourse?.instructor || 'Unknown'}
+                  Instructor: {courseStats.mostPopularCourse.instructor}
                 </span>
                 <div className="Course-Card-Stats">
                   <People className="icon" />
-                  <span>{courseStats.mostPopularCourse?.enrollments ?? 0} enrollments</span>
+                  <span>{courseStats.mostPopularCourse.enrollments} enrollments</span>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="Course-Card" onClick={() => navigate(`/admin/course-details/${courseStats.leastPopularCourse.id}`, {
-            state: { enrollments: courseStats.leastPopularCourse.enrollments }
-          })}>
+          <div 
+            className="Course-Card" 
+            onClick={() => courseStats.leastPopularCourse.id && navigate(`/admin/course-details/${courseStats.leastPopularCourse.id}`, {
+              state: { enrollments: courseStats.leastPopularCourse.enrollments }
+            })}
+          >
             <div className="Course-Card-Content">
               <span className="Course-Card-Header">
                 <Warning className="icon error" /> Least Popular
@@ -221,7 +229,7 @@ const CourseManagement = () => {
                     <div className="Progress-Bar">
                       <div
                         className="Progress-Fill"
-                        style={{ width: `${(category.count / courseStats.totalCourses) * 100}%` }}
+                        style={{ width: `${courseStats.totalCourses ? (category.count / courseStats.totalCourses) * 100 : 0}%` }}
                       />
                     </div>
                   </div>

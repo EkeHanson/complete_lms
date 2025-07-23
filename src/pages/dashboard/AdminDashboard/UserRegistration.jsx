@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PersonAdd as PersonAddIcon,
   Email as EmailIcon,
@@ -11,6 +11,7 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
+import { rolesAPI } from '../../../config';
 import './UserRegistration.css';
 
 const UserRegistration = ({ onRegister }) => {
@@ -20,54 +21,75 @@ const UserRegistration = ({ onRegister }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'learner',
-    termsAccepted: false
+    role: 'learners', // Default role
   });
 
+  const [roles, setRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const roles = [
-    { value: 'learner', label: 'Learner', icon: <LearnerIcon className="w-4 h-4 text-purple-600" /> },
-    { value: 'instructor', label: 'Instructor', icon: <InstructorIcon className="w-4 h-4 text-purple-600" /> },
-    { value: 'admin', label: 'Admin', icon: <AdminIcon className="w-4 h-4 text-purple-600" /> },
-    { value: 'owner', label: 'Owner', icon: <AdminIcon className="w-4 h-4 text-purple-600" /> }
-  ];
+  // Fetch roles from the backend
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const response = await rolesAPI.getRoles();
+        const fetchedRoles = response.data.map(role => ({
+          value: role.code,
+          label: role.name,
+          icon: role.code === 'learners' ? <LearnerIcon className="w-4 h-4 text-purple-600" /> :
+                role.code === 'instructors' ? <InstructorIcon className="w-4 h-4 text-purple-600" /> :
+                <AdminIcon className="w-4 h-4 text-purple-600" />
+        }));
+        setRoles(fetchedRoles);
+      } catch (err) {
+        setErrors(prev => ({
+          ...prev,
+          roles: err.response?.data?.detail || 'Failed to load roles',
+        }));
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const validate = () => {
     const newErrors = {};
     
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name required';
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
-      newErrors.email = 'Email required';
+      newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email';
+      newErrors.email = 'Invalid email format';
     }
     if (!formData.password) {
-      newErrors.password = 'Password required';
+      newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Minimum 8 characters';
+      newErrors.password = 'Password must be at least 8 characters';
     }
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    if (!formData.termsAccepted) {
-      newErrors.termsAccepted = 'Accept terms required';
+    if (!formData.role) {
+      newErrors.role = 'Role is required';
     }
     
-    setErrors(newErrors);
+    setErrors(prev => ({ ...prev, ...newErrors }));
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
-    const { name, value, checked, type } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
+    setErrors(prev => ({ ...prev, [name]: null })); // Clear field-specific errors on change
   };
 
   const handleSubmit = async (e) => {
@@ -76,7 +98,8 @@ const UserRegistration = ({ onRegister }) => {
     if (!validate()) return;
     
     setIsSubmitting(true);
-    
+    setErrors(prev => ({ ...prev, submit: null }));
+
     try {
       const userData = {
         first_name: formData.firstName,
@@ -84,12 +107,16 @@ const UserRegistration = ({ onRegister }) => {
         email: formData.email,
         password: formData.password,
         role: formData.role,
-        status: 'active'
+        status: 'active',
       };
 
       await onRegister(userData);
     } catch (error) {
-      setErrors({ submit: error.message || 'Failed to register user' });
+      const backendErrors = error.response?.data?.errors || {};
+      setErrors({
+        submit: error.response?.data?.detail || 'Failed to register user',
+        ...backendErrors,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -103,6 +130,11 @@ const UserRegistration = ({ onRegister }) => {
       {errors.submit && (
         <div className="ur-alert ur-alert-error">
           <span>{errors.submit}</span>
+        </div>
+      )}
+      {errors.roles && (
+        <div className="ur-alert ur-alert-error">
+          <span>{errors.roles}</span>
         </div>
       )}
       <div className="ur-card">
@@ -202,38 +234,32 @@ const UserRegistration = ({ onRegister }) => {
               <label>User Role</label>
               <div className="ur-input-container">
                 <GroupIcon />
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                >
-                  {roles.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                {loadingRoles ? (
+                  <div className="ur-spinner">Loading roles...</div>
+                ) : (
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={errors.role ? 'error' : ''}
+                    disabled={roles.length === 0}
+                  >
+                    <option value="">Select a role</option>
+                    {roles.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
-            </div>
-            <div className="ur-form-field ur-form-field-full">
-              <div className="ur-checkbox">
-                <input
-                  type="checkbox"
-                  name="termsAccepted"
-                  checked={formData.termsAccepted}
-                  onChange={handleChange}
-                />
-                <span>
-                  I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
-                </span>
-              </div>
-              {errors.termsAccepted && <span className="ur-error">{errors.termsAccepted}</span>}
+              {errors.role && <span className="ur-error">{errors.role}</span>}
             </div>
             <div className="ur-form-field ur-form-field-full">
               <button
                 type="submit"
                 className="ur-btn ur-btn-confirm"
-                disabled={isSubmitting}
+                disabled={isSubmitting || loadingRoles || roles.length === 0}
               >
                 {isSubmitting ? (
                   <div className="ur-spinner"></div>

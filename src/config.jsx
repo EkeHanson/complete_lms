@@ -84,11 +84,41 @@ const getCSRFToken = () => {
 };
 
 // Request interceptor to add CSRF token and Authorization header
+// api.interceptors.request.use(
+//   (config) => {
+//     const accessToken = localStorage.getItem('access_token');
+//     if (accessToken) {
+//       config.headers['Authorization'] = `Bearer ${accessToken}`;
+//     }
+//     const csrfToken = getCSRFToken();
+//     if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+//       config.headers['X-CSRFToken'] = csrfToken;
+//     }
+//     return config;
+//   },
+//   (error) => {
+//     console.error('Request error:', error);
+//     return Promise.reject(error);
+//   }
+// );
+
+// Request interceptor to add CSRF token, Authorization, and Tenant headers
+// In config.jsx, update the request interceptor
 api.interceptors.request.use(
   (config) => {
     const accessToken = localStorage.getItem('access_token');
+    const tenantId = localStorage.getItem('tenant_id');
+    if (!accessToken) {
+      console.warn('No access token found in localStorage');
+    }
+    if (!tenantId) {
+      console.warn('No tenant ID found in localStorage');
+    }
     if (accessToken) {
       config.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    if (tenantId) {
+      config.headers['X-Tenant-ID'] = tenantId;
     }
     const csrfToken = getCSRFToken();
     if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
@@ -103,10 +133,55 @@ api.interceptors.request.use(
 );
 
 // Consolidated response interceptor
+// api.interceptors.response.use(
+//   (response) => {
+//     return response;
+//   },
+//   async (error) => {
+//     const originalRequest = error.config;
+//     if (
+//       originalRequest.url.includes('/api/token/') ||
+//       originalRequest.url.includes('/api/logout/') ||
+//       window.location.pathname === '/login'
+//     ) {
+//       console.log('Skipping interceptor for token, logout, or login page');
+//       return Promise.reject(error);
+//     }
+//     if (error.response?.status === 401 && !originalRequest._retry) {
+//       originalRequest._retry = true;
+//       try {
+//         const refreshToken = localStorage.getItem('refresh_token');
+//         if (!refreshToken) {
+//           throw new Error('No refresh token available');
+//         }
+//         const refreshResponse = await api.post('/api/token/refresh/', { refresh: refreshToken });
+//         localStorage.setItem('access_token', refreshResponse.data.access);
+//         if (refreshResponse.data.refresh) {
+//           localStorage.setItem('refresh_token', refreshResponse.data.refresh);
+//         }
+//         return api(originalRequest);
+//       } catch (refreshError) {
+//         console.error('Token refresh failed:', {
+//           message: refreshError.message,
+//           response: refreshError.response?.data,
+//           status: refreshError.response?.status,
+//         });
+//         localStorage.removeItem('access_token');
+//         localStorage.removeItem('refresh_token');
+//         if (window.location.pathname !== '/login') {
+//           console.log('Redirecting to login due to refresh failure');
+//           window.location.href = '/login?session_expired=1';
+//         }
+//         return Promise.reject(refreshError);
+//       }
+//     }
+//     return Promise.reject(error);
+//   }
+// );
+
+// Response interceptor for token refresh
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
     if (
@@ -114,7 +189,6 @@ api.interceptors.response.use(
       originalRequest.url.includes('/api/logout/') ||
       window.location.pathname === '/login'
     ) {
-      console.log('Skipping interceptor for token, logout, or login page');
       return Promise.reject(error);
     }
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -131,15 +205,11 @@ api.interceptors.response.use(
         }
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', {
-          message: refreshError.message,
-          response: refreshError.response?.data,
-          status: refreshError.response?.status,
-        });
+        console.error('Token refresh failed:', refreshError.response?.data || refreshError.message);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('tenant_id');
         if (window.location.pathname !== '/login') {
-          console.log('Redirecting to login due to refresh failure');
           window.location.href = '/login?session_expired=1';
         }
         return Promise.reject(refreshError);
@@ -148,6 +218,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 // Auth API
 export const authAPI = {
@@ -169,6 +240,43 @@ export const authAPI = {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
 };
+
+// User API
+// export const userAPI = {
+//   impersonateUser: (id) => api.post(`/api/users/users/${id}/impersonate/`, {}, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   getUsers: (params = {}) => api.get('/api/users/users/', { params }),
+//   getUser: (id) => api.get(`/api/users/users/${id}/`),
+//   createUser: (userData) => api.post('/api/users/register/', userData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   updateUser: (id, userData) => api.patch(`/api/users/users/${id}/`, userData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   deleteUser: (id) => api.delete(`/api/users/users/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   lockUser: (id) => api.post(`/api/users/users/${id}/lock/`, {}, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   unlockUser: (id) => api.post(`/api/users/users/${id}/unlock/`, {}, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   fetchRoleStats: (params = {}) => api.get('/api/users/users/role_stats/', { params }),
+//   getUserActivities: (params = {}) => api.get('/api/users/user-activities/', { params }),
+//   getUserStats: () => api.get('/api/users/stats/'),
+//   bulkUpload: (file) => {
+//     const formData = new FormData();
+//     formData.append('file', file);
+//     return api.post('/api/users/users/bulk_upload/', formData, {
+//       headers: {
+//         'X-CSRFToken': getCSRFToken(),
+//         'Content-Type': 'multipart/form-data',
+//       },
+//     });
+//   },
+// };
 
 // User API
 export const userAPI = {
@@ -233,6 +341,7 @@ export const rolesAPI = {
 };
 
 // Groups API
+// In config.jsx, update the groupsAPI object
 export const groupsAPI = {
   getGroups: (params = {}) => api.get('/api/groups/groups/', { params }),
   getGroup: (id) => api.get(`/api/groups/groups/${id}/`),
@@ -247,7 +356,7 @@ export const groupsAPI = {
   }),
   getGroupMembers: (groupId) => api.get(`/api/groups/groups/${groupId}/members/`),
   getGroupMembersByName: (name) => api.get(`/api/groups/groups/by-name/${name}/members/`),
-  addGroupMember: (groupId, userId) => api.post(`/api/groups/groups/${groupId}/members/`, { user_id: userId }, {
+  addGroupMember: (groupId, userId) => api.post(`/api/groups/groups/${groupId}/add_member/`, { user_id: userId }, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
   removeGroupMember: (groupId, userId) => api.delete(`/api/groups/groups/${groupId}/members/${userId}/`, {
@@ -725,19 +834,26 @@ export const securityComplianceAPI = {
 };
 
 // Utility functions
-export const setAuthTokens = (accessToken, refreshToken) => {
+// Utility functions
+export const setAuthTokens = (accessToken, refreshToken, tenantId) => {
   localStorage.setItem('access_token', accessToken);
-  localStorage.setItem('refresh_token', refreshToken);
+  if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+  if (tenantId) localStorage.setItem('tenant_id', tenantId);
 };
 
 export const clearAuthTokens = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
+  localStorage.removeItem('tenant_id');
 };
 
 export const getAuthHeader = () => {
   const token = localStorage.getItem('access_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const tenantId = localStorage.getItem('tenant_id');
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(tenantId ? { 'X-Tenant-ID': tenantId } : {}),
+  };
 };
 
 export default {
