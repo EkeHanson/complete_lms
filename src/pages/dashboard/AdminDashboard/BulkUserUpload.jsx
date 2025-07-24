@@ -24,14 +24,17 @@ const BulkUserUpload = ({ onUpload }) => {
   const [snackbarMessage, setSnackbarMessage] = useState(''); // Added for Snackbar
   const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // Added for Snackbar
 
+  // 1. Update templateData to use backend field names
+  const templateData = [
+    ['email', 'first_name', 'last_name', 'password', 'role', 'job_role', 'status', 'modules'],
+    ['john@example.com', 'John', 'Doe', 'SecurePass123!', 'learner', 'staff', 'active', ''],
+    ['jane@example.com', 'Jane', 'Smith', 'SecurePass456!', 'admin', 'manager', 'active', '']
+  ];
+
+  // 2. Update validation to use backend field names
+  const requiredFields = ['email', 'first_name', 'last_name', 'password', 'role'];
   const validRoles = ['learner', 'admin', 'hr', 'carer', 'client', 'family', 'auditor', 'tutor', 'assessor', 'iqa', 'eqa'];
   const validStatuses = ['active', 'pending', 'suspended'];
-
-  const templateData = [
-    ['firstName', 'lastName', 'email', 'password', 'role'],
-    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner'],
-    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'admin']
-  ];
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -83,7 +86,6 @@ const BulkUserUpload = ({ onUpload }) => {
 
   const validateUserData = (userData, index, allUsers) => {
     const errors = [];
-    const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
     requiredFields.forEach(field => {
       if (!userData[field]) {
         errors.push(`Missing required field: ${field}`);
@@ -109,6 +111,10 @@ const BulkUserUpload = ({ onUpload }) => {
     }
     if (userData.status && !validStatuses.includes(userData.status.toLowerCase())) {
       errors.push(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    }
+    // modules should be an array of IDs or empty
+    if (userData.modules && typeof userData.modules !== 'string' && !Array.isArray(userData.modules)) {
+      errors.push(`Modules must be a comma-separated string or array of IDs`);
     }
     return errors.length ? errors : null;
   };
@@ -144,12 +150,30 @@ const BulkUserUpload = ({ onUpload }) => {
     }
   };
 
+  // 3. Format upload payload for backend
   const processFile = async () => {
     if (!file || previewData.length === 0 || Object.keys(validationErrors).length > 0) return;
     setIsProcessing(true);
     setUploadResult(null);
     try {
-      const unsavedUsers = previewData.filter(user => !user.id);
+      // Format users for backend
+      const unsavedUsers = previewData.filter(user => !user.id).map(user => ({
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        password: user.password,
+        role: user.role,
+        job_role: user.job_role || 'staff',
+        status: user.status || 'active',
+        modules: user.modules
+          ? Array.isArray(user.modules)
+            ? user.modules
+            : typeof user.modules === 'string' && user.modules.length > 0
+              ? user.modules.split(',').map(m => m.trim()).filter(Boolean)
+              : []
+          : []
+      }));
+
       if (unsavedUsers.length === 0) {
         setUploadResult({
           success: true,
@@ -167,11 +191,10 @@ const BulkUserUpload = ({ onUpload }) => {
         if (onUpload) onUpload();
         return;
       }
-      const ws = XLSX.utils.json_to_sheet(unsavedUsers);
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const csvFile = new File([blob], 'users.csv', { type: 'text/csv' });
-      const response = await userAPI.bulkUpload(csvFile);
+
+      // Send as JSON array to backend
+      const response = await userAPI.bulkUpload(unsavedUsers); // <-- Make sure your API expects JSON array
+
       if (response.status === 201 && response.data.error_count === 0 && response.data.created_count > 0) {
         for (const createdUser of response.data.created_users) {
           const userData = unsavedUsers.find(u => u.email === createdUser.email);
