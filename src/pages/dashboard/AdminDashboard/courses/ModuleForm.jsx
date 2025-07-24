@@ -88,9 +88,9 @@ const ModuleForm = ({
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    console.log('lessonDialogOpen changed:', lessonDialogOpen);
-  }, [lessonDialogOpen]);
+  // useEffect(() => {
+  //   console.log('lessonDialogOpen changed:', lessonDialogOpen);
+  // }, [lessonDialogOpen]);
 
   const validateLesson = () => {
     const newErrors = {};

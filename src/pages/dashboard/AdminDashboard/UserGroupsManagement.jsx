@@ -8,6 +8,25 @@ import {
 import { groupsAPI, rolesAPI, userAPI } from '../../../config';
 import './UserGroupsManagement.css';
 
+class ErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="ugm-alert ugm-alert-error">
+          <span>Something went wrong: {this.state.error?.message || 'Unknown error'}</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const PERMISSION_OPTIONS = [
   { value: 'create_content', label: 'Create Content' },
   { value: 'edit_content', label: 'Edit Content' },
@@ -376,9 +395,25 @@ const UserGroupsManagement = () => {
           groupsAPI.getGroups(),
           rolesAPI.getRoles()
         ]);
-        setGroups(groupsResponse.data || []);
+        // Sanitize groups data
+      const sanitizedGroups = (groupsResponse.data || []).map(group => {
+        let role = group.role;
+        
+        // Handle both object and ID cases
+        if (role && typeof role !== 'object') {
+          role = rolesResponse.data.find(r => r.id === role) || null;
+        } else if (role && (!role.id || !role.name)) {
+          role = null;
+        }
+        
+        return {
+          ...group,
+          role
+        };
+      });
+        setGroups(sanitizedGroups);
         setRoles(rolesResponse.data || []);
-        if (!groupsResponse.data.some(g => g.name === 'All Instructors' && g.is_system)) {
+        if (!sanitizedGroups.some(g => g.name === 'All Instructors' && g.is_system)) {
           setSuccessMessage('System roles and groups for instructors and learners created.');
         }
         await fetchUsers();
@@ -400,6 +435,15 @@ const UserGroupsManagement = () => {
       fetchAvailableUsers(currentGroupId, membersSearchTerm);
     }
   }, [membersSearchTerm, membersPagination.currentPage, membersPagination.pageSize, currentGroupId, openMembersDialog]);
+
+  // useEffect(() => {
+  //   console.log('Groups:', groups);
+  //   groups.forEach(group => {
+  //     if (!group.role || typeof group.role !== 'object' || !group.role.id || !group.role.name || !group.role.code) {
+  //       console.warn(`Invalid role for group ${group.name}:`, group.role);
+  //     }
+  //   });
+  // }, [groups]);
 
   const handleOpenGroupDialog = (group = null) => {
     if (group) {
@@ -432,61 +476,61 @@ const UserGroupsManagement = () => {
     setOpenGroupDialog(true);
   };
 
-const handleSaveGroup = async () => {
-  try {
-    setLoading(prev => ({ ...prev, action: true }));
-    setFormErrors({});
-    if (!currentGroup.name) throw new Error('Group name is required');
-    if (!currentGroup.role?.id) throw new Error('Role is required');
-    const groupData = {
-      name: currentGroup.name,
-      description: currentGroup.description,
-      is_active: currentGroup.is_active
-    };
-    if (!currentGroup.is_system) {
-      groupData.role_id = parseInt(currentGroup.role.id);
-    }
-    let response;
-    if (currentGroup.id) {
-      response = await groupsAPI.updateGroup(currentGroup.id, groupData);
-      const memberIds = Array.isArray(currentGroup.members) ? currentGroup.members.map(id => Number(id)) : [];
-      await groupsAPI.updateGroupMembers(response.data.id, { members: memberIds });
-      const updatedGroup = await groupsAPI.getGroup(response.data.id);
-      setGroups(groups.map(g => g.id === currentGroup.id ? updatedGroup.data : g));
-      await fetchUsers(searchTerm);
-      setSuccessMessage('Group updated successfully');
-    } else {
-      groupData.is_system = currentGroup.is_system; // Only include for new groups
-      response = await groupsAPI.createGroup(groupData);
-      if (currentGroup.members?.length > 0) {
+  const handleSaveGroup = async () => {
+    try {
+      setLoading(prev => ({ ...prev, action: true }));
+      setFormErrors({});
+      if (!currentGroup.name) throw new Error('Group name is required');
+      if (!currentGroup.role?.id) throw new Error('Role is required');
+      const groupData = {
+        name: currentGroup.name,
+        description: currentGroup.description,
+        is_active: currentGroup.is_active
+      };
+      if (!currentGroup.is_system) {
+        groupData.role_id = parseInt(currentGroup.role.id);
+      }
+      let response;
+      if (currentGroup.id) {
+        response = await groupsAPI.updateGroup(currentGroup.id, groupData);
         const memberIds = Array.isArray(currentGroup.members) ? currentGroup.members.map(id => Number(id)) : [];
         await groupsAPI.updateGroupMembers(response.data.id, { members: memberIds });
-      }
-      const newGroup = await groupsAPI.getGroup(response.data.id);
-      setGroups([...groups, newGroup.data]);
-      await fetchUsers(searchTerm);
-      setSuccessMessage('Group created successfully');
-    }
-    setOpenGroupDialog(false);
-  } catch (err) {
-    if (err.response?.status === 400 && err.response?.data) {
-      const serverErrors = err.response.data;
-      const formattedErrors = {};
-      Object.keys(serverErrors).forEach(key => {
-        if (Array.isArray(serverErrors[key])) {
-          formattedErrors[key] = serverErrors[key].map(error => error.string || error).join(', ');
-        } else {
-          formattedErrors[key] = serverErrors[key];
+        const updatedGroup = await groupsAPI.getGroup(response.data.id);
+        setGroups(groups.map(g => g.id === currentGroup.id ? updatedGroup.data : g));
+        await fetchUsers(searchTerm);
+        setSuccessMessage('Group updated successfully');
+      } else {
+        groupData.is_system = currentGroup.is_system; // Only include for new groups
+        response = await groupsAPI.createGroup(groupData);
+        if (currentGroup.members?.length > 0) {
+          const memberIds = Array.isArray(currentGroup.members) ? currentGroup.members.map(id => Number(id)) : [];
+          await groupsAPI.updateGroupMembers(response.data.id, { members: memberIds });
         }
-      });
-      setFormErrors(formattedErrors);
-    } else {
-      setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to save group');
+        const newGroup = await groupsAPI.getGroup(response.data.id);
+        setGroups([...groups, newGroup.data]);
+        await fetchUsers(searchTerm);
+        setSuccessMessage('Group created successfully');
+      }
+      setOpenGroupDialog(false);
+    } catch (err) {
+      if (err.response?.status === 400 && err.response?.data) {
+        const serverErrors = err.response.data;
+        const formattedErrors = {};
+        Object.keys(serverErrors).forEach(key => {
+          if (Array.isArray(serverErrors[key])) {
+            formattedErrors[key] = serverErrors[key].map(error => error.string || error).join(', ');
+          } else {
+            formattedErrors[key] = serverErrors[key];
+          }
+        });
+        setFormErrors(formattedErrors);
+      } else {
+        setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to save group');
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, action: false }));
     }
-  } finally {
-    setLoading(prev => ({ ...prev, action: false }));
-  }
-};
+  };
 
   const handleDeleteGroup = async (id) => {
     try {
@@ -585,80 +629,57 @@ const handleSaveGroup = async () => {
     }
   };
 
-const handleOpenMembersDialog = async (groupId) => {
-  try {
-    setLoadingMembers(true);
-    setCurrentGroupId(groupId);
-    setMembersDialogError(null); // Clear previous errors
-    const response = await groupsAPI.getGroupMembers(groupId);
-    setCurrentGroupMembers(response.data || []);
-    await fetchAvailableUsers(groupId, membersSearchTerm);
-    setOpenMembersDialog(true);
-  } catch (err) {
-    setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to fetch group members');
-  } finally {
-    setLoadingMembers(false);
-  }
-};
+  const handleOpenMembersDialog = async (groupId) => {
+    try {
+      setLoadingMembers(true);
+      setCurrentGroupId(groupId);
+      setMembersDialogError(null); // Clear previous errors
+      const response = await groupsAPI.getGroupMembers(groupId);
+      setCurrentGroupMembers(response.data || []);
+      await fetchAvailableUsers(groupId, membersSearchTerm);
+      setOpenMembersDialog(true);
+    } catch (err) {
+      setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to fetch group members');
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
-// const handleOpenMembersDialog = async (groupId) => {
-//   try {
-//     setLoadingMembers(true);
-//     setCurrentGroupId(groupId);
-//     setMembersDialogError(null);
-//     // Verify user permissions
-//     const userResponse = await authAPI.getCurrentUser();
-//     const userRole = userResponse.data.user.role;
-//     if (!['superadmin', 'admin'].includes(userRole)) {
-//       setMembersDialogError('You do not have permission to manage group members.');
-//       return;
-//     }
-//     const response = await groupsAPI.getGroupMembers(groupId);
-//     setCurrentGroupMembers(response.data || []);
-//     await fetchAvailableUsers(groupId, membersSearchTerm);
-//     setOpenMembersDialog(true);
-//   } catch (err) {
-//     setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to fetch group members');
-//   } finally {
-//     setLoadingMembers(false);
-//   }
-// };
+  const handleAddMember = async (userId) => {
+    try {
+      setLoadingMembers(true);
+      setMembersDialogError(null); // Clear previous errors
+      await groupsAPI.addGroupMember(currentGroupId, userId);
+      const response = await groupsAPI.getGroupMembers(currentGroupId);
+      setCurrentGroupMembers(response.data || []);
+      const updatedGroup = await groupsAPI.getGroup(currentGroupId);
+      setGroups(groups.map(g => g.id === currentGroupId ? updatedGroup.data : g));
+      await fetchUsers(searchTerm);
+      setSuccessMessage('User added to group successfully');
+    } catch (err) {
+      setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to add user to group');
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
-const handleAddMember = async (userId) => {
-  try {
-    setLoadingMembers(true);
-    setMembersDialogError(null); // Clear previous errors
-    await groupsAPI.addGroupMember(currentGroupId, userId);
-    const response = await groupsAPI.getGroupMembers(currentGroupId);
-    setCurrentGroupMembers(response.data || []);
-    const updatedGroup = await groupsAPI.getGroup(currentGroupId);
-    setGroups(groups.map(g => g.id === currentGroupId ? updatedGroup.data : g));
-    await fetchUsers(searchTerm);
-    setSuccessMessage('User added to group successfully');
-  } catch (err) {
-    setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to add user to group');
-  } finally {
-    setLoadingMembers(false);
-  }
-};
-
-const handleRemoveMember = async (userId) => {
-  try {
-    setLoadingMembers(true);
-    setMembersDialogError(null); // Clear previous errors
-    await groupsAPI.removeGroupMember(currentGroupId, userId);
-    const response = await groupsAPI.getGroupMembers(currentGroupId);
-    setCurrentGroupMembers(response.data || []);
-    const updatedGroup = await groupsAPI.getGroup(currentGroupId);
-    setGroups(groups.map(g => g.id === currentGroupId ? updatedGroup.data : g));
-    await fetchUsers(searchTerm);
-    setSuccessMessage('User removed from group successfully');
-  } catch (err) {
-    setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to remove user from group');
-  } finally {
-    setLoadingMembers(false);
-  }
-};
+  const handleRemoveMember = async (userId) => {
+    try {
+      setLoadingMembers(true);
+      setMembersDialogError(null); // Clear previous errors
+      await groupsAPI.removeGroupMember(currentGroupId, userId);
+      const response = await groupsAPI.getGroupMembers(currentGroupId);
+      setCurrentGroupMembers(response.data || []);
+      const updatedGroup = await groupsAPI.getGroup(currentGroupId);
+      setGroups(groups.map(g => g.id === currentGroupId ? updatedGroup.data : g));
+      await fetchUsers(searchTerm);
+      setSuccessMessage('User removed from group successfully');
+    } catch (err) {
+      setMembersDialogError(err.response?.data?.detail || err.message || 'Failed to remove user from group');
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
   const toggleMember = (userId) => {
     setCurrentGroup(prev => {
@@ -707,8 +728,20 @@ const handleRemoveMember = async (userId) => {
     }
   };
 
-  const getRoleIcon = (roleCode) => {
-    switch (roleCode) {
+  // const getRoleIcon = (roleCode) => {
+  //   switch (roleCode) {
+  //     case 'superadmin': return <SuperAdminIcon className="role-icon" />;
+  //     case 'admin': return <AdminIcon className="role-icon" />;
+  //     case 'instructors': return <InstructorIcon className="role-icon" />;
+  //     case 'learners': return <LearnerIcon className="role-icon" />;
+  //     default: return <PeopleIcon className="role-icon" />;
+  //   }
+  // };
+
+    const getRoleIcon = (roleCode) => {
+    if (!roleCode) return <PeopleIcon className="role-icon" />;
+    
+    switch (roleCode.toLowerCase()) {
       case 'superadmin': return <SuperAdminIcon className="role-icon" />;
       case 'admin': return <AdminIcon className="role-icon" />;
       case 'instructors': return <InstructorIcon className="role-icon" />;
@@ -728,6 +761,7 @@ const handleRemoveMember = async (userId) => {
     );
   });
 
+
   const filteredRoles = roles.filter(role => {
     return (
       role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -735,587 +769,482 @@ const handleRemoveMember = async (userId) => {
     );
   });
 
-  const getUserById = (idOrUser) => {
-    if (typeof idOrUser === 'object' && idOrUser !== null) {
-      return idOrUser;
-    }
-    return users.find(user => user?.id === idOrUser);
-  };
-
-  if (loading.main && groups.length === 0 && roles.length === 0) {
-    return (
-      <div className="ugm-container ugm-loading">
-        <div className="ugm-spinner"></div>
-      </div>
-    );
+const getUserById = (idOrUser) => {
+  if (typeof idOrUser === 'object' && idOrUser !== null) {
+    return idOrUser;
   }
+  return users.find(user => user?.id === idOrUser);
+};
 
   return (
     <div className="ugm-container">
-      {successMessage && (
-        <div className="ugm-alert ugm-alert-success">
-          <span>{successMessage}</span>
-          <button onClick={() => setSuccessMessage(null)} className="ugm-alert-close">
-            <CloseIcon />
-          </button>
-        </div>
-      )}
-      {error && (
-        <div className="ugm-alert ugm-alert-error">
-          <span>{typeof error === 'string' ? error : JSON.stringify(error, null, 2)}</span>
-          <button onClick={() => setError(null)} className="ugm-alert-close">
-            <CloseIcon />
-          </button>
-        </div>
-      )}
-
-      <div className="ugm-header">
-        <h1>Roles & Groups Management</h1>
-        <button
-          className="ugm-btn ugm-btn-primary"
-          onClick={() => tabValue === 0 ? handleOpenRoleDialog() : handleOpenGroupDialog()}
-          disabled={loading.main}
-        >
-          <AddIcon />
-          New {tabValue === 0 ? 'Role' : 'Group'}
-        </button>
-      </div>
-
-      <div className="ugm-tabs">
-        <button
-          className={`ugm-tab ${tabValue === 0 ? 'active' : ''}`}
-          onClick={() => setTabValue(0)}
-        >
-          Roles
-        </button>
-        <button
-          className={`ugm-tab ${tabValue === 1 ? 'active' : ''}`}
-          onClick={() => setTabValue(1)}
-        >
-          Groups
-        </button>
-      </div>
-
-      <div className="ugm-search">
-        <div className="ugm-search-input">
-          <SearchIcon />
-          <input
-            type="text"
-            placeholder={`Search ${tabValue === 0 ? 'roles' : 'groups'}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {tabValue === 0 ? (
-        <div className="ugm-table-container">
-          <table className="ugm-table">
-            <thead>
-              <tr>
-                <th><span>Role Name</span></th>
-                <th><span>Code</span></th>
-                <th><span>Description</span></th>
-                <th><span>Default</span></th>
-                <th><span>Permissions</span></th>
-                <th><span>Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRoles.length > 0 ? (
-                filteredRoles.map((role) => (
-                  <tr key={role.id}>
-                    <td>
-                      <div className="ugm-table-cell">
-                        {getRoleIcon(role.code)}
-                        <span>{role.name} {role.is_system ? '[System]' : ''}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="ugm-chip">{role.code}</span>
-                    </td>
-                    <td>
-                      <span className="ugm-text-secondary">{role.description || 'No description'}</span>
-                    </td>
-                    <td>
-                      <span className={`ugm-status ${role.is_default ? 'active' : 'inactive'}`}>
-                        {role.is_default ? 'Default' : 'No'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="ugm-chip-container">
-                        {role.permissions?.slice(0, 3).map((perm, i) => (
-                          <span key={i} className="ugm-chip">{perm}</span>
-                        ))}
-                        {role.permissions?.length > 3 && (
-                          <span className="ugm-chip">+{role.permissions.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="ugm-action-btns">
-                        <button
-                          className="ugm-btn ugm-btn-edit"
-                          onClick={() => handleOpenRoleDialog(role)}
-                        >
-                          <EditIcon />
-                        </button>
-                        <button
-                          className="ugm-btn ugm-btn-delete"
-                          onClick={() => handleDeleteRole(role.id)}
-                          disabled={role.is_system || role.is_default}
-                          title={role.is_system ? 'System roles cannot be deleted' : role.is_default ? 'Default role cannot be deleted' : ''}
-                        >
-                          <DeleteIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="ugm-no-data">
-                    {roles.length === 0 ? 'No roles available' : 'No roles found matching your search'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {loading.main && groups.length === 0 && roles.length === 0 ? (
+        <div className="ugm-container ugm-loading">
+          <div className="ugm-spinner"></div>
         </div>
       ) : (
-        <div className="ugm-table-container">
-          <table className="ugm-table">
-            <thead>
-              <tr>
-                <th><span>Group Name</span></th>
-                <th><span>Description</span></th>
-                <th><span>Role</span></th>
-                <th><span>Status</span></th>
-                <th><span>Members</span></th>
-                <th><span>Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredGroups.length > 0 ? (
-                filteredGroups.map((group) => (
-                  <tr key={group.id}>
-                    <td>
-                      <span className={group.is_system ? 'ugm-system-group' : ''}>
-                        {group.name} {group.is_system ? '[System]' : ''}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="ugm-text-secondary">{group.description || 'No description'}</span>
-                    </td>
-                    <td>
-                      <div className="ugm-table-cell">
-                        {group.role && getRoleIcon(group.role.code)}
-                        <span>{group.role?.name || 'No role assigned'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`ugm-status ${group.is_active ? 'active' : 'inactive'}`}>
-                        {group.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td onClick={() => handleOpenMembersDialog(group.id)} style={{ cursor: 'pointer' }}>
-                      <div className="ugm-member-container">
-                        {group.memberships?.slice(0, 3).map(membership => {
-                          const user = getUserById(membership.user);
-                          return user ? (
-                            <div key={user.id} className="ugm-avatar" title={`${user.first_name} ${user.last_name}`}>
-                              {user.first_name?.charAt(0)}
+        <>
+          {successMessage && (
+            <div className="ugm-alert ugm-alert-success">
+              <span>{successMessage}</span>
+              <button onClick={() => setSuccessMessage(null)} className="ugm-alert-close">
+                <CloseIcon />
+              </button>
+            </div>
+          )}
+          {error && (
+            <div className="ugm-alert ugm-alert-error">
+              <span>{typeof error === 'string' ? error : JSON.stringify(error, null, 2)}</span>
+              <button onClick={() => setError(null)} className="ugm-alert-close">
+                <CloseIcon />
+              </button>
+            </div>
+          )}
+
+          <div className="ugm-header">
+            <h1>Roles & Groups Management</h1>
+            <button
+              className="ugm-btn ugm-btn-primary"
+              onClick={() => tabValue === 0 ? handleOpenRoleDialog() : handleOpenGroupDialog()}
+              disabled={loading.main}
+            >
+              <AddIcon />
+              New {tabValue === 0 ? 'Role' : 'Group'}
+            </button>
+          </div>
+
+          <div className="ugm-tabs">
+            <button
+              className={`ugm-tab ${tabValue === 0 ? 'active' : ''}`}
+              onClick={() => setTabValue(0)}
+            >
+              Roles
+            </button>
+            <button
+              className={`ugm-tab ${tabValue === 1 ? 'active' : ''}`}
+              onClick={() => setTabValue(1)}
+            >
+              Groups
+            </button>
+          </div>
+
+          <div className="ugm-search">
+            <div className="ugm-search-input">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder={`Search ${tabValue === 0 ? 'roles' : 'groups'}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {tabValue === 0 ? (
+            <ErrorBoundary>
+              <div className="ugm-table-container">
+                <table className="ugm-table">
+                  <thead>
+                    <tr>
+                      <th><span>Role Name</span></th>
+                      <th><span>Code</span></th>
+                      <th><span>Description</span></th>
+                      <th><span>Default</span></th>
+                      <th><span>Permissions</span></th>
+                      <th><span>Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRoles.length > 0 ? (
+                      filteredRoles.map((role) => (
+                        <tr key={role.id}>
+                          <td>
+                            <div className="ugm-table-cell">
+                              {getRoleIcon(role.code)}
+                              <span>{role.name} {role.is_system ? '[System]' : ''}</span>
                             </div>
-                          ) : null;
-                        })}
-                        {group.memberships?.length > 3 && (
-                          <div className="ugm-avatar ugm-avatar-more">
-                            +{group.memberships.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="ugm-action-btns">
-                        <button
-                          className="ugm-btn ugm-btn-edit"
-                          onClick={() => handleOpenGroupDialog(group)}
-                        >
-                          <EditIcon />
-                        </button>
-                        <button
-                          className="ugm-btn ugm-btn-delete"
-                          onClick={() => handleDeleteGroup(group.id)}
-                          disabled={group.is_system}
-                          title={group.is_system ? 'System groups cannot be deleted' : ''}
-                        >
-                          <DeleteIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="ugm-no-data">
-                    {groups.length === 0 ? 'No groups available' : 'No groups found matching your search'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {openRoleDialog && (
-        <div className="ugm-role-dialog">
-          <div className="ugm-dialog-backdrop" onClick={() => setOpenRoleDialog(false)}></div>
-          <div className="ugm-dialog">
-            <div className="ugm-dialog-header">
-              <h3>{currentRole.id ? 'Edit Role' : 'Create New Role'}</h3>
-              <button className="ugm-dialog-close" onClick={() => setOpenRoleDialog(false)}>
-                <CloseIcon />
-              </button>
-            </div>
-            <DialogContent
-              type="role"
-              data={currentRole}
-              setData={setCurrentRole}
-              roles={roles}
-              users={users}
-              loading={loading}
-              searchInput={searchInput}
-              setSearchInput={setSearchInput}
-              userPagination={userPagination}
-              setUserPagination={setUserPagination}
-              toggleMember={toggleMember}
-              formErrors={formErrors}
-            />
-            <div className="ugm-dialog-actions">
-              <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenRoleDialog(false)}>
-                Cancel
-              </button>
-              <button
-                className="ugm-btn ugm-btn-confirm"
-                onClick={handleSaveRole}
-                disabled={!currentRole.name || !currentRole.code || loading.action}
-              >
-                {loading.action ? <div className="ugm-spinner-small"></div> : (currentRole.id ? 'Update Role' : 'Create Role')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {openGroupDialog && (
-        <div className="ugm-group-dialog">
-          <div className="ugm-dialog-backdrop" onClick={() => setOpenGroupDialog(false)}></div>
-          <div className="ugm-dialog">
-            <div className="ugm-dialog-header">
-              <h3>{currentGroup.id ? 'Edit Group' : 'Create New Group'}</h3>
-              <button className="ugm-dialog-close" onClick={() => setOpenGroupDialog(false)}>
-                <CloseIcon />
-              </button>
-            </div>
-            <DialogContent
-              type="group"
-              data={currentGroup}
-              setData={setCurrentGroup}
-              roles={roles}
-              users={users}
-              loading={loading}
-              searchInput={searchInput}
-              setSearchInput={setSearchInput}
-              userPagination={userPagination}
-              setUserPagination={setUserPagination}
-              toggleMember={toggleMember}
-              formErrors={formErrors}
-            />
-            <div className="ugm-dialog-actions">
-              <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenGroupDialog(false)}>
-                Cancel
-              </button>
-              <button
-                className="ugm-btn ugm-btn-confirm"
-                onClick={handleSaveGroup}
-                disabled={!currentGroup.name || !currentGroup.role || loading.action}
-              >
-                {loading.action ? <div className="ugm-spinner-small"></div> : (currentGroup.id ? 'Update Group' : 'Create Group')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* {openMembersDialog && (
-        <div className="ugm-members-dialog">
-          <div className="ugm-dialog-backdrop" onClick={() => setOpenMembersDialog(false)}></div>
-          <div className="ugm-dialog">
-            <div className="ugm-dialog-header">
-              <h3>Manage Members for {groups.find(g => g.id === currentGroupId)?.name || 'Group'}</h3>
-              <button className="ugm-dialog-close" onClick={() => setOpenMembersDialog(false)}>
-                <CloseIcon />
-              </button>
-            </div>
-            <div className="ugm-dialog-content">
-              <div className="ugm-search-input">
-                <SearchIcon />
-                <input
-                  type="text"
-                  placeholder="Search users to add..."
-                  value={membersSearchInput}
-                  onChange={(e) => setMembersSearchInput(e.target.value)}
-                />
+                          </td>
+                          <td>
+                            <span className="ugm-chip">{role.code}</span>
+                          </td>
+                          <td>
+                            <span className="ugm-text-secondary">{role.description || 'No description'}</span>
+                          </td>
+                          <td>
+                            <span className={`ugm-status ${role.is_default ? 'active' : 'inactive'}`}>
+                              {role.is_default ? 'Default' : 'No'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="ugm-chip-container">
+                              {role.permissions?.slice(0, 3).map((perm, i) => (
+                                <span key={i} className="ugm-chip">{perm}</span>
+                              ))}
+                              {role.permissions?.length > 3 && (
+                                <span className="ugm-chip">+{role.permissions.length - 3}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="ugm-action-btns">
+                              <button
+                                className="ugm-btn ugm-btn-edit"
+                                onClick={() => handleOpenRoleDialog(role)}
+                              >
+                                <EditIcon />
+                              </button>
+                              <button
+                                className="ugm-btn ugm-btn-delete"
+                                onClick={() => handleDeleteRole(role.id)}
+                                disabled={role.is_system || role.is_default}
+                                title={role.is_system ? 'System roles cannot be deleted' : role.is_default ? 'Default role cannot be deleted' : ''}
+                              >
+                                <DeleteIcon />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="ugm-no-data">
+                          {roles.length === 0 ? 'No roles available' : 'No roles found matching your search'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-              {loading.users || loadingMembers ? (
-                <div className="ugm-members-loading">
-                  <div className="ugm-spinner-small"></div>
+            </ErrorBoundary>
+          ) : (
+            <ErrorBoundary>
+              <div className="ugm-table-container">
+                <table className="ugm-table">
+                  <thead>
+                    <tr>
+                      <th><span>Group Name</span></th>
+                      <th><span>Description</span></th>
+                      <th><span>Role</span></th>
+                      <th><span>Status</span></th>
+                      <th><span>Members</span></th>
+                      <th><span>Actions</span></th>
+                    </tr>
+                  </thead>
+                    <tbody>
+                      {filteredGroups.length > 0 ? (
+                        filteredGroups.map((group) => (
+                          <tr key={group.id}>
+                            <td>
+                              <span className={group.is_system ? 'ugm-system-group' : ''}>
+                                {group.name} {group.is_system ? '[System]' : ''}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="ugm-text-secondary">{group.description || 'No description'}</span>
+                            </td>
+                            {/* <td>
+                              <div className="ugm-table-cell">
+                                {group.role && typeof group.role === 'object' && group.role.name && group.role.code ? (
+                                  <>
+                                    {getRoleIcon(group.role.code)}
+                                    <span>{group.role.name}</span>
+                                  </>
+                                ) : (
+                                  <span>No role assigned</span>
+                                )}
+                              </div>
+                            </td> */}
+                              <td>
+                                <div className="ugm-table-cell">
+                                  {group.role?.name ? (
+                                    <>
+                                      {getRoleIcon(group?.role?.code || '')}
+                                      <span>{group?.role?.name}</span>
+                                    </>
+                                  ) : (
+                                    <span>No role assigned</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                              <span className={`ugm-status ${group.is_active ? 'active' : 'inactive'}`}>
+                                {group.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td onClick={() => handleOpenMembersDialog(group.id)} style={{ cursor: 'pointer' }}>
+                              <div className="ugm-member-container">
+
+                                {group.memberships?.slice(0, 3).map(membership => {
+                                  // Pass membership.user.id instead of membership.user
+                                  const user = getUserById(membership.user.id);
+                                  return user ? (
+                                    <div key={user.id} className="ugm-avatar" title={`${user.first_name} ${user.last_name}`}>
+                                      {user.first_name?.charAt(0)}
+                                    </div>
+                                  ) : null;
+                                })}
+                                {group.memberships?.length > 3 && (
+                                  <div className="ugm-avatar ugm-avatar-more">
+                                    +{group.memberships.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="ugm-action-btns">
+                                <button
+                                  className="ugm-btn ugm-btn-edit"
+                                  onClick={() => handleOpenGroupDialog(group)}
+                                >
+                                  <EditIcon />
+                                </button>
+                                <button
+                                  className="ugm-btn ugm-btn-delete"
+                                  onClick={() => handleDeleteGroup(group.id)}
+                                  disabled={group.is_system}
+                                  title={group.is_system ? 'System groups cannot be deleted' : ''}
+                                >
+                                  <DeleteIcon />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="ugm-no-data">
+                            {groups.length === 0 ? 'No groups available' : 'No groups found matching your search'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                </table>
+              </div>
+            </ErrorBoundary>
+          )}
+
+          {openRoleDialog && (
+            <div className="ugm-role-dialog">
+              <div className="ugm-dialog-backdrop" onClick={() => setOpenRoleDialog(false)}></div>
+              <div className="ugm-dialog">
+                <div className="ugm-dialog-header">
+                  <h3>{currentRole.id ? 'Edit Role' : 'Create New Role'}</h3>
+                  <button className="ugm-dialog-close" onClick={() => setOpenRoleDialog(false)}>
+                    <CloseIcon />
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <h4>Current Members ({currentGroupMembers.length})</h4>
-                  {currentGroupMembers.length > 0 ? (
-                    <div className="ugm-members-list">
-                      {currentGroupMembers.map(membership => {
-                        const user = getUserById(membership.user);
-                        return user ? (
-                          <div key={user.id} className="ugm-member-item">
-                            <div className="ugm-member-info">
-                              <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
-                              <div>
-                                <span>{user.first_name} {user.last_name}</span>
-                                <span className="ugm-text-secondary">{user.email}</span>
-                                <span className="ugm-text-secondary">Role: {membership.role || 'None'}</span>
-                              </div>
-                            </div>
-                            <button
-                              className="ugm-btn ugm-btn-delete"
-                              onClick={() => handleRemoveMember(user.id)}
-                              title="Remove member"
-                            >
-                              <DeleteIcon />
-                            </button>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : (
-                    <div className="ugm-no-data">No members in this group</div>
-                  )}
-                  <h4>Add New Members</h4>
-                  {users.length > 0 ? (
-                    <div className="ugm-members-list">
-                      {users
-                        .filter(user => !currentGroupMembers.some(m => m.user === user.id))
-                        .map(user => (
-                          <div key={user.id} className="ugm-member-item">
-                            <div className="ugm-member-info">
-                              <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
-                              <div>
-                                <span>{user.first_name} {user.last_name}</span>
-                                <span className="ugm-text-secondary">{user.email}</span>
-                                <span className="ugm-text-secondary">Role: {user.role || 'None'}</span>
-                              </div>
-                            </div>
-                            <button
-                              className="ugm-btn ugm-btn-primary"
-                              onClick={() => handleAddMember(user.id)}
-                              title="Add member"
-                            >
-                              <AddIcon />
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <div className="ugm-no-data">No users available to add</div>
-                  )}
-                  <div className="ugm-pagination">
-                    <div className="ugm-items-per-page">
-                      <span>Items per page:</span>
-                      <select
-                        value={membersPagination.pageSize}
-                        onChange={(e) => setMembersPagination(prev => ({ ...prev, pageSize: parseInt(e.target.value, 10), currentPage: 1 }))}
-                      >
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                      </select>
-                    </div>
-                    <div className="ugm-page-navigation">
-                      <span>
-                        {((membersPagination.currentPage - 1) * membersPagination.pageSize + 1)}-
-                        {Math.min(membersPagination.currentPage * membersPagination.pageSize, membersPagination.count)} of {membersPagination.count}
-                      </span>
-                      <div className="ugm-page-btns">
-                        <button
-                          onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-                          disabled={membersPagination.currentPage === 1}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-                          disabled={membersPagination.currentPage * membersPagination.pageSize >= membersPagination.count}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="ugm-dialog-actions">
-              <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenMembersDialog(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
-      {openMembersDialog && (
-        <div className="ugm-members-dialog">
-          <div className="ugm-dialog-backdrop" onClick={() => setOpenMembersDialog(false)}></div>
-          <div className="ugm-dialog">
-            <div className="ugm-dialog-header">
-              <h3>Manage Members for {groups.find(g => g.id === currentGroupId)?.name || 'Group'}</h3>
-              <button className="ugm-dialog-close" onClick={() => setOpenMembersDialog(false)}>
-                <CloseIcon />
-              </button>
-            </div>
-            {membersDialogError && (
-              <div className="ugm-alert ugm-alert-error">
-                <span>{membersDialogError}</span>
-                <button onClick={() => setMembersDialogError(null)} className="ugm-alert-close">
-                  <CloseIcon />
-                </button>
-              </div>
-            )}
-            <div className="ugm-dialog-content">
-              <div className="ugm-search-input">
-                <SearchIcon />
-                <input
-                  type="text"
-                  placeholder="Search users to add..."
-                  value={membersSearchInput}
-                  onChange={(e) => setMembersSearchInput(e.target.value)}
+                <DialogContent
+                  type="role"
+                  data={currentRole}
+                  setData={setCurrentRole}
+                  roles={roles}
+                  users={users}
+                  loading={loading}
+                  searchInput={searchInput}
+                  setSearchInput={setSearchInput}
+                  userPagination={userPagination}
+                  setUserPagination={setUserPagination}
+                  toggleMember={toggleMember}
+                  formErrors={formErrors}
                 />
-              </div>
-              {loading.users || loadingMembers ? (
-                <div className="ugm-members-loading">
-                  <div className="ugm-spinner-small"></div>
+                <div className="ugm-dialog-actions">
+                  <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenRoleDialog(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="ugm-btn ugm-btn-confirm"
+                    onClick={handleSaveRole}
+                    disabled={!currentRole.name || !currentRole.code || loading.action}
+                  >
+                    {loading.action ? <div className="ugm-spinner-small"></div> : (currentRole.id ? 'Update Role' : 'Create Role')}
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <h4>Current Members ({currentGroupMembers.length})</h4>
-                  {currentGroupMembers.length > 0 ? (
-                    <div className="ugm-members-list">
-                      {currentGroupMembers.map(membership => {
-                        const user = getUserById(membership.user);
-                        return user ? (
-                          <div key={user.id} className="ugm-member-item">
-                            <div className="ugm-member-info">
-                              <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
-                              <div>
-                                <span>{user.first_name} {user.last_name}</span>
-                                <span className="ugm-text-secondary">{user.email}</span>
-                                <span className="ugm-text-secondary">Role: {membership.role || 'None'}</span>
-                              </div>
-                            </div>
-                            <button
-                              className="ugm-btn ugm-btn-delete"
-                              onClick={() => handleRemoveMember(user.id)}
-                              title="Remove member"
-                            >
-                              <DeleteIcon />
-                            </button>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : (
-                    <div className="ugm-no-data">No members in this group</div>
-                  )}
-                  <h4>Add New Members</h4>
-                  {users.length > 0 ? (
-                    <div className="ugm-members-list">
-                      {users
-                        .filter(user => !currentGroupMembers.some(m => m.user === user.id))
-                        .map(user => (
-                          <div key={user.id} className="ugm-member-item">
-                            <div className="ugm-member-info">
-                              <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
-                              <div>
-                                <span>{user.first_name} {user.last_name}</span>
-                                <span className="ugm-text-secondary">{user.email}</span>
-                                <span className="ugm-text-secondary">Role: {user.role || 'None'}</span>
-                              </div>
-                            </div>
-                            <button
-                              className="ugm-btn ugm-btn-primary"
-                              onClick={() => handleAddMember(user.id)}
-                              title="Add member"
-                            >
-                              <AddIcon />
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <div className="ugm-no-data">No users available to add</div>
-                  )}
-                  <div className="ugm-pagination">
-                    <div className="ugm-items-per-page">
-                      <span>Items per page:</span>
-                      <select
-                        value={membersPagination.pageSize}
-                        onChange={(e) => setMembersPagination(prev => ({ ...prev, pageSize: parseInt(e.target.value, 10), currentPage: 1 }))}
-                      >
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                      </select>
-                    </div>
-                    <div className="ugm-page-navigation">
-                      <span>
-                        {((membersPagination.currentPage - 1) * membersPagination.pageSize + 1)}-
-                        {Math.min(membersPagination.currentPage * membersPagination.pageSize, membersPagination.count)} of {membersPagination.count}
-                      </span>
-                      <div className="ugm-page-btns">
-                        <button
-                          onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-                          disabled={membersPagination.currentPage === 1}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-                          disabled={membersPagination.currentPage * membersPagination.pageSize >= membersPagination.count}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
+              </div>
+            </div>
+          )}
+
+          {openGroupDialog && (
+            <div className="ugm-group-dialog">
+              <div className="ugm-dialog-backdrop" onClick={() => setOpenGroupDialog(false)}></div>
+              <div className="ugm-dialog">
+                <div className="ugm-dialog-header">
+                  <h3>{currentGroup.id ? 'Edit Group' : 'Create New Group'}</h3>
+                  <button className="ugm-dialog-close" onClick={() => setOpenGroupDialog(false)}>
+                    <CloseIcon />
+                  </button>
+                </div>
+                <DialogContent
+                  type="group"
+                  data={currentGroup}
+                  setData={setCurrentGroup}
+                  roles={roles}
+                  users={users}
+                  loading={loading}
+                  searchInput={searchInput}
+                  setSearchInput={setSearchInput}
+                  userPagination={userPagination}
+                  setUserPagination={setUserPagination}
+                  toggleMember={toggleMember}
+                  formErrors={formErrors}
+                />
+                <div className="ugm-dialog-actions">
+                  <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenGroupDialog(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="ugm-btn ugm-btn-confirm"
+                    onClick={handleSaveGroup}
+                    disabled={!currentGroup.name || !currentGroup.role || loading.action}
+                  >
+                    {loading.action ? <div className="ugm-spinner-small"></div> : (currentGroup.id ? 'Update Group' : 'Create Group')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {openMembersDialog && (
+            <div className="ugm-members-dialog">
+              <div className="ugm-dialog-backdrop" onClick={() => setOpenMembersDialog(false)}></div>
+              <div className="ugm-dialog">
+                <div className="ugm-dialog-header">
+                  <h3>Manage Members for {groups.find(g => g.id === currentGroupId)?.name || 'Group'}</h3>
+                  <button className="ugm-dialog-close" onClick={() => setOpenMembersDialog(false)}>
+                    <CloseIcon />
+                  </button>
+                </div>
+                {membersDialogError && (
+                  <div className="ugm-alert ugm-alert-error">
+                    <span>{membersDialogError}</span>
+                    <button onClick={() => setMembersDialogError(null)} className="ugm-alert-close">
+                      <CloseIcon />
+                    </button>
                   </div>
-                </>
-              )}
+                )}
+                <div className="ugm-dialog-content">
+                  <div className="ugm-search-input">
+                    <SearchIcon />
+                    <input
+                      type="text"
+                      placeholder="Search users to add..."
+                      value={membersSearchInput}
+                      onChange={(e) => setMembersSearchInput(e.target.value)}
+                    />
+                  </div>
+                  {loading.users || loadingMembers ? (
+                    <div className="ugm-members-loading">
+                      <div className="ugm-spinner-small"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <h4>Current Members ({currentGroupMembers.length})</h4>
+                      {currentGroupMembers.length > 0 ? (
+                        <div className="ugm-members-list">
+                          {currentGroupMembers.map(membership => {
+                            const user = getUserById(membership.user);
+                            return user ? (
+                              <div key={user.id} className="ugm-member-item">
+                                <div className="ugm-member-info">
+                                  <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
+                                  <div>
+                                    <span>{user.first_name} {user.last_name}</span>
+                                    <span className="ugm-text-secondary">{user.email}</span>
+                                    {/* <span className="ugm-text-secondary">Role: {membership.role || 'None'}</span> */}
+                                    <span  className="ugm-text-secondary">Role: {typeof membership.role === 'object' ? membership.role.name : (membership.role || 'None')}</span>
+
+                                  </div>
+                                </div>
+                                <button
+                                  className="ugm-btn ugm-btn-delete"
+                                  onClick={() => handleRemoveMember(user.id)}
+                                  title="Remove member"
+                                >
+                                  <DeleteIcon />
+                                </button>
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
+                      ) : (
+                        <div className="ugm-no-data">No members in this group</div>
+                      )}
+                      <h4>Add New Members</h4>
+                      {users.length > 0 ? (
+                        <div className="ugm-members-list">
+                          {users
+                            .filter(user => !currentGroupMembers.some(m => m.user === user.id))
+                            .map(user => (
+                              <div key={user.id} className="ugm-member-item">
+                                <div className="ugm-member-info">
+                                  <div className="ugm-avatar">{user.first_name?.charAt(0)}</div>
+                                  <div>
+                                    <span>{user.first_name} {user.last_name}</span>
+                                    <span className="ugm-text-secondary">{user.email}</span>
+                                    <span className="ugm-text-secondary">Role: {user.role || 'None'}</span>
+                                  </div>
+                                </div>
+                                <button
+                                  className="ugm-btn ugm-btn-primary"
+                                  onClick={() => handleAddMember(user.id)}
+                                  title="Add member"
+                                >
+                                  <AddIcon />
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="ugm-no-data">No users available to add</div>
+                      )}
+                      <div className="ugm-pagination">
+                        <div className="ugm-items-per-page">
+                          <span>Items per page:</span>
+                          <select
+                            value={membersPagination.pageSize}
+                            onChange={(e) => setMembersPagination(prev => ({ ...prev, pageSize: parseInt(e.target.value, 10), currentPage: 1 }))}
+                          >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                          </select>
+                        </div>
+                        <div className="ugm-page-navigation">
+                          <span>
+                            {((membersPagination.currentPage - 1) * membersPagination.pageSize + 1)}-
+                            {Math.min(membersPagination.currentPage * membersPagination.pageSize, membersPagination.count)} of {membersPagination.count}
+                          </span>
+                          <div className="ugm-page-btns">
+                            <button
+                              onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                              disabled={membersPagination.currentPage === 1}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setMembersPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                              disabled={membersPagination.currentPage * membersPagination.pageSize >= membersPagination.count}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="ugm-dialog-actions">
+                  <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenMembersDialog(false)}>
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="ugm-dialog-actions">
-              <button className="ugm-btn ugm-btn-cancel" onClick={() => setOpenMembersDialog(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -83,26 +83,7 @@ const getCSRFToken = () => {
   return cookieValue || '';
 };
 
-// Request interceptor to add CSRF token and Authorization header
-// api.interceptors.request.use(
-//   (config) => {
-//     const accessToken = localStorage.getItem('access_token');
-//     if (accessToken) {
-//       config.headers['Authorization'] = `Bearer ${accessToken}`;
-//     }
-//     const csrfToken = getCSRFToken();
-//     if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
-//       config.headers['X-CSRFToken'] = csrfToken;
-//     }
-//     return config;
-//   },
-//   (error) => {
-//     console.error('Request error:', error);
-//     return Promise.reject(error);
-//   }
-// );
 
-// Request interceptor to add CSRF token, Authorization, and Tenant headers
 // In config.jsx, update the request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -132,52 +113,6 @@ api.interceptors.request.use(
   }
 );
 
-// Consolidated response interceptor
-// api.interceptors.response.use(
-//   (response) => {
-//     return response;
-//   },
-//   async (error) => {
-//     const originalRequest = error.config;
-//     if (
-//       originalRequest.url.includes('/api/token/') ||
-//       originalRequest.url.includes('/api/logout/') ||
-//       window.location.pathname === '/login'
-//     ) {
-//       console.log('Skipping interceptor for token, logout, or login page');
-//       return Promise.reject(error);
-//     }
-//     if (error.response?.status === 401 && !originalRequest._retry) {
-//       originalRequest._retry = true;
-//       try {
-//         const refreshToken = localStorage.getItem('refresh_token');
-//         if (!refreshToken) {
-//           throw new Error('No refresh token available');
-//         }
-//         const refreshResponse = await api.post('/api/token/refresh/', { refresh: refreshToken });
-//         localStorage.setItem('access_token', refreshResponse.data.access);
-//         if (refreshResponse.data.refresh) {
-//           localStorage.setItem('refresh_token', refreshResponse.data.refresh);
-//         }
-//         return api(originalRequest);
-//       } catch (refreshError) {
-//         console.error('Token refresh failed:', {
-//           message: refreshError.message,
-//           response: refreshError.response?.data,
-//           status: refreshError.response?.status,
-//         });
-//         localStorage.removeItem('access_token');
-//         localStorage.removeItem('refresh_token');
-//         if (window.location.pathname !== '/login') {
-//           console.log('Redirecting to login due to refresh failure');
-//           window.location.href = '/login?session_expired=1';
-//         }
-//         return Promise.reject(refreshError);
-//       }
-//     }
-//     return Promise.reject(error);
-//   }
-// );
 
 // Response interceptor for token refresh
 api.interceptors.response.use(
@@ -219,7 +154,6 @@ api.interceptors.response.use(
   }
 );
 
-
 // Auth API
 export const authAPI = {
   login: (credentials) => api.post('/api/token/', credentials),
@@ -240,43 +174,6 @@ export const authAPI = {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
 };
-
-// User API
-// export const userAPI = {
-//   impersonateUser: (id) => api.post(`/api/users/users/${id}/impersonate/`, {}, {
-//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-//   }),
-//   getUsers: (params = {}) => api.get('/api/users/users/', { params }),
-//   getUser: (id) => api.get(`/api/users/users/${id}/`),
-//   createUser: (userData) => api.post('/api/users/register/', userData, {
-//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-//   }),
-//   updateUser: (id, userData) => api.patch(`/api/users/users/${id}/`, userData, {
-//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-//   }),
-//   deleteUser: (id) => api.delete(`/api/users/users/${id}/`, {
-//     headers: { 'X-CSRFToken': getCSRFToken() },
-//   }),
-//   lockUser: (id) => api.post(`/api/users/users/${id}/lock/`, {}, {
-//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-//   }),
-//   unlockUser: (id) => api.post(`/api/users/users/${id}/unlock/`, {}, {
-//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-//   }),
-//   fetchRoleStats: (params = {}) => api.get('/api/users/users/role_stats/', { params }),
-//   getUserActivities: (params = {}) => api.get('/api/users/user-activities/', { params }),
-//   getUserStats: () => api.get('/api/users/stats/'),
-//   bulkUpload: (file) => {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     return api.post('/api/users/users/bulk_upload/', formData, {
-//       headers: {
-//         'X-CSRFToken': getCSRFToken(),
-//         'Content-Type': 'multipart/form-data',
-//       },
-//     });
-//   },
-// };
 
 // User API
 export const userAPI = {
@@ -340,7 +237,6 @@ export const rolesAPI = {
   }),
 };
 
-// Groups API
 // In config.jsx, update the groupsAPI object
 export const groupsAPI = {
   getGroups: (params = {}) => api.get('/api/groups/groups/', { params }),
@@ -554,10 +450,7 @@ export const coursesAPI = {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
   adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, data, {
-    headers: { 
-      'X-CSRFToken': getCSRFToken(), 
-      'Content-Type': 'application/json' 
-    },
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
   adminBulkEnroll: (enrollmentsData) => api.post('/api/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
@@ -633,7 +526,180 @@ export const coursesAPI = {
   deleteSCORMSettings: (courseId) => api.delete(`/api/courses/scorm/${courseId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+  // Instructor assignment endpoints
+  assignInstructor: (courseId, data) => api.post(`/api/courses/courses/${courseId}/assign_instructor/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  updateInstructorAssignment: (courseId, instructorId, data) => api.put(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  deleteInstructorAssignment: (courseId, instructorId) => api.delete(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() },
+  }),
 };
+
+
+
+// export const coursesAPI = {
+//   getCategories: (params = {}) => api.get('/api/courses/categories/', { params }),
+//   getCategory: (id) => api.get(`/api/courses/categories/${id}/`),
+//   createCategory: (data) => api.post('/api/courses/categories/', data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   updateCategory: (id, data) => api.patch(`/api/courses/categories/${id}/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   deleteCategory: (id) => api.delete(`/api/courses/categories/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getCourses: (params = {}) => api.get('/api/courses/courses/', { params }),
+//   getCourse: (id) => api.get(`/api/courses/courses/${id}/`),
+//   createCourse: (formData) => api.post('/api/courses/courses/', formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   updateCourse: (id, formData) => api.patch(`/api/courses/courses/${id}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteCourse: (id) => api.delete(`/api/courses/courses/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getMostPopularCourses: () => api.get('/api/courses/courses/most_popular/'),
+//   getLeastPopularCourses: () => api.get('/api/courses/courses/least_popular/'),
+//   getModules: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/modules/`, { params }),
+//   getModule: (courseId, moduleId) => api.get(`/api/courses/courses/${courseId}/modules/${moduleId}/`),
+//   createModule: (courseId, data) => api.post(`/api/courses/courses/${courseId}/modules/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   updateModule: (courseId, moduleId, data) => api.patch(`/api/courses/courses/${courseId}/modules/${moduleId}/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   deleteModule: (courseId, moduleId) => api.delete(`/api/courses/courses/${courseId}/modules/${moduleId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getLessons: (courseId, moduleId, params = {}) => api.get(`/api/courses/courses/${courseId}/modules/${moduleId}/lessons/`, { params }),
+//   getLesson: (courseId, moduleId, lessonId) => api.get(`/api/courses/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/`),
+//   createLesson: (courseId, moduleId, formData) => api.post(`/api/courses/courses/${courseId}/modules/${moduleId}/lessons/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   updateLesson: (courseId, moduleId, lessonId, formData) => api.patch(`/api/courses/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteLesson: (courseId, moduleId, lessonId) => api.delete(`/api/courses/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getResources: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/resources/`, { params }),
+//   createResource: (courseId, formData) => api.post(`/api/courses/courses/${courseId}/resources/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   updateResource: (courseId, resourceId, formData) => api.patch(`/api/courses/courses/${courseId}/resources/${resourceId}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteResource: (courseId, resourceId) => api.delete(`/api/courses/courses/${courseId}/resources/${resourceId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getBadges: () => api.get('/api/courses/badges/'),
+//   createBadge: (formData) => api.post('/api/courses/badges/', formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   updateBadge: (id, formData) => api.patch(`/api/courses/badges/${id}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteBadge: (id) => api.delete(`/api/courses/badges/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getLeaderboard: (courseId) =>
+//     api.get(`/api/courses/user-points/leaderboard/${courseId ? `?course_id=${courseId}` : ''}`),
+//   updatePointsConfig: (courseId, config) => api.post(`/api/courses/courses/${courseId}/points-config/`, config, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   adminSingleEnroll: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/enroll/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   adminBulkEnrollCourse: (courseId, data) => api.post(`/api/courses/enrollments/course/${courseId}/bulk/`, data, {
+//     headers: { 
+//       'X-CSRFToken': getCSRFToken(), 
+//       'Content-Type': 'application/json' 
+//     },
+//   }),
+//   adminBulkEnroll: (enrollmentsData) => api.post('/api/courses/enrollments/admin_bulk_enroll/', enrollmentsData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   getAllEnrollments: () => api.get('/api/courses/enrollments/all/'),
+//   selfEnroll: (courseId) => api.post(`/api/courses/enrollments/self-enroll/${courseId}/`, {}, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   getEnrollments: (courseId = null) => {
+//     const url = courseId ? `/api/courses/enrollments/course/${courseId}/` : '/api/courses/enrollments/';
+//     return api.get(url);
+//   },
+//   getUserEnrollments: (userId = null) => {
+//     const url = userId ? `/api/courses/enrollments/user/${userId}/` : '/api/courses/enrollments/user/';
+//     return api.get(url);
+//   },
+//   getCourseEnrollmentsAdmin: (courseId) => api.get(`/api/courses/enrollments/course/${courseId}/`),
+//   deleteEnrollment: (id) => api.delete(`/api/courses/enrollments/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getRatings: (courseId = null) => {
+//     const url = courseId ? `/api/courses/ratings/course/${courseId}/` : '/api/courses/ratings/';
+//     return api.get(url);
+//   },
+//   submitRating: (courseId, data) => api.post(`/api/courses/ratings/course/${courseId}/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   getLearningPaths: (params = {}) => api.get('/api/courses/learning-paths/', { params }),
+//   getLearningPath: (id) => api.get(`/api/courses/learning-paths/${id}/`),
+//   createLearningPath: (data) => api.post('/api/courses/learning-paths/', data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   updateLearningPath: (id, data) => api.patch(`/api/courses/learning-paths/${id}/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   deleteLearningPath: (id) => api.delete(`/api/courses/learning-paths/${id}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getCertificates: (courseId = null) => {
+//     const url = courseId ? `/api/courses/certificates/course/${courseId}/` : '/api/courses/certificates/';
+//     return api.get(url);
+//   },
+//   createCertificate: (courseId, formData) => api.post(`/api/courses/certificates/course/${courseId}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   updateCertificate: (courseId, formData) => api.patch(`/api/courses/certificates/course/${courseId}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteCertificate: (courseId) => api.delete(`/api/courses/certificates/course/${courseId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   getFAQStats: () => api.get('/api/courses/faqs/stats/'),
+//   getFAQs: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/faqs/`, { params }),
+//   createFAQ: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   updateFAQ: (courseId, faqId, data) => api.patch(`/api/courses/courses/${courseId}/faqs/${faqId}/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   deleteFAQ: (courseId, faqId) => api.delete(`/api/courses/courses/${courseId}/faqs/${faqId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+//   reorderFAQs: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/reorder/`, data, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+//   }),
+//   getSCORMSettings: (courseId) => api.get(`/api/courses/scorm/${courseId}/`),
+//   updateSCORMSettings: (courseId, formData) => api.patch(`/api/courses/scorm/${courseId}/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   uploadSCORMPackage: (courseId, formData) => api.post(`/api/courses/scorm/${courseId}/upload/`, formData, {
+//     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+//   }),
+//   deleteSCORMSettings: (courseId) => api.delete(`/api/courses/scorm/${courseId}/`, {
+//     headers: { 'X-CSRFToken': getCSRFToken() },
+//   }),
+
+
+
+
+// };
 
 // Payment API
 export const paymentAPI = {

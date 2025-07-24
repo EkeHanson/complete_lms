@@ -26,36 +26,52 @@ const CourseManagement = () => {
         const [coursesRes, enrollmentsRes, mostPopularRes, leastPopularRes, categoriesRes] = await Promise.all([
           coursesAPI.getCourses(),
           coursesAPI.getAllEnrollments(),
-          coursesAPI.getMostPopularCourses().catch((err) => ({ data: null, status: err.response?.status || 500 })), // Handle 404
-          coursesAPI.getLeastPopularCourses().catch((err) => ({ data: null, status: err.response?.status || 500 })), // Handle 404
+          coursesAPI.getMostPopularCourses().catch((err) => ({
+            data: { message: 'No courses with enrollments yet', course: null, enrollment_count: 0 },
+            status: err.response?.status || 500
+          })),
+          coursesAPI.getLeastPopularCourses().catch((err) => ({
+            data: { message: 'No courses with enrollments yet', course: null, enrollment_count: 0 },
+            status: err.response?.status || 500
+          })),
           coursesAPI.getCategories()
         ]);
 
         const totalCourses = coursesRes.data.count || 0;
+
+
         const totalEnrollments = enrollmentsRes.data.count || 0;
 
-        const mostPopularCourse = mostPopularRes.data && mostPopularRes.status === 200 ? {
+        // console.log("totalEnrollments")
+        // console.log(enrollmentsRes.data)
+        // console.log("totalEnrollments")
+
+        const mostPopularCourse = mostPopularRes.data.course ? {
           id: mostPopularRes.data.course.id,
           title: mostPopularRes.data.course.title,
           enrollments: mostPopularRes.data.enrollment_count || 0,
-          instructor: mostPopularRes.data.course.instructor || "No instructor assigned"
+          instructor: mostPopularRes.data.course.instructor || "No instructor assigned",
+          message: null
         } : {
-          title: "No courses with enrollments",
+          id: null,
+          title: mostPopularRes.data.message || "No courses with enrollments yet",
           enrollments: 0,
           instructor: "N/A",
-          id: null
+          message: mostPopularRes.data.message
         };
 
-        const leastPopularCourse = leastPopularRes.data && leastPopularRes.status === 200 ? {
+        const leastPopularCourse = leastPopularRes.data.course ? {
           id: leastPopularRes.data.course.id,
           title: leastPopularRes.data.course.title,
           enrollments: leastPopularRes.data.enrollment_count || 0,
-          instructor: leastPopularRes.data.course.instructor || "No instructor assigned"
+          instructor: leastPopularRes.data.course.instructor || "No instructor assigned",
+          message: null
         } : {
-          title: "No courses with enrollments",
+          id: null,
+          title: leastPopularRes.data.message || "No courses with enrollments yet",
           enrollments: 0,
           instructor: "N/A",
-          id: null
+          message: leastPopularRes.data.message
         };
 
         const completedCourses = enrollmentsRes.data.results?.filter(e => e.completed).length || 0;
@@ -112,10 +128,6 @@ const CourseManagement = () => {
     navigate('/admin/courses/new');
   };
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   const renderOverview = () => {
     if (loading) {
       return (
@@ -170,31 +182,35 @@ const CourseManagement = () => {
         </div>
 
         <div className="Detailed-Stats">
-          {courseStats.mostPopularCourse && (
-            <div 
-              className="Course-Card" 
-              onClick={() => courseStats.mostPopularCourse.id && navigate(`/admin/course-details/${courseStats.mostPopularCourse.id}`, {
-                state: { enrollments: courseStats.mostPopularCourse.enrollments }
-              })}
-            >
-              <div className="Course-Card-Content">
-                <span className="Course-Card-Header">
-                  <Star className="icon warning" /> Most Popular
-                </span>
-                <h3>{courseStats.mostPopularCourse.title}</h3>
-                <span className="Course-Card-Subtitle">
-                  Instructor: {courseStats.mostPopularCourse.instructor}
-                </span>
-                <div className="Course-Card-Stats">
-                  <People className="icon" />
-                  <span>{courseStats.mostPopularCourse.enrollments} enrollments</span>
-                </div>
-              </div>
+          <div 
+            className={`Course-Card ${!courseStats.mostPopularCourse.id ? 'disabled' : ''}`} 
+            onClick={() => courseStats.mostPopularCourse.id && navigate(`/admin/course-details/${courseStats.mostPopularCourse.id}`, {
+              state: { enrollments: courseStats.mostPopularCourse.enrollments }
+            })}
+          >
+            <div className="Course-Card-Content">
+              <span className="Course-Card-Header">
+                <Star className="icon warning" /> Most Popular
+              </span>
+              <h3>{courseStats.mostPopularCourse.title}</h3>
+              {courseStats.mostPopularCourse.message ? (
+                <span className="Course-Card-Message">{courseStats.mostPopularCourse.message}</span>
+              ) : (
+                <>
+                  <span className="Course-Card-Subtitle">
+                    Instructor: {courseStats.mostPopularCourse.instructor}
+                  </span>
+                  <div className="Course-Card-Stats">
+                    <People className="icon" />
+                    <span>{courseStats.mostPopularCourse.enrollments} enrollments</span>
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           <div 
-            className="Course-Card" 
+            className={`Course-Card ${!courseStats.leastPopularCourse.id ? 'disabled' : ''}`} 
             onClick={() => courseStats.leastPopularCourse.id && navigate(`/admin/course-details/${courseStats.leastPopularCourse.id}`, {
               state: { enrollments: courseStats.leastPopularCourse.enrollments }
             })}
@@ -204,13 +220,19 @@ const CourseManagement = () => {
                 <Warning className="icon error" /> Least Popular
               </span>
               <h3>{courseStats.leastPopularCourse.title}</h3>
-              <span className="Course-Card-Subtitle">
-                Instructor: {courseStats.leastPopularCourse.instructor}
-              </span>
-              <div className="Course-Card-Stats">
-                <People className="icon" />
-                <span>{courseStats.leastPopularCourse.enrollments} enrollments</span>
-              </div>
+              {courseStats.leastPopularCourse.message ? (
+                <span className="Course-Card-Message">{courseStats.leastPopularCourse.message}</span>
+              ) : (
+                <>
+                  <span className="Course-Card-Subtitle">
+                    Instructor: {courseStats.leastPopularCourse.instructor}
+                  </span>
+                  <div className="Course-Card-Stats">
+                    <People className="icon" />
+                    <span>{courseStats.leastPopularCourse.enrollments} enrollments</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

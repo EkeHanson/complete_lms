@@ -1,11 +1,7 @@
-import React, { Component } from 'react';
+import React from 'react';
 
-class ErrorBoundary extends Component {
-  state = {
-    hasError: false,
-    error: null,
-    errorInfo: null,
-  };
+class ErrorBoundary extends React.Component {
+  state = { hasError: false, error: null, errorInfo: null };
 
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
@@ -20,9 +16,10 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
-          <h2>Something went wrong with the editor.</h2>
-          <p>{this.state.error?.toString()}</p>
+          <h2>Something went wrong.</h2>
+          <p>{this.state.error?.message || 'An unexpected error occurred.'}</p>
           <button onClick={() => window.location.reload()}>Reload Page</button>
+          <button onClick={() => window.location.href = '/admin/courses'}>Back to Courses</button>
         </div>
       );
     }

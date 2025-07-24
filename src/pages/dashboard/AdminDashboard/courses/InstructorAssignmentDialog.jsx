@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import './InstructorAssignmentDialog.css';
 import { People, School, Search } from '@mui/icons-material';
-import { groupsAPI } from '../../../../config';
+import { groupsAPI, coursesAPI } from '../../../../config';
 
 const InstructorAssignmentDialog = ({
   open,
   onClose,
-  modules,
+  modules = [],
   currentAssignment,
   onAssign,
   isMobile,
+  courseId
 }) => {
   const [instructors, setInstructors] = useState([]);
   const [selectedInstructor, setSelectedInstructor] = useState(
     currentAssignment?.instructorId || null
   );
+  
   const [assignmentType, setAssignmentType] = useState(
     currentAssignment?.assignedModules === 'all' ? 'all' : 'specific'
   );
@@ -28,34 +30,32 @@ const InstructorAssignmentDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+
+  console.log("currentAssignment")
+  console.log(selectedInstructor)
+  console.log("currentAssignment")
+
   useEffect(() => {
     if (open) {
       const fetchInstructors = async () => {
         setLoading(true);
         setError('');
         try {
-          // Fetch members of the 'instructors' group
-          const response = await groupsAPI.getGroupMembersByName('instructors');
+          const response = await groupsAPI.getGroupMembersByName('All Instructors');
           const memberships = response.data || [];
-          
-          // Transform memberships to instructor format
           const instructorsData = memberships.map(membership => ({
             id: membership.user.id,
             name: `${membership.user.first_name} ${membership.user.last_name}`.trim() || membership.user.email,
             email: membership.user.email,
-            expertise: membership.user.expertise || [] // Fallback to empty array if expertise is not available
+            expertise: membership.user.expertise || []
           }));
-
-          // Remove duplicates by id (in case of multiple memberships)
           const uniqueInstructors = Array.from(
             new Map(instructorsData.map(instructor => [instructor.id, instructor])).values()
           );
-
           setInstructors(uniqueInstructors);
           setFilteredInstructors(uniqueInstructors);
-
           if (uniqueInstructors.length === 0) {
-            setError('No instructors found in the "instructors" group.');
+            setError('No instructors found in the "All Instructors" group.');
           }
         } catch (error) {
           console.error('Error fetching instructors:', error);
@@ -68,7 +68,6 @@ const InstructorAssignmentDialog = ({
           setLoading(false);
         }
       };
-
       fetchInstructors();
     }
   }, [open]);
@@ -89,8 +88,20 @@ const InstructorAssignmentDialog = ({
     }
   }, [searchTerm, instructors]);
 
+  useEffect(() => {
+    if (!open) {
+      // Reset state when dialog closes
+      setSelectedInstructor(null);
+      setAssignmentType('all');
+      setSelectedModules([]);
+      setSearchTerm('');
+      setError('');
+    }
+  }, [open]);
+
   const handleInstructorSelect = (instructorId) => {
     setSelectedInstructor(instructorId);
+    setError('');
   };
 
   const handleAssignmentTypeChange = (e) => {
@@ -112,14 +123,72 @@ const InstructorAssignmentDialog = ({
     setSearchTerm(e.target.value);
   };
 
-  const handleSubmit = () => {
-    if (!selectedInstructor) return;
+const handleSubmit = async () => {
+  // Validation checks
+  if (!selectedInstructor) {
+    setError('Please select an instructor');
+    return;
+  }
+  if (assignmentType === 'specific' && selectedModules.length === 0) {
+    setError('Please select at least one module for specific assignment');
+    return;
+  }
+  if (!courseId) {
+    setError('Course ID is missing. Please save the course first.');
+    return;
+  }
 
+  setLoading(true);
+  setError('');
+  try {
     const instructor = instructors.find((i) => i.id === selectedInstructor);
-    const assignedModules = assignmentType === 'all' ? 'all' : selectedModules;
-    onAssign(instructor, assignedModules);
+    if (!instructor) {
+      setError('Selected instructor not found.');
+      setLoading(false);
+      return;
+    }
+
+    const data = {
+      instructor_id: selectedInstructor,
+      assignment_type: assignmentType,
+      modules: assignmentType === 'specific' ? selectedModules : [], // Explicitly set modules
+      is_active: true,
+    };
+
+    if (currentAssignment && currentAssignment.instructorId) {
+      await coursesAPI.updateInstructorAssignment(courseId, selectedInstructor, data);
+    } else {
+      await coursesAPI.assignInstructor(courseId, data);
+    }
+
+    onAssign(instructor, data.modules);
     onClose();
-  };
+  } catch (error) {
+    console.error('Error saving instructor assignment:', error);
+    let errorMessage = 'Failed to save instructor assignment';
+    if (error.response?.data) {
+      if (Array.isArray(error.response.data)) {
+        errorMessage = error.response.data[0];
+      } else if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else if (error.response.data.non_field_errors) {
+        errorMessage = error.response.data.non_field_errors[0];
+      } else if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      }
+    }
+    setError(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
+  useEffect(() => {
+    if (open) {
+      console.log('DEBUG: currentAssignment', currentAssignment);
+      console.log('DEBUG: selectedInstructor', selectedInstructor);
+      console.log('DEBUG: instructors', instructors);
+    }
+  }, [open, instructors, selectedInstructor]);
 
   return (
     <div className={`InstructorAssignmentDialog ${open ? 'open' : ''}`}>
@@ -137,9 +206,12 @@ const InstructorAssignmentDialog = ({
 
         <div className="InstructorAssignmentDialog-Body">
           {error && (
-            <div className="error-message">
-              <span>{error}</span>
-              <button onClick={() => setError('')}>Dismiss</button>
+            <div className="error-modal">
+              <div className="error-modal-overlay" onClick={() => setError('')}></div>
+              <div className="error-message">
+                <span>{error}</span>
+                <button onClick={() => setError('')}>Dismiss</button>
+              </div>
             </div>
           )}
 
@@ -200,10 +272,20 @@ const InstructorAssignmentDialog = ({
           {selectedInstructor && (
             <>
               <div className="selected-instructor">
-                <span>
-                  Selected: {instructors.find((i) => i.id === selectedInstructor)?.name} (
-                  {instructors.find((i) => i.id === selectedInstructor)?.email})
-                </span>
+                {selectedInstructor
+                  ? (() => {
+                      const instructor = instructors.find((i) => i.id === selectedInstructor);
+                      if (instructor) {
+                        return (
+                          <span>
+                            Selected: {instructor.name || instructor.email} ({instructor.email})
+                          </span>
+                        );
+                      }
+                      return <span>Selected: {selectedInstructor}</span>;
+                    })()
+                  : <span>No instructor assigned</span>
+                }
               </div>
 
               <h4>Assignment Scope</h4>
@@ -279,11 +361,12 @@ const InstructorAssignmentDialog = ({
             className="action-btn primary"
             onClick={handleSubmit}
             disabled={
+              loading ||
               !selectedInstructor ||
               (assignmentType === 'specific' && selectedModules.length === 0)
             }
           >
-            {currentAssignment ? 'Update Assignment' : 'Assign Instructor'}
+            {loading ? <span className="loading-spinner" /> : (currentAssignment ? 'Update Assignment' : 'Assign Instructor')}
           </button>
         </div>
       </div>

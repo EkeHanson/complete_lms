@@ -14,34 +14,34 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { coursesAPI, userAPI } from '../../../../config';
 
-const NotificationModal = ({ messages, onClose }) => {
-  return (
-    <div className="notification-modal" role="dialog" onClick={onClose}>
-      <div className="modal-overlay" onClick={(e) => e.stopPropagation()}></div>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Notifications</h3>
-          <button className="close-btn" onClick={onClose} aria-label="Close">
-            <Warning className="icon" />
-          </button>
-        </div>
-        <div className="modal-body">
-          {messages.map((msg, index) => (
-            <div key={index} className={`notification ${msg.type}`}>
-              {msg.type === 'error' ? <Warning className="icon" /> : <CheckCircle className="icon" />}
-              {msg.text}
-            </div>
-          ))}
-        </div>
-        <div className="modal-actions">
-          <button className="action-btn primary" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// const NotificationModal = ({ messages, onClose }) => {
+//   return (
+//     <div className="notification-modal" role="dialog" onClick={onClose}>
+//       <div className="modal-overlay" onClick={(e) => e.stopPropagation()}></div>
+//       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+//         <div className="modal-header">
+//           <h3>Notifications</h3>
+//           <button className="close-btn" onClick={onClose} aria-label="Close">
+//             <Warning className="icon" />
+//           </button>
+//         </div>
+//         <div className="modal-body">
+//           {messages.map((msg, index) => (
+//             <div key={index} className={`notification ${msg.type}`}>
+//               {msg.type === 'error' ? <Warning className="icon" /> : <CheckCircle className="icon" />}
+//               {msg.text}
+//             </div>
+//           ))}
+//         </div>
+//         <div className="modal-actions">
+//           <button className="action-btn primary" onClick={onClose}>
+//             Close
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 const CourseList = () => {
   const navigate = useNavigate();
@@ -226,35 +226,22 @@ const CourseList = () => {
     }
   };
 
-  const handleEnrollClick = async (course) => {
-    if (!course) {
-      setError('No course selected');
-      showNotification('error', 'No course selected');
-      return;
-    }
-    if (course.status !== 'Published') {
-      setError(`Cannot enroll in "${course.title}". Please publish the course first.`);
-      showNotification('error', `Cannot enroll in "${course.title}". Please publish the course first.`);
-      return;
-    }
-    setSelectedCourse(course);
-    setSelectedUser(null);
-    setError(null);
-    setEnrollDialogOpen(true);
-
-    if (selectedUser) {
-      try {
-        const response = await coursesAPI.getEnrollments(course.id, { user_id: selectedUser.id });
-        if (response.data.results.length > 0) {
-          setError('User already enrolled in this course');
-          showNotification('error', 'User already enrolled in this course');
-          setEnrollDialogOpen(false);
-        }
-      } catch (err) {
-        console.error('Error checking enrollment:', err);
-      }
-    }
-  };
+const handleEnrollClick = async (course) => {
+  if (!course) {
+    setError('No course selected');
+    showNotification('error', 'No course selected');
+    return;
+  }
+  if (course.status !== 'Published') {
+    setError(`Cannot enroll in "${course.title}". Please publish the course first.`);
+    showNotification('error', `Cannot enroll in "${course.title}". Please publish the course first.`);
+    return;
+  }
+  setSelectedCourse(course);
+  setSelectedUser(null);
+  setError(null);
+  setEnrollDialogOpen(true);
+};
 
   const handleBulkEnrollClick = (course) => {
     setSelectedCourse(course);
@@ -267,90 +254,123 @@ const CourseList = () => {
     setBulkEnrollDialogOpen(true);
   };
 
-  const handleEnrollSubmit = async () => {
-    if (!selectedUser || !selectedCourse) return;
-    try {
-      setEnrollmentLoading(true);
-      setError(null);
-      const response = await coursesAPI.adminSingleEnroll(selectedCourse.id, { user_id: selectedUser.id });
-      showNotification('success', `Successfully enrolled ${selectedUser.first_name} ${selectedUser.last_name} in ${selectedCourse.title}`);
-      setEnrollDialogOpen(false);
-      setSelectedUser(null);
-      setSelectedCourse(null);
-    } catch (err) {
-      let errorMessage = 'Failed to enroll user';
-      if (err.response) {
-        if (err.response.status === 404) {
-          errorMessage = 'Course not found or not published';
-        } else if (err.response.status === 400) {
-          errorMessage = err.response.data.detail || 'Invalid request';
-          if (err.response.data.details) {
-            errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
-          }
-        } else if (err.response.status === 500) {
-          errorMessage = err.response.data.error || 'Server error';
-          if (err.response.data.details) {
-            console.error('Server error details:', err.response.data.details);
-          }
-        }
-      } else if (err.message) {
-        errorMessage = err.message;
+ const handleEnrollSubmit = async () => {
+  if (!selectedUser || !selectedCourse) return;
+  try {
+    setEnrollmentLoading(true);
+    setError(null);
+    const response = await coursesAPI.adminSingleEnroll(selectedCourse.id, { user_id: selectedUser.id });
+    showNotification('success', `Successfully enrolled ${selectedUser.first_name} ${selectedUser.last_name} in ${selectedCourse.title}`);
+    setEnrollDialogOpen(false);
+    setSelectedUser(null);
+    setSelectedCourse(null);
+    // Refresh courses
+    const params = {
+      page: 1,
+      page_size: 1000,
+      search: searchTerm || undefined,
+      category: filters.category === 'all' ? undefined : filters.category,
+      level: filters.level === 'all' ? undefined : filters.level
+    };
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined || params[key] === null) {
+        delete params[key];
       }
-      setError(errorMessage);
-      showNotification('error', errorMessage);
-    } finally {
-      setEnrollmentLoading(false);
-    }
-  };
-
-  const handleBulkEnrollSubmit = async () => {
-    if (activeTab === 'manual' && selectedUsers.length === 0) return;
-    if (activeTab === 'file' && fileData.length === 0) return;
-    try {
-      setEnrollmentLoading(true);
-      setError(null);
-      let userIds = [];
-      if (activeTab === 'manual') {
-        userIds = selectedUsers.map(user => user.id);
-      } else {
-        const emails = fileData.map(row => row.email || row.Email || row.EMAIL).filter(Boolean);
-        if (emails.length === 0) {
-          throw new Error('No valid email addresses found in the file');
-        }
-        const matchingUsers = users.filter(user => emails.includes(user.email));
-        if (matchingUsers.length === 0) {
-          throw new Error('No matching users found for the provided emails');
-        }
-        userIds = matchingUsers.map(user => user.id);
-      }
-      const payload = { user_ids: Array.from(userIds) };
-      const response = await coursesAPI.adminBulkEnrollCourse(selectedCourse.id, payload);
-      let successMsg = `Successfully enrolled ${response.data.created || userIds.length} users`;
-      if (response.data.already_enrolled > 0) {
-        successMsg += ` (${response.data.already_enrolled} were already enrolled)`;
-      }
-      showNotification('success', successMsg);
-      setBulkEnrollDialogOpen(false);
-      setSelectedUsers([]);
-      setFile(null);
-      setFileData([]);
-      setSelectedCourse(null);
-    } catch (err) {
-      let errorMessage = 'Failed to bulk enroll users';
-      if (err.response) {
-        errorMessage = err.response.data.detail || errorMessage;
+    });
+    const responseCourses = await coursesAPI.getCourses(params);
+    setAllCourses(responseCourses.data.results || []);
+    setTotalCourses(responseCourses.data.count || 0);
+  } catch (err) {
+    let errorMessage = 'Failed to enroll user';
+    if (err.response) {
+      if (err.response.status === 404) {
+        errorMessage = 'Course not found or not published';
+      } else if (err.response.status === 400) {
+        errorMessage = err.response.data.detail || 'Invalid request';
         if (err.response.data.details) {
           errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
         }
-      } else if (err.message) {
-        errorMessage = err.message;
+      } else if (err.response.status === 500) {
+        errorMessage = err.response.data.error || 'Server error';
+        if (err.response.data.details) {
+          console.error('Server error details:', err.response.data.details);
+        }
       }
-      setError(errorMessage);
-      showNotification('error', errorMessage);
-    } finally {
-      setEnrollmentLoading(false);
+    } else if (err.message) {
+      errorMessage = err.message;
     }
-  };
+    setError(errorMessage);
+    showNotification('error', errorMessage);
+  } finally {
+    setEnrollmentLoading(false);
+  }
+};
+
+const handleBulkEnrollSubmit = async () => {
+  if (activeTab === 'manual' && selectedUsers.length === 0) return;
+  if (activeTab === 'file' && fileData.length === 0) return;
+  try {
+    setEnrollmentLoading(true);
+    setError(null);
+    let userIds = [];
+    if (activeTab === 'manual') {
+      userIds = selectedUsers.map(user => user.id);
+    } else {
+      const emails = fileData.map(row => row.email || row.Email || row.EMAIL).filter(Boolean);
+      if (emails.length === 0) {
+        throw new Error('No valid email addresses found in the file');
+      }
+      const matchingUsers = users.filter(user => emails.includes(user.email));
+      if (matchingUsers.length === 0) {
+        throw new Error('No matching users found for the provided emails');
+      }
+      userIds = matchingUsers.map(user => user.id);
+    }
+    const payload = { user_ids: Array.from(userIds) };
+    const response = await coursesAPI.adminBulkEnrollCourse(selectedCourse.id, payload);
+    let successMsg = `Successfully enrolled ${response.data.created || userIds.length} users`;
+    if (response.data.already_enrolled > 0) {
+      successMsg += ` (${response.data.already_enrolled} were already enrolled)`;
+    }
+    showNotification('success', successMsg);
+    setBulkEnrollDialogOpen(false);
+    setSelectedUsers([]);
+    setFile(null);
+    setFileData([]);
+    setSelectedCourse(null);
+    // Refresh courses
+    const params = {
+      page: 1,
+      page_size: 1000,
+      search: searchTerm || undefined,
+      category: filters.category === 'all' ? undefined : filters.category,
+      level: filters.level === 'all' ? undefined : filters.level
+    };
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined || params[key] === null) {
+        delete params[key];
+      }
+    });
+    const responseCourses = await coursesAPI.getCourses(params);
+    setAllCourses(responseCourses.data.results || []);
+    setTotalCourses(responseCourses.data.count || 0);
+  } catch (err) {
+    let errorMessage = 'Failed to bulk enroll users';
+    if (err.response) {
+      errorMessage = err.response.data.detail || errorMessage;
+      if (err.response.data.details) {
+        errorMessage += `: ${JSON.stringify(err.response.data.details)}`;
+      }
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    setError(errorMessage);
+    showNotification('error', errorMessage);
+  } finally {
+    setEnrollmentLoading(false);
+  }
+};
+
 
   const toggleUserSelection = (user) => {
     setSelectedUsers(prev => {
@@ -463,9 +483,9 @@ const CourseList = () => {
 
   return (
     <div className="CourseList">
-      {isNotificationOpen && (
+      {/* {isNotificationOpen && (
         <NotificationModal messages={notificationMessages} onClose={closeNotification} />
-      )}
+      )} */}
       <div className="CourseList-Top">
         <div className="CourseList-Top-Grid">
           <div className="CourseList-Top-1">
