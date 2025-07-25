@@ -321,7 +321,7 @@ const CourseView = () => {
       setLoading(true);
       try {
         const response = await coursesAPI.getCourse(id);
-        console.log('Fetched course data:', response.data);
+       // console.log('Fetched course data:', response.data);
         setCourse({
           ...response.data,
           learning_outcomes: parseListField(response.data.learning_outcomes),
