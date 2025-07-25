@@ -7,8 +7,57 @@ import {
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { userAPI, messagingAPI } from '../../../config';
-import { Snackbar, Alert } from '@mui/material'; // Added for notifications
+import { Snackbar, Alert } from '@mui/material';
 import './BulkUserUpload.css';
+
+// Utility to generate random string
+const randomString = (length = 8, charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') => {
+  let res = '';
+  for (let i = 0; i < length; i++) {
+    res += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return res;
+};
+
+// Utility to generate random user data
+const generateRandomUsers = ({
+  count = 10,
+  emailDomain = 'example.com',
+  passwordFormat = 'random',
+  passwordLength = 10,
+  role = 'learner',
+  jobRole = 'staff',
+  status = 'active',
+  firstNamePrefix = 'User',
+  lastNamePrefix = 'Test',
+  modules = ''
+}) => {
+  const users = [];
+  for (let i = 0; i < count; i++) {
+    const firstName = `${firstNamePrefix}${i + 1}`;
+    const lastName = `${lastNamePrefix}${i + 1}`;
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${emailDomain}`;
+    let password;
+    if (passwordFormat === 'random') {
+      password = randomString(passwordLength);
+    } else if (passwordFormat === 'fixed') {
+      password = 'Password123!';
+    } else {
+      password = passwordFormat; // custom string
+    }
+    users.push({
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      password,
+      role,
+      job_role: jobRole,
+      status,
+      modules
+    });
+  }
+  return users;
+};
 
 const BulkUserUpload = ({ onUpload }) => {
   const [file, setFile] = useState(null);
@@ -20,9 +69,23 @@ const BulkUserUpload = ({ onUpload }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [existingEmails, setExistingEmails] = useState([]);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
-  const [snackbarOpen, setSnackbarOpen] = useState(false); // Added for Snackbar
-  const [snackbarMessage, setSnackbarMessage] = useState(''); // Added for Snackbar
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // Added for Snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  // New state for random data generation options
+  const [randomOptions, setRandomOptions] = useState({
+    count: 10,
+    emailDomain: 'example.com',
+    passwordFormat: 'random',
+    passwordLength: 10,
+    role: 'learner',
+    jobRole: 'staff',
+    status: 'active',
+    firstNamePrefix: 'User',
+    lastNamePrefix: 'Test',
+    modules: ''
+  });
 
   // 1. Update templateData to use backend field names
   const templateData = [
@@ -150,50 +213,46 @@ const BulkUserUpload = ({ onUpload }) => {
     }
   };
 
+  // Generate random users and open preview modal
+  const handleGenerateRandomUsers = () => {
+    const users = generateRandomUsers(randomOptions);
+    setPreviewData(users);
+    setOpenPreviewModal(true);
+    setFile(null);
+    setUploadResult(null);
+    validateAllUsers(users);
+  };
+
+  const handleUploadRandomUsersAsFile = () => {
+    const users = generateRandomUsers(randomOptions);
+    // Convert to worksheet and workbook
+    const ws = XLSX.utils.json_to_sheet(users);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Users");
+    // Write workbook to binary string
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    // Create a Blob and File object
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const file = new File([blob], "bulk_users.xlsx", { type: blob.type });
+    setFile(file);
+    setPreviewData(users);
+    setOpenPreviewModal(true);
+    setUploadResult(null);
+    validateAllUsers(users);
+  };
+
   // 3. Format upload payload for backend
   const processFile = async () => {
-    if (!file || previewData.length === 0 || Object.keys(validationErrors).length > 0) return;
+    if (!file) return; // Only process if a file is present
     setIsProcessing(true);
     setUploadResult(null);
     try {
-      // Format users for backend
-      const unsavedUsers = previewData.filter(user => !user.id).map(user => ({
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        password: user.password,
-        role: user.role,
-        job_role: user.job_role || 'staff',
-        status: user.status || 'active',
-        modules: user.modules
-          ? Array.isArray(user.modules)
-            ? user.modules
-            : typeof user.modules === 'string' && user.modules.length > 0
-              ? user.modules.split(',').map(m => m.trim()).filter(Boolean)
-              : []
-          : []
-      }));
+      const formData = new FormData();
+      formData.append('file', file); // Key should match backend expectation
 
-      if (unsavedUsers.length === 0) {
-        setUploadResult({
-          success: true,
-          message: 'All users already saved',
-          details: []
-        });
-        setSnackbarOpen(true);
-        setSnackbarMessage('All users already saved');
-        setSnackbarSeverity('success');
-        setIsProcessing(false);
-        setOpenPreviewModal(false);
-        setFile(null);
-        setPreviewData([]);
-        setSearchQuery('');
-        if (onUpload) onUpload();
-        return;
-      }
-
-      // Send as JSON array to backend
-      const response = await userAPI.bulkUpload(unsavedUsers); // <-- Make sure your API expects JSON array
+      const response = await userAPI.bulkUpload(formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
       if (response.status === 201 && response.data.error_count === 0 && response.data.created_count > 0) {
         for (const createdUser of response.data.created_users) {
@@ -202,7 +261,7 @@ const BulkUserUpload = ({ onUpload }) => {
             await messagingAPI.createMessage({
               recipient_id: createdUser.id,
               subject: 'Welcome to Our Platform!',
-              content: `Hello ${userData.firstName},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
+              content: `Hello ${userData.first_name},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
               type: 'welcome'
             });
           }
@@ -265,8 +324,8 @@ const BulkUserUpload = ({ onUpload }) => {
   const filteredUsers = previewData.filter(user => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      (user.firstName?.toLowerCase() || '').includes(searchLower) ||
-      (user.lastName?.toLowerCase() || '').includes(searchLower) ||
+      (user.first_name?.toLowerCase() || '').includes(searchLower) ||
+      (user.last_name?.toLowerCase() || '').includes(searchLower) ||
       (user.email?.toLowerCase() || '').includes(searchLower)
     );
   });
@@ -287,6 +346,111 @@ const BulkUserUpload = ({ onUpload }) => {
             <DownloadIcon /> Download Template
           </button>
           <span className="buu-caption">Excel (.xlsx) or CSV format</span>
+        </div>
+
+        {/* Random Data Generation Section */}
+        <div className="buu-random-section">
+          <h4>Generate Random Users</h4>
+          <div className="buu-random-fields">
+            <label>
+              Count:
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={randomOptions.count}
+                onChange={e => setRandomOptions({ ...randomOptions, count: Number(e.target.value) })}
+                style={{ width: 60 }}
+              />
+            </label>
+            <label>
+              Email Domain:
+              <input
+                type="text"
+                value={randomOptions.emailDomain}
+                onChange={e => setRandomOptions({ ...randomOptions, emailDomain: e.target.value })}
+                style={{ width: 120 }}
+              />
+            </label>
+            <label>
+              Password Format:
+              <select
+                value={randomOptions.passwordFormat}
+                onChange={e => setRandomOptions({ ...randomOptions, passwordFormat: e.target.value })}
+              >
+                <option value="random">Random</option>
+                <option value="fixed">Fixed</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            {randomOptions.passwordFormat === 'random' && (
+              <label>
+                Length:
+                <input
+                  type="number"
+                  min={8}
+                  max={32}
+                  value={randomOptions.passwordLength}
+                  onChange={e => setRandomOptions({ ...randomOptions, passwordLength: Number(e.target.value) })}
+                  style={{ width: 60 }}
+                />
+              </label>
+            )}
+            {randomOptions.passwordFormat === 'custom' && (
+              <label>
+                Custom Password:
+                <input
+                  type="text"
+                  value={randomOptions.passwordFormatCustom || ''}
+                  onChange={e => setRandomOptions({ ...randomOptions, passwordFormat: e.target.value })}
+                  style={{ width: 120 }}
+                />
+              </label>
+            )}
+            <label>
+              Role:
+              <select
+                value={randomOptions.role}
+                onChange={e => setRandomOptions({ ...randomOptions, role: e.target.value })}
+              >
+                {validRoles.map(role => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Job Role:
+              <input
+                type="text"
+                value={randomOptions.jobRole}
+                onChange={e => setRandomOptions({ ...randomOptions, jobRole: e.target.value })}
+                style={{ width: 100 }}
+              />
+            </label>
+            <label>
+              Status:
+              <select
+                value={randomOptions.status}
+                onChange={e => setRandomOptions({ ...randomOptions, status: e.target.value })}
+              >
+                {validStatuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Modules (IDs, comma separated):
+              <input
+                type="text"
+                value={randomOptions.modules}
+                onChange={e => setRandomOptions({ ...randomOptions, modules: e.target.value })}
+                style={{ width: 120 }}
+              />
+            </label>
+          </div>
+          <button className="buu-btn buu-btn-random" onClick={handleGenerateRandomUsers}>
+            Generate & Preview
+          </button>
         </div>
 
         <div {...getRootProps()} className={`buu-dropzone ${isDragActive ? 'buu-dropzone-active' : ''}`}>
@@ -376,15 +540,15 @@ const BulkUserUpload = ({ onUpload }) => {
                         <td>
                           <input
                             type="text"
-                            value={user.firstName || ''}
-                            onChange={(e) => handleEditUser(originalIndex, 'firstName', e.target.value)}
+                            value={user.first_name || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'first_name', e.target.value)}
                           />
                         </td>
                         <td>
                           <input
                             type="text"
-                            value={user.lastName || ''}
-                            onChange={(e) => handleEditUser(originalIndex, 'lastName', e.target.value)}
+                            value={user.last_name || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'last_name', e.target.value)}
                           />
                         </td>
                         <td>

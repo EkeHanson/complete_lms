@@ -499,9 +499,15 @@ const CourseForm = () => {
       if (currentResource.type === 'link') {
         formData.append('url', currentResource.url || '');
       } else if (currentResource.file) {
+        console.log('Appending file to FormData:', currentResource.file);
         formData.append('file', currentResource.file);
       }
       formData.append('order', course?.resources.length || 0);
+
+      // Debug FormData contents
+      for (let [key, value] of formData.entries()) {
+        console.log(`FormData ${key}:`, value);
+      }
 
       const response = currentResource.id
         ? await coursesAPI.updateResource(id, currentResource.id, formData)
@@ -519,12 +525,12 @@ const CourseForm = () => {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
+      console.error('Error saving resource:', error.response?.data || error.message);
       setApiError(error.response?.data?.detail || 'Failed to save resource');
     } finally {
       setLoading(false);
     }
   };
-
   const deleteResource = async (resourceId) => {
     try {
       setLoading(true);
@@ -599,12 +605,13 @@ const CourseForm = () => {
     }
 
     const courseId = id || course.id;
+    const isAll = !assignedModules || assignedModules === 'all' || assignedModules.length === 0;
     const newInstructor = {
       instructorId: instructor.id,
       name: instructor.name,
       email: instructor.email,
       isActive: true,
-      assignedModules: assignedModules
+      assignedModules: isAll ? 'all' : assignedModules
     };
 
     try {
@@ -612,8 +619,8 @@ const CourseForm = () => {
       setApiError('');
       const data = {
         instructor_id: instructor.id,
-        assignment_type: assignedModules === 'all' ? 'all' : 'specific',
-        modules: assignedModules === 'all' ? [] : assignedModules,
+        assignment_type: isAll ? 'all' : 'specific',
+        modules: isAll ? [] : assignedModules,
         is_active: true
       };
 
@@ -704,16 +711,17 @@ const CourseForm = () => {
     return `${instructor.assignedModules.length} modules`;
   };
 
-  const tabLabels = [
-    { label: 'Details', icon: <Edit fontSize="small" /> },
-    { label: 'Modules', icon: <School fontSize="small" /> },
-    { label: 'Instructors', icon: <People fontSize="small" /> },
-    { label: 'Resources', icon: <InsertDriveFile fontSize="small" /> },
-    { label: 'Paths', icon: <LinkIcon fontSize="small" /> },
-    { label: 'Certificates', icon: <PictureAsPdf fontSize="small" /> },
-    { label: 'SCORM', icon: <VideoLibrary fontSize="small" /> },
-    { label: 'Gamification', icon: <Star fontSize="small" /> }
-  ];
+// In CourseForm.jsx, update tabLabels
+const tabLabels = [
+  { label: 'Details', icon: <Edit fontSize="small" /> },
+  { label: 'Modules', icon: <School fontSize="small" /> },
+  { label: 'Instructors', icon: <People fontSize="small" /> },
+  { label: 'Resources', icon: <InsertDriveFile fontSize="small" /> },
+  { label: 'Paths', icon: <LinkIcon fontSize="small" /> },
+  { label: 'Certificates', icon: <PictureAsPdf fontSize="small" />, disabled: !id && !course.id },
+  { label: 'SCORM', icon: <VideoLibrary fontSize="small" /> },
+  { label: 'Gamification', icon: <Star fontSize="small" /> }
+];
 
   const handleCloseCategoryDialog = () => {
     setCategoryDialogOpen(false);
@@ -760,10 +768,12 @@ const CourseForm = () => {
               {tabLabels.map((tab, index) => (
                 <li
                   key={index}
-                  className={`sidebar-item ${activeTab === index ? 'active' : ''}`}
+                  className={`sidebar-item ${activeTab === index ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}`}
                   onClick={() => {
-                    setActiveTab(index);
-                    if (mobileOpen) setMobileOpen(false);
+                    if (!tab.disabled) {
+                      setActiveTab(index);
+                      if (mobileOpen) setMobileOpen(false);
+                    }
                   }}
                 >
                   {tab.icon}
@@ -1337,83 +1347,100 @@ const CourseForm = () => {
 
             <div className={`dialog ${resourceDialogOpen ? 'open' : ''}`} role="dialog" aria-labelledby="resource-dialog-title">
               <div className="dialog-overlay" onClick={() => setResourceDialogOpen(false)} />
-              <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
-                <div className="dialog-header">
-                  <h3 id="resource-dialog-title">{currentResource? 'Edit Resource' : 'Add Resource'}</h3>
-                  <button className="dialog-close" type="button" onClick={() => setResourceDialogOpen(false)}>
-                    <Cancel className="icon" />
-                  </button>
-                </div>
-                <form onSubmit={saveResource}>
-                  <div className="dialog-body">
-                    <label className="label">Resource Title</label>
-                    <input
-                      type="text"
-                      className="input"
-                      value={currentResource?.title}
-                      onChange={(e) => {
-                        setCurrentResource({ ...currentResource, title: e.target.value });
-                      }}
-                      placeholder="Enter resource title"
-                      autoFocus
-                      aria-describedby="resource-title-error"
-                    />
-                    <label className="label">Resource Type</label>
-                    <select
-                      className="select"
-                      value={currentResource?.type}
-                      onChange={(e) => setCurrentResource({ ...currentResource, type: e.target.value })}
-                      aria-describedby="resource-type-error"
-                    >
-                      {resourceTypes.map(type => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                      ))}
-                    </select>
-                    {currentResource?.type === 'link' && (
-                      <>
-                        <label className="label">URL</label>
-                        <input
-                          type="text"
-                          className="input"
-                          value={currentResource?.url}
-                          onChange={(e) => {
-                            setCurrentResource({ ...currentResource, url: e.target.value });
-                          }}
-                          placeholder="Enter resource URL"
-                          aria-describedby="resource-url-error"
-                        />
-                      </>
-                    )}
-                    {(currentResource?.type === 'pdf' || currentResource?.type === 'video' || currentResource?.type === 'file') && (
-                      <button className="action-btn" type="button" component="label">
-                        <CloudUpload className="icon" /> Upload File
-                        <input
-                          type="file"
-                          hidden
-                          onChange={(e) => setCurrentResource({ ...currentResource, file: e.target.files[0] })}
-                          accept={currentResource?.type === 'pdf' ? 'application/pdf' : currentResource?.type === 'video' ? 'video/*' : '*'}
-                        />
-                      </button>
-                    )}
-                    {currentResource?.file && (
-                      <span className="file-info">Selected: {currentResource?.file?.name}</span>
-                    )}
-                  </div>
-                  <div className="dialog-actions">
-                    <button className="action-btn" type="button" onClick={() => setResourceDialogOpen(false)}>
-                      Cancel
-                    </button>
-                    <button
-                      className="action-btn primary"
-                      type="submit"
-                      disabled={loading || !currentResource?.title?.trim()}
-                    >
-                      {loading ? <span className="loading-spinner" /> : 'Save'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+              <div
+                className="dialog-content"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 1001,
+                  minWidth: 350,
+                  maxWidth: 500,
+                  background: '#fff',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                  padding: '24px'
+                }}
+              >
+    <div className="dialog-header">
+      <h3 id="resource-dialog-title">{currentResource ? 'Edit Resource' : 'Add Resource'}</h3>
+      <button className="dialog-close" type="button" onClick={() => setResourceDialogOpen(false)}>
+        <Cancel className="icon" />
+      </button>
+    </div>
+    <form onSubmit={saveResource}>
+      <div className="dialog-body">
+        <label className="label">Resource Title</label>
+        <input
+          type="text"
+          className="input"
+          value={currentResource?.title}
+          onChange={(e) => {
+            setCurrentResource({ ...currentResource, title: e.target.value });
+          }}
+          placeholder="Enter resource title"
+          autoFocus
+          aria-describedby="resource-title-error"
+        />
+        <label className="label">Resource Type</label>
+        <select
+          className="select"
+          value={currentResource?.type}
+          onChange={(e) => setCurrentResource({ ...currentResource, type: e.target.value })}
+          aria-describedby="resource-type-error"
+        >
+          {resourceTypes.map(type => (
+            <option key={type.value} value={type.value}>{type.label}</option>
+          ))}
+        </select>
+        {currentResource?.type === 'link' && (
+          <>
+            <label className="label">URL</label>
+            <input
+              type="text"
+              className="input"
+              value={currentResource?.url}
+              onChange={(e) => {
+                setCurrentResource({ ...currentResource, url: e.target.value });
+              }}
+              placeholder="Enter resource URL"
+              aria-describedby="resource-url-error"
+            />
+          </>
+        )}
+          {(currentResource?.type === 'pdf' || currentResource?.type === 'video' || currentResource?.type === 'file') && (
+            <label htmlFor="resource-file-upload" className="action-btn">
+              <CloudUpload className="icon" /> {loading ? 'Uploading...' : 'Upload File'}
+              <input
+                id="resource-file-upload"
+                type="file"
+                // style={{ display: 'none' }} // Temporarily remove to test
+                onChange={(e) => setCurrentResource({ ...currentResource, file: e.target.files[0] })}
+                accept={currentResource?.type === 'pdf' ? 'application/pdf' : currentResource?.type === 'video' ? 'video/*' : '*/*'}
+              />
+            </label>
+          )}
+        {currentResource?.file && (
+          <span className="file-info">Selected: {currentResource?.file?.name}</span>
+        )}
+      </div>
+      <div className="dialog-actions">
+        <button className="action-btn" type="button" onClick={() => setResourceDialogOpen(false)}>
+          Cancel
+        </button>
+        <button
+          className="action-btn primary"
+          type="submit"
+          disabled={loading || !currentResource?.title?.trim()}
+        >
+          {loading ? <span className="loading-spinner" /> : 'Save'}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
             <div
               key={`category-dialog-${categoryDialogOpen}`}

@@ -30,11 +30,6 @@ const InstructorAssignmentDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-
-  console.log("currentAssignment")
-  console.log(selectedInstructor)
-  console.log("currentAssignment")
-
   useEffect(() => {
     if (open) {
       const fetchInstructors = async () => {
@@ -182,13 +177,6 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
-  useEffect(() => {
-    if (open) {
-      console.log('DEBUG: currentAssignment', currentAssignment);
-      console.log('DEBUG: selectedInstructor', selectedInstructor);
-      console.log('DEBUG: instructors', instructors);
-    }
-  }, [open, instructors, selectedInstructor]);
 
   return (
     <div className={`InstructorAssignmentDialog ${open ? 'open' : ''}`}>

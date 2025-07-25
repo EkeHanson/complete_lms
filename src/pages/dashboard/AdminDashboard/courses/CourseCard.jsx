@@ -66,7 +66,7 @@ const CourseCard = ({
 
   // Default variant
   return (
-    <div className="CourseCard">
+    <div className="eCard">
       <div className="CourseCard-img-container">
         <img
           src={course.thumbnail || '/default-course.jpg'}

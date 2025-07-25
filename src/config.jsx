@@ -64,6 +64,12 @@ const api = axios.create({
   },
 });
 
+// Example for axios config
+const tenantId = localStorage.getItem('tenant_id');
+const tenantSchema = localStorage.getItem('tenant_schema');
+axios.defaults.headers.common['X-Tenant-ID'] = tenantId || '';
+axios.defaults.headers.common['X-Tenant-Schema'] = tenantSchema
+
 export const isSuperAdmin = async () => {
   try {
     const response = await api.get('/api/token/validate/');
@@ -489,17 +495,16 @@ export const coursesAPI = {
   deleteLearningPath: (id) => api.delete(`/api/courses/learning-paths/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  getCertificates: (courseId = null) => {
-    const url = courseId ? `/api/courses/certificates/course/${courseId}/` : '/api/courses/certificates/';
-    return api.get(url);
-  },
-  createCertificate: (courseId, formData) => api.post(`/api/courses/certificates/course/${courseId}/`, formData, {
+
+  
+  getCertificate: (courseId) => api.get(`/api/courses/certificates/course/${courseId}/template/`),
+  createCertificate: (courseId, formData) => api.post(`/api/courses/certificates/course/${courseId}/template/`, formData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  updateCertificate: (courseId, formData) => api.patch(`/api/courses/certificates/course/${courseId}/`, formData, {
+  updateCertificate: (courseId, formData) => api.patch(`/api/courses/certificates/course/${courseId}/template/`, formData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
-  deleteCertificate: (courseId) => api.delete(`/api/courses/certificates/course/${courseId}/`, {
+  deleteCertificate: (courseId) => api.delete(`/api/courses/certificates/course/${courseId}/template/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
   getFAQStats: () => api.get('/api/courses/faqs/stats/'),

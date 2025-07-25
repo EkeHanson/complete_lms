@@ -35,8 +35,16 @@ export const AuthProvider = ({ children }) => {
       if (!response.data?.user) {
         throw new Error('Invalid credentials');
       }
-      console.log('Login response:', response);
       setAuthTokens(response.data.access, response.data.refresh);
+
+      // Save tenant info to localStorage
+      if (response.data.tenant_id) {
+        localStorage.setItem('tenant_id', response.data.tenant_id);
+      }
+      if (response.data.tenant_schema) {
+        localStorage.setItem('tenant_schema', response.data.tenant_schema);
+      }
+
       const transformedUser = transformUserData(response.data.user);
       setUser(transformedUser);
       setError(null);

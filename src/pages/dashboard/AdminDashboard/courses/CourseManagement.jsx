@@ -42,10 +42,6 @@ const CourseManagement = () => {
 
         const totalEnrollments = enrollmentsRes.data.count || 0;
 
-        // console.log("totalEnrollments")
-        // console.log(enrollmentsRes.data)
-        // console.log("totalEnrollments")
-
         const mostPopularCourse = mostPopularRes.data.course ? {
           id: mostPopularRes.data.course.id,
           title: mostPopularRes.data.course.title,

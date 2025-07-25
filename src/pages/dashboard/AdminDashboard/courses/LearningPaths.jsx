@@ -1,11 +1,11 @@
 import { coursesAPI } from '../../../../config';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { debounce } from 'lodash';
 import './LearningPaths.css';
 
 import {
   Add, Delete, DragHandle, School, Edit, CheckCircle
 } from '@mui/icons-material';
-
 
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
@@ -18,61 +18,75 @@ const LearningPaths = ({ courseId }) => {
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const memoizedCourses = useMemo(() => courses, [courses]);
+  const createSectionRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
+    //console.log('Fetching learning paths and courses...');
     Promise.all([
       coursesAPI.getLearningPaths(),
       coursesAPI.getCourses()
     ])
       .then(([pathsResponse, coursesResponse]) => {
+        //console.log('Fetched paths:', pathsResponse.data?.results);
+        //console.log('Fetched courses:', coursesResponse.data?.results);
         setPaths(pathsResponse.data?.results || []);
         setCourses(coursesResponse.data?.results || []);
       })
       .catch(err => {
+        console.error('Error fetching data:', err.response?.data || err.message);
         setError('Failed to load learning paths or courses');
-        console.error(err);
         setPaths([]);
         setCourses([]);
       })
       .finally(() => {
         setLoading(false);
+        //console.log('Fetch completed');
       });
   }, []);
 
+  useEffect(() => {
+    //console.log('Course dialog open:', courseDialogOpen);
+  }, [courseDialogOpen]);
+
   const handleAddPath = async () => {
+    //console.log('handleAddPath called', { newPath, selectedCourses });
     if (!newPath.title.trim()) {
-      setError("Title is required");
+      //console.log('Validation failed: Title is required');
+      setError('Title is required');
       return;
     }
-  
-    if (newPath.courses.length === 0 || !newPath.courses.every((c) => c.id)) {
-      setError("At least one valid course with an ID is required");
+    if (newPath.courses.length === 0 || !newPath.courses.every(c => c.id)) {
+      //console.log('Validation failed: Invalid or no courses', newPath.courses);
+      setError('At least one valid course with an ID is required');
       return;
     }
-  
+
     setLoading(true);
     try {
       const pathData = {
         title: newPath.title,
         description: newPath.description,
-        course_ids: newPath.courses.map((c) => c.id),
+        course_ids: newPath.courses.map(c => c.id)
       };
+      //console.log('Sending POST request with data:', pathData);
       const response = await coursesAPI.createLearningPath(pathData);
+      //console.log('POST response:', response.data);
       setPaths([...paths, response.data]);
-      setNewPath({ title: "", description: "", courses: [] });
+      setNewPath({ title: '', description: '', courses: [] });
       setSelectedCourses([]);
-      setError("");
+      setError('');
     } catch (err) {
-      console.error("Error creating path:", err.response?.data);
+      console.error('Error creating path:', err.response?.data || err.message);
       const errorData = err.response?.data;
       if (errorData) {
         const errorMessages = [];
-        if (errorData.title) errorMessages.push(errorData.title.join(" "));
-        if (errorData.course_ids) errorMessages.push(errorData.course_ids.join(" "));
-        setError(errorMessages.join(" ") || "Failed to create learning path");
+        if (errorData.title) errorMessages.push(errorData.title.join(' '));
+        if (errorData.course_ids) errorMessages.push(errorData.course_ids.join(' '));
+        setError(errorMessages.join(' ') || 'Failed to create learning path');
       } else {
-        setError(err.message || "Failed to create learning path");
+        setError(err.message || 'Failed to create learning path');
       }
     } finally {
       setLoading(false);
@@ -84,7 +98,9 @@ const LearningPaths = ({ courseId }) => {
     try {
       await coursesAPI.deleteLearningPath(id);
       setPaths(paths.filter(path => path.id !== id));
+      setError('');
     } catch (err) {
+      //console.error('Error deleting path:', err.response?.data || err.message);
       setError(err.response?.data?.detail || 'Failed to delete learning path');
     } finally {
       setLoading(false);
@@ -93,18 +109,22 @@ const LearningPaths = ({ courseId }) => {
 
   const handleEditPath = (path) => {
     setEditingPath(path);
-    setNewPath({ 
-      title: path.title, 
-      description: path.description, 
-      courses: path.courses 
+    setNewPath({
+      title: path.title,
+      description: path.description,
+      courses: path.courses
     });
     setSelectedCourses(path.courses.map(c => c.id));
     setCourseDialogOpen(true);
+    //console.log('Editing path, selected courses:', path.courses.map(c => c.id));
   };
 
   const handleUpdatePath = async () => {
-    if (!editingPath || !newPath.title.trim()) return;
-    
+    if (!editingPath || !newPath.title.trim()) {
+      setError('Title is required');
+      return;
+    }
+
     setLoading(true);
     try {
       const pathData = {
@@ -112,45 +132,55 @@ const LearningPaths = ({ courseId }) => {
         description: newPath.description,
         course_ids: newPath.courses.map(c => typeof c === 'object' ? c.id : c)
       };
+     // console.log('Updating path with data:', pathData);
       const response = await coursesAPI.updateLearningPath(editingPath.id, pathData);
       setPaths(paths.map(path => path.id === editingPath.id ? response.data : path));
       setEditingPath(null);
       setNewPath({ title: '', description: '', courses: [] });
       setSelectedCourses([]);
       setCourseDialogOpen(false);
+      setError('');
     } catch (err) {
+      console.error('Error updating path:', err.response?.data || err.message);
       setError(err.response?.data?.detail || 'Failed to update learning path');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleCourseSelection = (courseId) => {
-    setSelectedCourses(prev =>
-      prev.includes(courseId)
+  const toggleCourseSelection = debounce((courseId) => {
+    setSelectedCourses(prev => {
+      const newSelection = prev.includes(courseId)
         ? prev.filter(id => id !== courseId)
-        : [...prev, courseId]
-    );
-  };
+        : [...prev, courseId];
+     // console.log('Updated selectedCourses:', newSelection);
+      return newSelection;
+    });
+  }, 200);
 
   const saveSelectedCourses = () => {
-    setNewPath(prev => ({ 
-      ...prev, 
+    setNewPath(prev => ({
+      ...prev,
       courses: selectedCourses.map(id => {
         const fullCourse = courses.find(c => c.id === id);
-        return fullCourse || id;
+        return fullCourse || { id };
       })
     }));
     setCourseDialogOpen(false);
+    //console.log('Saved selected courses:', selectedCourses);
+    // Scroll to the Edit Learning Path section when editing
+    if (editingPath && createSectionRef.current) {
+      createSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
-    
+
     const reorderedPaths = Array.from(paths);
     const [removed] = reorderedPaths.splice(result.source.index, 1);
     reorderedPaths.splice(result.destination.index, 0, removed);
-    
+
     setPaths(reorderedPaths);
   };
 
@@ -159,7 +189,7 @@ const LearningPaths = ({ courseId }) => {
       {error && (
         <div className="error-notification">
           <span>{error}</span>
-          <button onClick={() => setError('')} className="close-btn">
+          <button onClick={() => setError('')} className="close-btn" type="button">
             <CheckCircle className="icon" />
           </button>
         </div>
@@ -178,7 +208,7 @@ const LearningPaths = ({ courseId }) => {
         </div>
       </div>
 
-      <div className="LearningPaths-Create">
+      <div className="LearningPaths-Create" ref={createSectionRef}>
         <h3>{editingPath ? 'Edit Learning Path' : 'Create New Learning Path'}</h3>
         <div className="LearningPaths-Form">
           <div className="form-group">
@@ -187,7 +217,7 @@ const LearningPaths = ({ courseId }) => {
               type="text"
               className="input"
               value={newPath.title}
-              onChange={(e) => setNewPath({...newPath, title: e.target.value})}
+              onChange={(e) => setNewPath({ ...newPath, title: e.target.value })}
               placeholder="Enter path title"
             />
           </div>
@@ -197,7 +227,7 @@ const LearningPaths = ({ courseId }) => {
               type="text"
               className="input"
               value={newPath.description}
-              onChange={(e) => setNewPath({...newPath, description: e.target.value})}
+              onChange={(e) => setNewPath({ ...newPath, description: e.target.value })}
               placeholder="Enter description"
             />
           </div>
@@ -205,6 +235,7 @@ const LearningPaths = ({ courseId }) => {
             <label className="label">Selected Courses: {newPath.courses.length}</label>
             <button
               className="action-btn"
+              type="button"
               onClick={() => setCourseDialogOpen(true)}
             >
               <Add className="icon" /> Select Courses
@@ -215,6 +246,7 @@ const LearningPaths = ({ courseId }) => {
               <>
                 <button
                   className="action-btn"
+                  type="button"
                   onClick={() => {
                     setEditingPath(null);
                     setNewPath({ title: '', description: '', courses: [] });
@@ -225,6 +257,7 @@ const LearningPaths = ({ courseId }) => {
                 </button>
                 <button
                   className="action-btn primary"
+                  type="button"
                   onClick={handleUpdatePath}
                   disabled={loading || !newPath.title.trim()}
                 >
@@ -234,6 +267,7 @@ const LearningPaths = ({ courseId }) => {
             ) : (
               <button
                 className="action-btn primary"
+                type="button"
                 onClick={handleAddPath}
                 disabled={loading || !newPath.title.trim()}
               >
@@ -266,7 +300,7 @@ const LearningPaths = ({ courseId }) => {
                   className="path-list"
                 >
                   {paths.map((path, index) => (
-                    <Draggable key={path.id} draggableId={path.id} index={index}>
+                    <Draggable key={path.id} draggableId={String(path.id)} index={index}>
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
@@ -284,12 +318,14 @@ const LearningPaths = ({ courseId }) => {
                             <div className="path-actions">
                               <button
                                 className="icon-btn"
+                                type="button"
                                 onClick={() => handleEditPath(path)}
                               >
                                 <Edit className="icon" />
                               </button>
                               <button
                                 className="icon-btn delete"
+                                type="button"
                                 onClick={() => handleDeletePath(path.id)}
                               >
                                 <Delete className="icon" />
@@ -305,6 +341,7 @@ const LearningPaths = ({ courseId }) => {
                                     <span>{course.title}</span>
                                     <button
                                       className="chip-delete"
+                                      type="button"
                                       onClick={() => {
                                         setNewPath(prev => ({
                                           ...prev,
@@ -323,6 +360,7 @@ const LearningPaths = ({ courseId }) => {
                             )}
                             <button
                               className="action-btn"
+                              type="button"
                               onClick={() => handleEditPath(path)}
                             >
                               <Add className="icon" /> Add Courses
@@ -343,9 +381,13 @@ const LearningPaths = ({ courseId }) => {
       {courseDialogOpen && (
         <div className="CourseDialog">
           <div className="CourseDialog-Body" onClick={() => setCourseDialogOpen(false)}></div>
-          <div className="CourseDialog-Main">
+          <div
+            className="CourseDialog-Main"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               className="CourseDialog-Close"
+              type="button"
               onClick={() => setCourseDialogOpen(false)}
             >
               <CheckCircle className="icon" />
@@ -360,12 +402,15 @@ const LearningPaths = ({ courseId }) => {
                 </div>
               ) : (
                 <ul className="course-list">
-                  {Array.isArray(courses) && courses.length > 0 ? (
-                    courses.map(course => (
+                  {Array.isArray(memoizedCourses) && memoizedCourses.length > 0 ? (
+                    memoizedCourses.map(course => (
                       <li
                         key={course.id}
                         className="course-item"
-                        onClick={() => toggleCourseSelection(course.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCourseSelection(course.id);
+                        }}
                       >
                         <div className="course-info">
                           <span>{course.title}</span>
@@ -374,7 +419,11 @@ const LearningPaths = ({ courseId }) => {
                         <input
                           type="checkbox"
                           checked={selectedCourses.includes(course.id)}
-                          onChange={() => toggleCourseSelection(course.id)}
+                          onChange={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleCourseSelection(course.id);
+                          }}
                           className="checkbox"
                         />
                       </li>
@@ -390,15 +439,18 @@ const LearningPaths = ({ courseId }) => {
             <div className="CourseDialog-Actions">
               <button
                 className="action-btn"
+                type="button"
                 onClick={() => setCourseDialogOpen(false)}
               >
                 Cancel
               </button>
               <button
                 className="action-btn primary"
+                type="button"
                 onClick={saveSelectedCourses}
+                disabled={loading}
               >
-                Save
+                {loading ? <div className="spinner"></div> : 'Save'}
               </button>
             </div>
           </div>
