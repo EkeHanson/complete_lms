@@ -5,7 +5,8 @@ const isLocalhost = window?.location?.hostname === 'localhost';
 
 export const API_BASE_URL = isLocalhost
   ? 'http://localhost:9090'
-  : 'https://complete-lms-api.onrender.com';
+  : 'https://complete-lms-api.fly.dev';
+  // : 'https://complete-lms-api.onrender.com';
 
 export const CMVP_SITE_URL = isLocalhost
   ? 'http://localhost:3000'
