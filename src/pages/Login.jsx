@@ -13,6 +13,7 @@ import {
   useTheme,
   useMediaQuery,
   Alert,
+  AlertTitle,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -123,58 +124,87 @@ const Login = () => {
     if (!validateForm()) return;
 
     setLoading(true);
+    setRemainingAttempts(null); // Reset remaining attempts on new submission
     try {
       const response = await login(formData);
       console.log('Login response:', response.data);
-      console.log('Tokens stored in localStorage:', {
-        access_token: localStorage.getItem('access_token'),
-        refresh_token: localStorage.getItem('refresh_token'),
-      });
       const validateResponse = await authAPI.verifyToken();
       console.log('Token validation response:', validateResponse.data);
-   } catch (error) {
-  console.error('Login error details:', {
-    message: error.message,
-    response: error.response?.data,
-    status: error.response?.status,
-  });
+    } catch (error) {
+      console.error('Login error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
 
-  let errorMessage = 'Login failed. Please try again.';
+      let errorMessage = 'Login failed. Please try again.';
+      let parsedDetail = null;
+      let parsedRemainingAttempts = null;
 
-  if (error.response?.data) {
-    const detail = error.response.data.detail;
+      if (error.response?.data) {
+        try {
+          // Handle complex error structure where detail is a string containing JSON-like data
+          if (typeof error.response.data.detail === 'string') {
+            // Attempt to parse the nested error details
+            const detailStr = error.response.data.detail.replace(/'/g, '"');
+            const parsed = JSON.parse(detailStr);
+            console.log('Parsed error detail:', parsed);
+            
+            if (parsed.detail) {
+              parsedDetail = parsed.detail;
+              if (typeof parsedDetail === 'object' && parsedDetail.string) {
+                errorMessage = parsedDetail.string;
+              } else if (typeof parsedDetail === 'string') {
+                errorMessage = parsedDetail;
+              }
+            }
+            
+            if (parsed.remaining_attempts) {
+              if (typeof parsed.remaining_attempts === 'object' && parsed.remaining_attempts.string) {
+                parsedRemainingAttempts = parseInt(parsed.remaining_attempts.string, 10);
+              } else {
+                parsedRemainingAttempts = parseInt(parsed.remaining_attempts, 10);
+              }
+            }
+          }
+          
+          // Handle simple error structure
+          if (error.response.data.detail && typeof error.response.data.detail === 'string') {
+            errorMessage = error.response.data.detail;
+          }
+          
+          if (error.response.data.remaining_attempts) {
+            parsedRemainingAttempts = parseInt(error.response.data.remaining_attempts, 10);
+          }
+        } catch (parseError) {
+          console.error('Error parsing server response:', parseError);
+          // Fallback to simple error display
+          errorMessage = error.response.data.detail || JSON.stringify(error.response.data);
+        }
 
-    if (typeof detail === 'string') {
-      const match = detail.match(/string='([^']+)'/);
-      if (match && match[1]) {
-        errorMessage = match[1];
+        if (Array.isArray(error.response.data.non_field_errors)) {
+          errorMessage = error.response.data.non_field_errors.join(', ');
+        }
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Something went wrong on our end. Please try again later or contact support.';
       } else {
-        errorMessage = detail;
+        errorMessage = error.message || 'An unexpected error occurred.';
       }
 
-      if (errorMessage.includes('Account suspended')) {
-        errorMessage = 'Your account has been suspended. Please contact support at <a href="mailto:support@example.com">support@example.com</a>.';
-      } else if (errorMessage.includes('Invalid credentials')) {
-        errorMessage = 'Incorrect email or password. Please try again.';
+      // Handle account suspension message
+      if (typeof errorMessage === 'string' && errorMessage.includes('Account suspended')) {
+        errorMessage = (
+          <>
+            Your account has been suspended. Please contact support at{' '}
+            <Link href="mailto:support@example.com" color="error.main">
+              support@example.com
+            </Link>.
+          </>
+        );
       }
 
-    } else if (Array.isArray(error.response.data.non_field_errors)) {
-      errorMessage = error.response.data.non_field_errors.join(', ');
-    } else if (typeof detail === 'object') {
-      errorMessage = JSON.stringify(detail);
-    }
-  } else if (error.response?.status === 500) {
-    errorMessage = 'Something went wrong on our end. Please try again later or contact support.';
-  } else {
-    errorMessage = error.message || 'An unexpected error occurred.';
-  }
-
-  setErrors({ general: errorMessage });
-
-  if (error.response?.data?.remaining_attempts !== undefined) {
-    console.log('Remaining attempts:', error.response.data.remaining_attempts);
-    setRemainingAttempts(error.response.data.remaining_attempts);
-  }
+      setErrors({ general: errorMessage });
+      setRemainingAttempts(parsedRemainingAttempts);
     } finally {
       setLoading(false);
     }
@@ -221,7 +251,8 @@ const Login = () => {
               severity={remainingAttempts !== null && remainingAttempts <= 2 ? 'warning' : 'error'}
               sx={{ mb: 2, fontSize: '0.85rem' }}
             >
-              <span dangerouslySetInnerHTML={{ __html: errors.general }} />
+              <AlertTitle>Login Error</AlertTitle>
+              {errors.general}
               {remainingAttempts !== null && (
                 <Box sx={{ mt: 1 }}>
                   <Typography variant="caption">
@@ -229,7 +260,10 @@ const Login = () => {
                   </Typography>
                   {remainingAttempts <= 2 && (
                     <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
-                      <Link href="/forgot-password">Reset your password</Link> if you've forgotten it
+                      <Link href="/forgot-password" color="primary">
+                        Reset your password
+                      </Link>{' '}
+                      if you've forgotten it
                     </Typography>
                   )}
                 </Box>

@@ -30,42 +30,82 @@ const InstructorAssignmentDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // useEffect(() => {
+  //   if (open) {
+  //     const fetchInstructors = async () => {
+  //       setLoading(true);
+  //       setError('');
+  //       try {
+  //         const response = await groupsAPI.getGroupMembersByName('All Instructors');
+  //         const memberships = response.data || [];
+  //         const instructorsData = memberships.map(membership => ({
+  //           id: membership.user.id,
+  //           name: `${membership.user.first_name} ${membership.user.last_name}`.trim() || membership.user.email,
+  //           email: membership.user.email,
+  //           expertise: membership.user.expertise || []
+  //         }));
+  //         const uniqueInstructors = Array.from(
+  //           new Map(instructorsData.map(instructor => [instructor.id, instructor])).values()
+  //         );
+  //         setInstructors(uniqueInstructors);
+  //         setFilteredInstructors(uniqueInstructors);
+  //         if (uniqueInstructors.length === 0) {
+  //           setError('No instructors found in the "All Instructors" group.');
+  //         }
+  //       } catch (error) {
+  //         console.error('Error fetching instructors:', error);
+  //         if (error.response?.status === 404) {
+  //           setError('Instructors group not found. Please ensure the group exists.');
+  //         } else {
+  //           setError('Failed to load instructors. Please try again.');
+  //         }
+  //       } finally {
+  //         setLoading(false);
+  //       }
+  //     };
+  //     fetchInstructors();
+  //   }
+  // }, [open]);
+
+
   useEffect(() => {
-    if (open) {
-      const fetchInstructors = async () => {
-        setLoading(true);
-        setError('');
-        try {
-          const response = await groupsAPI.getGroupMembersByName('All Instructors');
-          const memberships = response.data || [];
-          const instructorsData = memberships.map(membership => ({
-            id: membership.user.id,
-            name: `${membership.user.first_name} ${membership.user.last_name}`.trim() || membership.user.email,
-            email: membership.user.email,
-            expertise: membership.user.expertise || []
-          }));
-          const uniqueInstructors = Array.from(
-            new Map(instructorsData.map(instructor => [instructor.id, instructor])).values()
-          );
-          setInstructors(uniqueInstructors);
-          setFilteredInstructors(uniqueInstructors);
-          if (uniqueInstructors.length === 0) {
-            setError('No instructors found in the "All Instructors" group.');
-          }
-        } catch (error) {
-          console.error('Error fetching instructors:', error);
-          if (error.response?.status === 404) {
-            setError('Instructors group not found. Please ensure the group exists.');
-          } else {
-            setError('Failed to load instructors. Please try again.');
-          }
-        } finally {
-          setLoading(false);
+  if (open) {
+    const fetchInstructors = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await groupsAPI.getGroupMembersByName('All Instructors');
+        const memberships = response.data || [];
+        const instructorsData = memberships.map(membership => ({
+          id: membership.user.id,
+          name: `${membership.user.first_name} ${membership.user.last_name}`.trim() || membership.user.email,
+          email: membership.user.email,
+          expertise: membership.user.expertise || []
+        }));
+        const uniqueInstructors = Array.from(
+          new Map(instructorsData.map(instructor => [instructor.id, instructor])).values()
+        );
+        console.log('Fetched Instructors:', uniqueInstructors);
+        setInstructors(uniqueInstructors);
+        setFilteredInstructors(uniqueInstructors);
+        if (uniqueInstructors.length === 0) {
+          setError('No instructors found in the "All Instructors" group.');
         }
-      };
-      fetchInstructors();
-    }
-  }, [open]);
+      } catch (error) {
+        console.error('Error fetching instructors:', error);
+        if (error.response?.status === 404) {
+          setError('Instructors group not found. Please ensure the group exists.');
+        } else {
+          setError('Failed to load instructors. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInstructors();
+  }
+}, [open]);
+
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -94,10 +134,18 @@ const InstructorAssignmentDialog = ({
     }
   }, [open]);
 
+ 
+  
   const handleInstructorSelect = (instructorId) => {
-    setSelectedInstructor(instructorId);
-    setError('');
-  };
+  console.log('Selected Instructor ID:', instructorId);
+  setSelectedInstructor(instructorId);
+  setError('');
+};
+
+
+  //   setSelectedInstructor(instructorId);
+  //   setError('');
+  // };
 
   const handleAssignmentTypeChange = (e) => {
     setAssignmentType(e.target.checked ? 'specific' : 'all');
@@ -118,8 +166,76 @@ const InstructorAssignmentDialog = ({
     setSearchTerm(e.target.value);
   };
 
+// const handleSubmit = async () => {
+//   // Validation checks
+//   if (!selectedInstructor) {
+//     setError('Please select an instructor');
+//     return;
+//   }
+//   if (assignmentType === 'specific' && selectedModules.length === 0) {
+//     setError('Please select at least one module for specific assignment');
+//     return;
+//   }
+//   if (!courseId) {
+//     setError('Course ID is missing. Please save the course first.');
+//     return;
+//   }
+
+//   setLoading(true);
+//   setError('');
+//   try {
+//     const instructor = instructors.find((i) => i.id === selectedInstructor);
+//     if (!instructor) {
+//       setError('Selected instructor not found.');
+//       setLoading(false);
+//       return;
+//     }
+
+//     const data = {
+//       instructor_id: selectedInstructor,
+//       assignment_type: assignmentType,
+//       modules: assignmentType === 'specific' ? selectedModules : [], // Explicitly set modules
+//       is_active: true,
+//     };
+
+//     if (currentAssignment && currentAssignment.instructorId) {
+//       await coursesAPI.updateInstructorAssignment(courseId, selectedInstructor, data);
+//     } else {
+//       await coursesAPI.assignInstructor(courseId, data);
+//     }
+
+//     onAssign(instructor, data.modules);
+//     onClose();
+//   } catch (error) {
+//     console.error('Error saving instructor assignment:', error);
+//     let errorMessage = 'Failed to save instructor assignment';
+//     if (error.response?.data) {
+//       if (Array.isArray(error.response.data)) {
+//         errorMessage = error.response.data[0];
+//       } else if (typeof error.response.data === 'string') {
+//         errorMessage = error.response.data;
+//       } else if (error.response.data.non_field_errors) {
+//         errorMessage = error.response.data.non_field_errors[0];
+//       } else if (error.response.data.detail) {
+//         errorMessage = error.response.data.detail;
+//       }
+//     }
+//     setError(errorMessage);
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
+
 const handleSubmit = async () => {
-  // Validation checks
+  console.log('Selected Instructor:', selectedInstructor);
+  console.log('Payload:', {
+    instructor_id: selectedInstructor,
+    assignment_type: assignmentType,
+    modules: assignmentType === 'specific' ? selectedModules : [],
+    is_active: true,
+  });
+
   if (!selectedInstructor) {
     setError('Please select an instructor');
     return;
@@ -146,7 +262,7 @@ const handleSubmit = async () => {
     const data = {
       instructor_id: selectedInstructor,
       assignment_type: assignmentType,
-      modules: assignmentType === 'specific' ? selectedModules : [], // Explicitly set modules
+      modules: assignmentType === 'specific' ? selectedModules : [],
       is_active: true,
     };
 
@@ -177,6 +293,7 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
+
 
   return (
     <div className={`InstructorAssignmentDialog ${open ? 'open' : ''}`}>

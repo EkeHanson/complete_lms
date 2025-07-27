@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   Publish as UploadIcon, Description as FileIcon, CheckCircle as SuccessIcon,
   Error as ErrorIcon, CloudDownload as DownloadIcon, Search as SearchIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon, Close as CloseIcon
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { userAPI, messagingAPI } from '../../../config';
 import { Snackbar, Alert } from '@mui/material';
+import { Faker, en } from '@faker-js/faker';
 import './BulkUserUpload.css';
+
+// Initialize Faker with English locale
+const faker = new Faker({ locale: [en] });
 
 // Utility to generate random string
 const randomString = (length = 8, charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') => {
@@ -25,30 +29,28 @@ const generateRandomUsers = ({
   emailDomain = 'example.com',
   passwordFormat = 'random',
   passwordLength = 10,
+  fixedPassword = 'Password123!',
   role = 'learner',
   jobRole = 'staff',
   status = 'active',
-  firstNamePrefix = 'User',
-  lastNamePrefix = 'Test',
   modules = ''
 }) => {
   const users = [];
   for (let i = 0; i < count; i++) {
-    const firstName = `${firstNamePrefix}${i + 1}`;
-    const lastName = `${lastNamePrefix}${i + 1}`;
-    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${emailDomain}`;
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    // Sanitize names for email (remove spaces, special characters)
+    const email = `${firstName.toLowerCase().replace(/[^a-z]/g, '')}.${lastName.toLowerCase().replace(/[^a-z]/g, '')}${i + 1}@${emailDomain}`;
     let password;
     if (passwordFormat === 'random') {
       password = randomString(passwordLength);
     } else if (passwordFormat === 'fixed') {
-      password = 'Password123!';
-    } else {
-      password = passwordFormat; // custom string
+      password = fixedPassword;
     }
     users.push({
+      firstName,
+      lastName,
       email,
-      first_name: firstName,
-      last_name: lastName,
       password,
       role,
       job_role: jobRole,
@@ -73,50 +75,61 @@ const BulkUserUpload = ({ onUpload }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  // New state for random data generation options
+  // Random data generation options
   const [randomOptions, setRandomOptions] = useState({
     count: 10,
     emailDomain: 'example.com',
     passwordFormat: 'random',
     passwordLength: 10,
+    fixedPassword: 'Password123!',
     role: 'learner',
     jobRole: 'staff',
     status: 'active',
-    firstNamePrefix: 'User',
-    lastNamePrefix: 'Test',
     modules: ''
   });
 
-  // 1. Update templateData to use backend field names
+  // Template data aligned with backend expected columns
   const templateData = [
-    ['email', 'first_name', 'last_name', 'password', 'role', 'job_role', 'status', 'modules'],
-    ['john@example.com', 'John', 'Doe', 'SecurePass123!', 'learner', 'staff', 'active', ''],
-    ['jane@example.com', 'Jane', 'Smith', 'SecurePass456!', 'admin', 'manager', 'active', '']
+    ['firstName', 'lastName', 'email', 'password', 'role', 'job_role', 'status', 'modules'],
+    ['John', 'Doe', 'john@example.com', 'SecurePass123!', 'learner', 'staff', 'active', ''],
+    ['Jane', 'Smith', 'jane@example.com', 'SecurePass456!', 'admin', 'manager', 'active', '']
   ];
 
-  // 2. Update validation to use backend field names
-  const requiredFields = ['email', 'first_name', 'last_name', 'password', 'role'];
+  // Validation rules aligned with backend
+  const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
   const validRoles = ['learner', 'admin', 'hr', 'carer', 'client', 'family', 'auditor', 'tutor', 'assessor', 'iqa', 'eqa'];
   const validStatuses = ['active', 'pending', 'suspended'];
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
+      'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/csv': ['.csv']
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
     },
     maxFiles: 1,
     onDrop: async (acceptedFiles) => {
       if (acceptedFiles.length) {
-        setFile(acceptedFiles[0]);
+        const selectedFile = acceptedFiles[0];
+        setFile(selectedFile);
         setUploadResult(null);
-        const data = await acceptedFiles[0].arrayBuffer();
+        const data = await selectedFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        setPreviewData(jsonData);
+        // Map frontend field names to backend expected names
+        const mappedData = jsonData.map(row => ({
+          firstName: row.firstName || row.first_name || '',
+          lastName: row.lastName || row.last_name || '',
+          email: row.email || '',
+          password: row.password || '',
+          role: row.role || '',
+          job_role: row.job_role || row.jobRole || '',
+          status: row.status || '',
+          modules: row.modules || ''
+        }));
+        setPreviewData(mappedData);
         setOpenPreviewModal(true);
-        validateAllUsers(jsonData);
+        validateAllUsers(mappedData);
       }
     }
   });
@@ -127,11 +140,6 @@ const BulkUserUpload = ({ onUpload }) => {
         const usersResponse = await userAPI.getUsers({ page_size: 1000 });
         setExistingEmails(usersResponse.data.results.map(user => user.email.toLowerCase()));
       } catch (err) {
-        setUploadResult({
-          success: false,
-          message: 'Failed to fetch existing users',
-          details: [err.message]
-        });
         setSnackbarOpen(true);
         setSnackbarMessage('Failed to fetch existing users');
         setSnackbarSeverity('error');
@@ -143,41 +151,40 @@ const BulkUserUpload = ({ onUpload }) => {
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Users Template");
-    XLSX.writeFile(wb, "user_upload_template.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, 'Users Template');
+    XLSX.writeFile(wb, 'user_upload_template.csv');
   };
 
   const validateUserData = (userData, index, allUsers) => {
     const errors = [];
     requiredFields.forEach(field => {
       if (!userData[field]) {
-        errors.push(`Missing required field: ${field}`);
+        errors.push(`Missing ${field}`);
       }
     });
     if (userData.email) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
-        errors.push(`Invalid email format`);
+        errors.push('Invalid email format');
       }
       const emailCount = allUsers.filter(u => u.email?.toLowerCase() === userData.email.toLowerCase()).length;
       if (emailCount > 1) {
-        errors.push(`Duplicate email in upload batch`);
+        errors.push('Duplicate email in batch');
       }
       if (existingEmails.includes(userData.email.toLowerCase())) {
-        errors.push(`Email already exists in the system`);
+        errors.push('Email already exists');
       }
     }
     if (userData.password && userData.password.length < 8) {
-      errors.push(`Password must be at least 8 characters`);
+      errors.push('Password must be at least 8 characters');
     }
     if (userData.role && !validRoles.includes(userData.role.toLowerCase())) {
-      errors.push(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+      errors.push(`Invalid role: ${userData.role}`);
     }
     if (userData.status && !validStatuses.includes(userData.status.toLowerCase())) {
-      errors.push(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+      errors.push(`Invalid status: ${userData.status}`);
     }
-    // modules should be an array of IDs or empty
-    if (userData.modules && typeof userData.modules !== 'string' && !Array.isArray(userData.modules)) {
-      errors.push(`Modules must be a comma-separated string or array of IDs`);
+    if (userData.modules && typeof userData.modules !== 'string') {
+      errors.push('Modules must be a comma-separated string');
     }
     return errors.length ? errors : null;
   };
@@ -213,8 +220,14 @@ const BulkUserUpload = ({ onUpload }) => {
     }
   };
 
-  // Generate random users and open preview modal
   const handleGenerateRandomUsers = () => {
+    // Validate fixed password if selected
+    if (randomOptions.passwordFormat === 'fixed' && randomOptions.fixedPassword.length < 8) {
+      setSnackbarOpen(true);
+      setSnackbarMessage('Fixed password must be at least 8 characters long');
+      setSnackbarSeverity('error');
+      return;
+    }
     const users = generateRandomUsers(randomOptions);
     setPreviewData(users);
     setOpenPreviewModal(true);
@@ -223,64 +236,54 @@ const BulkUserUpload = ({ onUpload }) => {
     validateAllUsers(users);
   };
 
-  const handleUploadRandomUsersAsFile = () => {
-    const users = generateRandomUsers(randomOptions);
-    // Convert to worksheet and workbook
-    const ws = XLSX.utils.json_to_sheet(users);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Users");
-    // Write workbook to binary string
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    // Create a Blob and File object
-    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const file = new File([blob], "bulk_users.xlsx", { type: blob.type });
-    setFile(file);
-    setPreviewData(users);
-    setOpenPreviewModal(true);
-    setUploadResult(null);
-    validateAllUsers(users);
-  };
-
-  // 3. Format upload payload for backend
   const processFile = async () => {
-    if (!file) return; // Only process if a file is present
+    if (!file && previewData.length === 0) {
+      setSnackbarOpen(true);
+      setSnackbarMessage('No file or data to upload');
+      setSnackbarSeverity('error');
+      return;
+    }
     setIsProcessing(true);
     setUploadResult(null);
     try {
+      let uploadFile = file;
+      if (!uploadFile && previewData.length > 0) {
+        const ws = XLSX.utils.json_to_sheet(previewData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Users');
+        const wbout = XLSX.write(wb, { bookType: 'csv', type: 'array' });
+        uploadFile = new File([wbout], 'bulk_users.csv', { type: 'text/csv' });
+      }
       const formData = new FormData();
-      formData.append('file', file); // Key should match backend expectation
-
+      formData.append('file', uploadFile);
       const response = await userAPI.bulkUpload(formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-
       if (response.status === 201 && response.data.error_count === 0 && response.data.created_count > 0) {
-        for (const createdUser of response.data.created_users) {
-          const userData = unsavedUsers.find(u => u.email === createdUser.email);
-          if (sendWelcomeEmail) {
+        if (sendWelcomeEmail) {
+          for (const createdUser of response.data.created_users) {
+            const userData = previewData.find(u => u.email === createdUser.email);
             await messagingAPI.createMessage({
               recipient_id: createdUser.id,
-              subject: 'Welcome to Our Platform!',
-              content: `Hello ${userData.first_name},\n\nWelcome to our platform! Your account has been created successfully.\n\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
+              subject: 'Welcome to NotchHR!',
+              content: `Hello ${userData.firstName},\n\nYour account has been created successfully.\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
               type: 'welcome'
             });
           }
         }
         setUploadResult({
           success: true,
-          message: `Successfully processed ${response.data.created_count} users`,
-          details: response.data.errors || []
+          message: `Created ${response.data.created_count} users`,
+          details: []
         });
         setSnackbarOpen(true);
-        setSnackbarMessage(`Successfully created ${response.data.created_count} users`);
+        setSnackbarMessage(`Created ${response.data.created_count} users`);
         setSnackbarSeverity('success');
         setOpenPreviewModal(false);
         setFile(null);
         setPreviewData([]);
         setSearchQuery('');
-        if (onUpload && response.data.created_count > 0) {
-          onUpload();
-        }
+        if (onUpload) onUpload();
       } else {
         setUploadResult({
           success: false,
@@ -294,41 +297,136 @@ const BulkUserUpload = ({ onUpload }) => {
         setSnackbarSeverity('error');
       }
     } catch (error) {
-      let errorDetails = [];
-      if (error.response?.data?.errors) {
-        errorDetails = error.response.data.errors.map(err =>
-          err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
-        );
-      } else if (error.response?.data?.detail) {
-        errorDetails = [error.response.data.detail];
-      } else {
-        errorDetails = [error.message || 'Network error'];
-      }
+      const errorDetails = error.response?.data?.errors
+        ? error.response.data.errors.map(err =>
+            err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
+          )
+        : [error.response?.data?.detail || error.message || 'Network error'];
       setUploadResult({
         success: false,
-        message: 'Error processing file',
+        message: 'Upload failed',
         details: errorDetails
       });
       setSnackbarOpen(true);
-      setSnackbarMessage('Error processing file');
+      setSnackbarMessage('Upload failed');
       setSnackbarSeverity('error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleSnackbarClose = () => {
+
+//   const processFile = async () => {
+//   if (!file && previewData.length === 0) {
+//     setSnackbarOpen(true);
+//     setSnackbarMessage('No file or data to upload');
+//     setSnackbarSeverity('error');
+//     return;
+//   }
+//   setIsProcessing(true);
+//   setUploadResult(null);
+//   try {
+//     let uploadFile = file;
+//     if (!uploadFile && previewData.length > 0) {
+//       // Map previewData to match backend expected column names
+//       const mappedData = previewData.map(user => ({
+//         firstName: user.firstName,
+//         lastName: user.lastName,
+//         email: user.email,
+//         password: user.password,
+//         role: user.role,
+//         job_role: user.job_role || '',
+//         status: user.status || 'pending',
+//         modules: user.modules || ''
+//       }));
+//       // Create CSV using XLSX
+//       const ws = XLSX.utils.json_to_sheet(mappedData);
+//       const wb = XLSX.utils.book_new();
+//       XLSX.utils.book_append_sheet(wb, ws, 'Users');
+//       const csvContent = XLSX.write(wb, { bookType: 'csv', type: 'string' });
+//       // Convert string to Blob and create File
+//       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+//       uploadFile = new File([blob], 'bulk_users.csv', { type: 'text/csv' });
+//       // Debug: Log file content
+//       console.log('Generated CSV content:', csvContent);
+//       console.log('File size:', uploadFile.size, 'bytes');
+//     }
+//     const formData = new FormData();
+//     formData.append('file', uploadFile);
+//     // Debug: Log FormData entries
+//     for (let [key, value] of formData.entries()) {
+//       console.log(`FormData entry: ${key}=${value.name || value}`);
+//     }
+//     const response = await userAPI.bulkUpload(formData);
+//     // Handle response
+//     if (response.status === 201 && response.data.error_count === 0 && response.data.created_count > 0) {
+//       if (sendWelcomeEmail) {
+//         for (const createdUser of response.data.created_users) {
+//           const userData = previewData.find(u => u.email === createdUser.email);
+//           await messagingAPI.createMessage({
+//             recipient_id: createdUser.id,
+//             subject: 'Welcome to NotchHR!',
+//             content: `Hello ${userData.firstName},\n\nYour account has been created successfully.\nUsername: ${createdUser.email}\n\nPlease login to get started.`,
+//             type: 'welcome'
+//           });
+//         }
+//       }
+//       setUploadResult({
+//         success: true,
+//         message: `Created ${response.data.created_count} users`,
+//         details: []
+//       });
+//       setSnackbarOpen(true);
+//       setSnackbarMessage(`Created ${response.data.created_count} users`);
+//       setSnackbarSeverity('success');
+//       setOpenPreviewModal(false);
+//       setFile(null);
+//       setPreviewData([]);
+//       setSearchQuery('');
+//       if (onUpload) onUpload();
+//     } else {
+//       setUploadResult({
+//         success: false,
+//         message: response.data.detail || 'Upload failed',
+//         details: (response.data.errors || []).map(err =>
+//           err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
+//         )
+//       });
+//       setSnackbarOpen(true);
+//       setSnackbarMessage(response.data.detail || 'Upload failed');
+//       setSnackbarSeverity('error');
+//     }
+//   } catch (error) {
+//     console.error('Upload error:', error);
+//     const errorDetails = error.response?.data?.errors
+//       ? error.response.data.errors.map(err =>
+//           err.row ? `Row ${err.row}: ${err.error}` : err.error || JSON.stringify(err)
+//         )
+//       : [error.response?.data?.detail || error.message || 'Network error'];
+//     setUploadResult({
+//       success: false,
+//       message: 'Upload failed',
+//       details: errorDetails
+//     });
+//     setSnackbarOpen(true);
+//     setSnackbarMessage('Upload failed: ' + (error.response?.data?.detail || error.message));
+//     setSnackbarSeverity('error');
+//   } finally {
+//     setIsProcessing(false);
+//   }
+// };
+  
+
+
+const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
 
-  const filteredUsers = previewData.filter(user => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      (user.first_name?.toLowerCase() || '').includes(searchLower) ||
-      (user.last_name?.toLowerCase() || '').includes(searchLower) ||
-      (user.email?.toLowerCase() || '').includes(searchLower)
-    );
-  });
+  const filteredUsers = previewData.filter(user =>
+    Object.values(user).some(val =>
+      val?.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
 
   return (
     <div className="buu-container">
@@ -338,147 +436,42 @@ const BulkUserUpload = ({ onUpload }) => {
           <span>Processing...</span>
         </div>
       )}
-
       <div className="buu-paper">
         <h2>Bulk User Upload</h2>
-        <div className="buu-template-section">
-          <button className="buu-btn buu-btn-download" onClick={downloadTemplate}>
-            <DownloadIcon /> Download Template
-          </button>
-          <span className="buu-caption">Excel (.xlsx) or CSV format</span>
-        </div>
-
-        {/* Random Data Generation Section */}
-        <div className="buu-random-section">
-          <h4>Generate Random Users</h4>
-          <div className="buu-random-fields">
-            <label>
-              Count:
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={randomOptions.count}
-                onChange={e => setRandomOptions({ ...randomOptions, count: Number(e.target.value) })}
-                style={{ width: 60 }}
-              />
-            </label>
-            <label>
-              Email Domain:
-              <input
-                type="text"
-                value={randomOptions.emailDomain}
-                onChange={e => setRandomOptions({ ...randomOptions, emailDomain: e.target.value })}
-                style={{ width: 120 }}
-              />
-            </label>
-            <label>
-              Password Format:
-              <select
-                value={randomOptions.passwordFormat}
-                onChange={e => setRandomOptions({ ...randomOptions, passwordFormat: e.target.value })}
-              >
-                <option value="random">Random</option>
-                <option value="fixed">Fixed</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            {randomOptions.passwordFormat === 'random' && (
-              <label>
-                Length:
-                <input
-                  type="number"
-                  min={8}
-                  max={32}
-                  value={randomOptions.passwordLength}
-                  onChange={e => setRandomOptions({ ...randomOptions, passwordLength: Number(e.target.value) })}
-                  style={{ width: 60 }}
-                />
-              </label>
+        <div className="buu-upload-section">
+          <div {...getRootProps()} className={`buu-dropzone ${isDragActive ? 'buu-dropzone-active' : ''}`}>
+            <input {...getInputProps()} />
+            {file ? (
+              <div className="buu-file-info">
+                <FileIcon />
+                <span>{file.name}</span>
+                <span className="buu-caption">{Math.round(file.size / 1024)} KB</span>
+              </div>
+            ) : (
+              <div className="buu-file-info">
+                <UploadIcon />
+                <span>{isDragActive ? 'Drop file' : 'Drop or click to upload'}</span>
+                <span className="buu-caption">CSV, XLS, XLSX</span>
+              </div>
             )}
-            {randomOptions.passwordFormat === 'custom' && (
-              <label>
-                Custom Password:
-                <input
-                  type="text"
-                  value={randomOptions.passwordFormatCustom || ''}
-                  onChange={e => setRandomOptions({ ...randomOptions, passwordFormat: e.target.value })}
-                  style={{ width: 120 }}
-                />
-              </label>
-            )}
-            <label>
-              Role:
-              <select
-                value={randomOptions.role}
-                onChange={e => setRandomOptions({ ...randomOptions, role: e.target.value })}
-              >
-                {validRoles.map(role => (
-                  <option key={role} value={role}>{role}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Job Role:
-              <input
-                type="text"
-                value={randomOptions.jobRole}
-                onChange={e => setRandomOptions({ ...randomOptions, jobRole: e.target.value })}
-                style={{ width: 100 }}
-              />
-            </label>
-            <label>
-              Status:
-              <select
-                value={randomOptions.status}
-                onChange={e => setRandomOptions({ ...randomOptions, status: e.target.value })}
-              >
-                {validStatuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Modules (IDs, comma separated):
-              <input
-                type="text"
-                value={randomOptions.modules}
-                onChange={e => setRandomOptions({ ...randomOptions, modules: e.target.value })}
-                style={{ width: 120 }}
-              />
-            </label>
           </div>
-          <button className="buu-btn buu-btn-random" onClick={handleGenerateRandomUsers}>
-            Generate & Preview
-          </button>
+          <div className="buu-options">
+            <label className="buu-checkbox">
+              <input
+                type="checkbox"
+                checked={sendWelcomeEmail}
+                onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              />
+              Send welcome emails
+            </label>
+            <button className="buu-btn buu-btn-download" onClick={downloadTemplate}>
+              <DownloadIcon /> Template
+            </button>
+          </div>
         </div>
-
-        <div {...getRootProps()} className={`buu-dropzone ${isDragActive ? 'buu-dropzone-active' : ''}`}>
-          <input {...getInputProps()} />
-          {file ? (
-            <div className="buu-file-info">
-              <FileIcon />
-              <span>{file.name}</span>
-              <span className="buu-caption">{Math.round(file.size / 1024)} KB</span>
-            </div>
-          ) : (
-            <div className="buu-file-info">
-              <UploadIcon />
-              <span>{isDragActive ? 'Drop file' : 'Drop or click to upload'}</span>
-              <span className="buu-caption">Excel (.xlsx, .xls) or CSV</span>
-            </div>
-          )}
-        </div>
-
-        <label className="buu-checkbox">
-          <input
-            type="checkbox"
-            checked={sendWelcomeEmail}
-            onChange={(e) => setSendWelcomeEmail(e.target.checked)}
-          />
-          <span>Send welcome email</span>
-        </label>
-
+        <button className="buu-btn buu-btn-random" onClick={() => setOpenPreviewModal(true)}>
+          Generate Random Users
+        </button>
         {uploadResult && (
           <div className={`buu-alert ${uploadResult.success ? 'buu-alert-success' : 'buu-alert-error'}`}>
             <div className="buu-alert-icon">
@@ -497,22 +490,107 @@ const BulkUserUpload = ({ onUpload }) => {
           </div>
         )}
       </div>
-
       <div className="buu-dialog" style={{ display: openPreviewModal ? 'block' : 'none' }}>
         <div className="buu-dialog-backdrop" onClick={() => setOpenPreviewModal(false)}></div>
         <div className="buu-dialog-content">
           <div className="buu-dialog-header">
             <h3>Preview Users ({filteredUsers.length})</h3>
-            <div className="buu-search-input">
-              <SearchIcon />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <button className="buu-btn buu-btn-icon" onClick={() => setOpenPreviewModal(false)}>
+              <CloseIcon />
+            </button>
           </div>
+          <div className="buu-search-input">
+            <SearchIcon />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {!file && (
+            <div className="buu-random-section">
+              <h4>Generate Random Users</h4>
+              <div className="buu-random-fields">
+                <label>
+                  Count
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={randomOptions.count}
+                    onChange={e => setRandomOptions({ ...randomOptions, count: Number(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  Email Domain
+                  <input
+                    type="text"
+                    value={randomOptions.emailDomain}
+                    onChange={e => setRandomOptions({ ...randomOptions, emailDomain: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Password
+                  <select
+                    value={randomOptions.passwordFormat}
+                    onChange={e => setRandomOptions({ ...randomOptions, passwordFormat: e.target.value })}
+                  >
+                    <option value="random">Random</option>
+                    <option value="fixed">Fixed</option>
+                  </select>
+                </label>
+                {randomOptions.passwordFormat === 'random' && (
+                  <label>
+                    Length
+                    <input
+                      type="number"
+                      min={8}
+                      max={32}
+                      value={randomOptions.passwordLength}
+                      onChange={e => setRandomOptions({ ...randomOptions, passwordLength: Number(e.target.value) })}
+                    />
+                  </label>
+                )}
+                {randomOptions.passwordFormat === 'fixed' && (
+                  <label>
+                    Password
+                    <input
+                      type="text"
+                      value={randomOptions.fixedPassword}
+                      onChange={e => setRandomOptions({ ...randomOptions, fixedPassword: e.target.value })}
+                      placeholder="Enter fixed password"
+                    />
+                  </label>
+                )}
+                <label>
+                  Role
+                  <select
+                    value={randomOptions.role}
+                    onChange={e => setRandomOptions({ ...randomOptions, role: e.target.value })}
+                  >
+                    {validRoles.map(role => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={randomOptions.status}
+                    onChange={e => setRandomOptions({ ...randomOptions, status: e.target.value })}
+                  >
+                    {validStatuses.map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
+                <button className="buu-btn buu-btn-random" onClick={handleGenerateRandomUsers}>
+                  Generate
+                </button>
+              </div>
+            </div>
+          )}
           <div className="buu-dialog-body">
             <table className="buu-table">
               <thead>
@@ -524,7 +602,7 @@ const BulkUserUpload = ({ onUpload }) => {
                   <th>Role</th>
                   <th>Status</th>
                   <th>Errors</th>
-                  <th>Actions</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -540,15 +618,15 @@ const BulkUserUpload = ({ onUpload }) => {
                         <td>
                           <input
                             type="text"
-                            value={user.first_name || ''}
-                            onChange={(e) => handleEditUser(originalIndex, 'first_name', e.target.value)}
+                            value={user.firstName || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'firstName', e.target.value)}
                           />
                         </td>
                         <td>
                           <input
                             type="text"
-                            value={user.last_name || ''}
-                            onChange={(e) => handleEditUser(originalIndex, 'last_name', e.target.value)}
+                            value={user.lastName || ''}
+                            onChange={(e) => handleEditUser(originalIndex, 'lastName', e.target.value)}
                           />
                         </td>
                         <td>
@@ -613,6 +691,23 @@ const BulkUserUpload = ({ onUpload }) => {
               </tbody>
             </table>
           </div>
+          {uploadResult && (
+            <div className={`buu-alert ${uploadResult.success ? 'buu-alert-success' : 'buu-alert-error'}`}>
+              <div className="buu-alert-icon">
+                {uploadResult.success ? <SuccessIcon /> : <ErrorIcon />}
+              </div>
+              <div>
+                <span>{uploadResult.message}</span>
+                {uploadResult.details.length > 0 && (
+                  <ul>
+                    {uploadResult.details.map((detail, index) => (
+                      <li key={index}>{detail}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
           <div className="buu-dialog-actions">
             <button className="buu-btn buu-btn-cancel" onClick={() => setOpenPreviewModal(false)}>
               Cancel
@@ -622,12 +717,11 @@ const BulkUserUpload = ({ onUpload }) => {
               onClick={processFile}
               disabled={isProcessing || previewData.length === 0 || Object.keys(validationErrors).length > 0}
             >
-              {isProcessing ? <div className="buu-spinner-small"></div> : 'Submit'}
+              {isProcessing ? <div className="buu-spinner-small"></div> : 'Upload'}
             </button>
           </div>
         </div>
       </div>
-
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

@@ -290,39 +290,109 @@
   border-radius: 10px;
   border: 1px solid #eeeafa;
   padding: 20px;
+  overflow-x: auto; /* Allow horizontal scrolling on small screens */
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed; /* Fixed layout for consistent column widths */
 }
 
-.table th {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  padding: 10px;
-  text-align: left;
-  border-bottom: 1px solid #e3defc;
-}
-
-.table th:last-child {
-  text-align: right;
-}
-
+.table th,
 .table td {
   font-size: 12px;
   padding: 10px;
   border-bottom: 1px solid #e3defc;
+  text-align: left;
+  vertical-align: top;
 }
 
-.table td:last-child {
+.table th:nth-child(1),
+.table td:nth-child(1) {
+  width: 30%; /* Title column */
+  max-width: 200px; /* Cap the width */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  width: 15%; /* Price column */
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  width: 35%; /* Outcomes column */
+}
+
+.table th:nth-child(4),
+.table td:nth-child(4) {
+  width: 10%; /* Status column */
+}
+
+.table th:nth-child(5),
+.table td:nth-child(5) {
+  width: 10%; /* Actions column */
   text-align: right;
 }
 
 .course-title {
   font-weight: 600;
-  display: block;
+  display: inline-block; /* Changed from block to allow ellipsis */
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-title:hover {
+  overflow: visible; /* Show full title on hover (optional) */
+  white-space: normal; /* Allow wrapping on hover */
+  z-index: 1; /* Ensure it appears above other elements */
+  background: #fff; /* Optional: improve visibility */
+  position: relative;
+}
+
+.course-meta {
+  font-size: 10px;
+  color: #5d5677;
+  display: block; /* Keep meta below title */
+}
+
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    font-size: 10px;
+    padding: 8px;
+  }
+
+  .table th:nth-child(1),
+  .table td:nth-child(1) {
+    width: 25%; /* Adjust for smaller screens */
+    max-width: 150px;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    width: 15%;
+  }
+
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    width: 30%;
+  }
+
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    width: 15%;
+  }
+
+  .table th:nth-child(5),
+  .table td:nth-child(5) {
+    width: 15%;
+  }
 }
 
 .course-meta {

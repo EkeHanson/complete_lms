@@ -12,6 +12,10 @@ const StudentOverview = ({ student, metrics, activities, analytics }) => {
     { name: 'Data Structures', grade: 85 }
   ];
 
+  console.log("metrics")
+  console.log(metrics)
+  console.log("metrics")
+
   return (
     <Box>
       <Paper elevation={3} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -19,7 +23,7 @@ const StudentOverview = ({ student, metrics, activities, analytics }) => {
           <Avatar src={student.avatar} sx={{ width: 80, height: 80, mr: 3 }} />
           <Box>
             <Typography variant="h5">Welcome back, {student.name}!</Typography>
-            <Typography color="text.secondary">{student.department} Major</Typography>
+            <Typography color="text.secondary">{student.email}</Typography>
             <Typography variant="body2" color="text.secondary">
               Member since {format(new Date(student.enrollmentDate), 'MMMM yyyy')}
             </Typography>

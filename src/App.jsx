@@ -23,11 +23,16 @@ import ListingDetails from './components/listings/ListingDetails';
 import InstructorDashboard from './pages/dashboard/InstructorDashboard';
 import InstructorDashboards from './pages/dashboard/InstructorDashboard/InstructorDashboard';
 import StudentDashboard from './pages/dashboard/StudentDashboard';
-import StudentDashboards from './pages/dashboard/StudentDashboard/Studentdashboard';
+import StudentDashboards from './pages/dashboard/StudentDashboards/Studentdashboard.jsx';
 import AdminDashboard from './pages/dashboard/AdminDashboard/Admin';
 import QualityAssuranceDashboard from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/QualityAssuranceDashboard';
 import FeedbackForm from './pages/dashboard/AdminDashboard/QaulityAssuranceDashboard/IQAManagement/FeedbackForm';
+
+import TenantAdmin from './pages/dashboard/AdminDashboard/TenantAdmin.jsx';
+
+
 import IQADashboard from './pages/dashboard/IQA/IQADashboard.jsx';
+
 
 const queryClient = new QueryClient();
 
@@ -70,6 +75,7 @@ function AppWrapper() {
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/tenant-create" element={<TenantAdmin />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/features" element={<Features theme={theme} />} />
@@ -96,18 +102,27 @@ function AppWrapper() {
                     </ProtectedRoute>
                   }
                 />
+                {/* <Route
+                  path="/learner-dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={[['learner', 'learners','TRAINER']]}>
+                      <StudentDashboard />
+                    </ProtectedRoute>
+                  }
+                /> */}
                 <Route
                   path="/learner-dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['LEARNER']}>
+                    <ProtectedRoute allowedRoles={['learner', 'learners', 'TRAINER']}>
                       <StudentDashboard />
                     </ProtectedRoute>
                   }
                 />
+
                 <Route
                   path="/student-dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['LEARNER']}>
+                    <ProtectedRoute allowedRoles={['learner', 'learners','TRAINER']}>
                       <StudentDashboards />
                     </ProtectedRoute>
                   }

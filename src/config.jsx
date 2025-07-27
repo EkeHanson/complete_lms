@@ -4,7 +4,7 @@ import axios from 'axios';
 const isLocalhost = window?.location?.hostname === 'localhost';
 
 export const API_BASE_URL = isLocalhost
-  ? 'http://localhost:9090'
+  ? 'http://127.0.0.1:9090'
   : 'https://complete-lms-api.fly.dev';
   // : 'https://complete-lms-api.onrender.com';
 
@@ -187,8 +187,14 @@ export const userAPI = {
   impersonateUser: (id) => api.post(`/api/users/users/${id}/impersonate/`, {}, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
+
   getUsers: (params = {}) => api.get('/api/users/users/', { params }),
-  getUser: (id) => api.get(`/api/users/users/${id}/`),
+  getUser: (id) => api.get(`/api/users/user/${id}/`),
+  uploadProfilePicture: (id, formData) => api.patch(`/api/users/user/${id}/profile_picture/`, formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+  }),
+
+  getCurrentUser: (id) => api.get(id === 'me' ? '/api/users/user/me/' : `/api/users/users/${id}/`),
   createUser: (userData) => api.post('/api/users/register/', userData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
@@ -275,9 +281,9 @@ export const groupsAPI = {
 
 // Activity API
 export const activityAPI = {
-  getActivities: (params = {}) => api.get('/activitylog/api/activities/', { params }),
-  getActivity: (id) => api.get(`/activitylog/api/activities/${id}/`),
-  getUserActivities: (userId) => api.get(`/activitylog/api/user-activities/${userId}/`),
+  getActivities: (params = {}) => api.get('/api/activitylog/activity-logs/', { params }),
+  getActivity: (id) => api.get(`/api/activitylog/activity-logs/${id}/`),
+  getUserActivities: (userId) => api.get(`/api/activitylog/activity-logs/user-activities/${userId}/`),
 };
 
 // Messaging API
@@ -472,8 +478,9 @@ export const coursesAPI = {
   },
   getUserEnrollments: (userId = null) => {
     const url = userId ? `/api/courses/enrollments/user/${userId}/` : '/api/courses/enrollments/user/';
+    //console.log("These are the kist of my enroolled course")
     return api.get(url);
-  },
+},
   getCourseEnrollmentsAdmin: (courseId) => api.get(`/api/courses/enrollments/course/${courseId}/`),
   deleteEnrollment: (id) => api.delete(`/api/courses/enrollments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
@@ -498,7 +505,7 @@ export const coursesAPI = {
   }),
 
   
-  getCertificate: (courseId) => api.get(`/api/courses/certificates/course/${courseId}/template/`),
+  getCertificates: (courseId) => api.get(`/api/courses/certificates/course/${courseId}/template/`),
   createCertificate: (courseId, formData) => api.post(`/api/courses/certificates/course/${courseId}/template/`, formData, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
   }),
@@ -508,6 +515,7 @@ export const coursesAPI = {
   deleteCertificate: (courseId) => api.delete(`/api/courses/certificates/course/${courseId}/template/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+
   getFAQStats: () => api.get('/api/courses/faqs/stats/'),
   getFAQs: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/faqs/`, { params }),
   createFAQ: (courseId, data) => api.post(`/api/courses/courses/${courseId}/faqs/`, data, {
@@ -542,6 +550,45 @@ export const coursesAPI = {
   deleteInstructorAssignment: (courseId, instructorId) => api.delete(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+
+
+
+    getAssignments: (params = {}) => api.get('/api/courses/assignments/', { params }),
+    createAssignment: (data) => api.post('/api/courses/assignments/', data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+    updateAssignment: (id, data) => api.patch(`/api/courses/assignments/${id}/`, data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+    deleteAssignment: (id) => api.delete(`/api/courses/assignments/${id}/`, {
+      headers: { 'X-CSRFToken': getCSRFToken() },
+    }),
+
+
+    getFeedback: (params = {}) => api.get('/api/courses/feedback/', { params }),
+    createFeedback: (data) => api.post('/api/courses/feedback/', data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+
+
+    getCart: (params = {}) => api.get('/api/courses/cart/', { params }),
+    addToCart: (data) => api.post('/api/courses/cart/', data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+    removeFromCart: (id) => api.delete(`/api/courses/cart/${id}/`, {
+      headers: { 'X-CSRFToken': getCSRFToken() },
+    }),
+    getWishlist: (params = {}) => api.get('/api/courses/wishlist/', { params }),
+    addToWishlist: (data) => api.post('/api/courses/wishlist/', data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+    removeFromWishlist: (id) => api.delete(`/api/courses/wishlist/${id}/`, {
+      headers: { 'X-CSRFToken': getCSRFToken() },
+    }),
+
+    getGrades: (params = {}) => api.get('/api/courses/grades/', { params }),
+    getAnalytics: (params = {}) => api.get('/api/courses/analytics/', { params }),
+
 };
 
 
@@ -708,6 +755,8 @@ export const coursesAPI = {
 // };
 
 // Payment API
+
+
 export const paymentAPI = {
   getPaymentConfig: () => api.get('/payments/payment-config'),
   createPaymentConfig: (data) => api.post('/payments/payment-config', data, {

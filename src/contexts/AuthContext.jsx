@@ -145,10 +145,12 @@ export const AuthProvider = ({ children }) => {
         return '/admin';
       case 'instructor':
       case 'trainer':
-        return '/instructor-dashboard';
+        console.log('Trainer role detected, redirecting to /trainer-dashboard');
+        return '/trainer-dashboard';
+      case 'learners':
       case 'learner':
       case 'student':
-        return '/student-dashboard';
+        return '/learner-dashboard';
       case 'iqa_lead':
       case 'eqa_auditor':
         return '/iqa';
@@ -215,3 +217,5 @@ export const useQAAuth = () => {
     canViewReports: auth.hasPermission('view_reports'),
   };
 };
+
+

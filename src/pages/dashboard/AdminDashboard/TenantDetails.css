@@ -1,0 +1,25 @@
+.details-section {
+  margin-top: 16px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.user-table .MuiTableCell-head {
+  background-color: #0073e6;
+  color: white;
+  font-weight: 500;
+}
+
+.user-table .MuiTableRow-root:hover {
+  background-color: #e6f0fa;
+}
+
+.modal-title {
+  color: #333;
+  font-weight: 500;
+}

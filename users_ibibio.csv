@@ -1,11 +1,11 @@
-firstName,lastName,email,password,role,phone,title,bio,status
-Abdullahi,Mamman,abdullahi.mamman@prolianceltd.com,qwerty123,learner,+2348011111111,Carer,Experienced caregiver offering support with empathy,active
-Binta,Ndagi,binta.ndagi@prolianceltd.com,qwerty123,learner,+2348022222222,Admin Manager,Oversees administrative operations effectively,active
-Yahaya,Etsu,yahaya.etsu@prolianceltd.com,qwerty123,learner,,Student,Eager to grow professionally and academically,pending
-Aisha,Tanko,aisha.tanko@prolianceltd.com,qwerty123,learner,+2348033333333,Tutor,Focused on delivering effective educational training,active
-Salihu,Dogo,salihu.dogo@prolianceltd.com,qwerty123,learner,,Assessor,Skilled in conducting training assessments,pending
-Hadiza,Lapai,hadiza.lapai@prolianceltd.com,qwerty123,iqa,+2348044444444,IQA,Handles internal quality processes with diligence,active
-Halima,Muye,halima.muye@prolianceltd.com,qwerty123,learner,Client,Esteemed client of Proliance Ltd,active
-Bello,Bida,bello.bida@prolianceltd.com,qwerty123,learner,+2348055555555,HR Specialist,In charge of HR and personnel management,active
-Fatima,Katcha,fatima.katcha@prolianceltd.com,qwerty123,learner,EQA,Responsible for external quality verification,pending
-Isah,Zungeru,isah.zungeru@prolianceltd.com,qwerty123,learner,+2348066666666,Family Member,Family liaison ensuring communication,active
+firstName,lastName,email,password,role,job_role,status,modules
+Kelvin,Jacobson,kelvin.jacobson1@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Sofia,Kunze,sofia.kunze2@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Ismael,Hermann,ismael.hermann3@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Antonio,Nitzsche,antonio.nitzsche4@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Maribel,Bogan,maribel.bogan5@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Maeve,Lubowitz,maeve.lubowitz6@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Mariela,Effertz,mariela.effertz7@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Yvette,Ullrich,yvette.ullrich8@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Thea,Bosco,thea.bosco9@prolianceltd.com,qwertyqwerty,learner,staff,active,
+Moises,Swift,moises.swift10@prolianceltd.com,qwertyqwerty,learner,staff,active,

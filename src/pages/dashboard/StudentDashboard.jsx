@@ -730,6 +730,8 @@ const StudentDashboard = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const unreadCount = dummyData.messages.filter(msg => !msg.read).length;
 
+
+  console.log("QWERTY")
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: <Dashboard /> },
     { id: 'courses', label: 'My Courses', icon: <School /> },
