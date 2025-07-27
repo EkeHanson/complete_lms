@@ -150,7 +150,7 @@ export const AuthProvider = ({ children }) => {
       case 'learners':
       case 'learner':
       case 'student':
-        return '/learner-dashboard';
+        return '/student-dashboard';
       case 'iqa_lead':
       case 'eqa_auditor':
         return '/iqa';

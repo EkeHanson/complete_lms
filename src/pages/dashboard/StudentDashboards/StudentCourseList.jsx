@@ -15,8 +15,8 @@ const CourseCard = memo(({ course, bookmarked, onBookmark, onOpen, onFeedback })
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  console.log('Thumbnail URL:', course.thumbnail);
-  console.log('Image Error:', imageError);
+  // console.log('Thumbnail URL:', course.thumbnail);
+  // console.log('Image Error:', imageError);
 
   return (
     <div className="course-card" aria-label={`Course: ${course.title}`}>
@@ -607,7 +607,7 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
 
 const StudentCourseList = ({ courses, onFeedback }) => {
 
-  console.log('Courses:', courses);
+  // console.log('Courses:', courses);
 
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
