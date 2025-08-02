@@ -483,21 +483,24 @@
 
 .sch-dialog-content {
     position: fixed;
-    top: 60px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background-color: #fff;
-    border: 1px solid #e9dcff;
-    border-radius: 8px;
-    padding: 24px;
-    max-width: 800px;
-    width: 95%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    max-width: 98vw;
+    width: 100%;
+    min-width: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 18px 10px 10px 10px;
     z-index: 2100;
-    box-shadow: 0 0.25rem 0.5rem rgba(74, 45, 197, 0.1);
 }
 
-.sch-dialog-wide {
-    max-width: 800px;
+.sch-dialog-compact {
+    max-width: 400px;
+    padding: 18px 10px 10px 10px;
 }
 
 .sch-dialog-header {
@@ -508,9 +511,8 @@
 }
 
 .sch-dialog-header h3 {
-    font-size: 17px;
-    font-weight: 600;
-    color: #7226FF;
+    font-size: 1.1rem;
+    margin: 0;
 }
 
 .sch-dialog-close {
@@ -528,7 +530,19 @@
 .sch-dialog-body {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+}
+
+.sch-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+    padding-bottom: 5px;
+    background: #fff;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
 }
 
 .sch-form-field {
@@ -567,9 +581,9 @@
 }
 
 .sch-form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .sch-checkbox {
@@ -625,7 +639,12 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    padding-top: 10px;
+    margin-top: 10px;
+    padding-bottom: 5px;
+    background: #fff;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
 }
 
 .sch-btn-cancel {
@@ -656,40 +675,78 @@
     margin-top: 20px;
 }
 
+/* Make MUI pickers popover appear above your modal and responsive */
+.MuiPickersPopper-root {
+  z-index: 3000 !important;
+}
+
 @media (max-width: 600px) {
-    .sch-dialog-content {
-        width: 95vw;
-        padding: 16px;
-    }
+  .MuiPickersPopper-root {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+  }
+  .MuiPaper-root.MuiDialog-paper {
+    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+  }
+}
 
+@media (max-width: 600px) {
+    .sch-dialog-content,
+    .sch-dialog-compact {
+        max-width: 98vw;
+        width: 98vw;
+        padding: 10px 2vw 10px 2vw;
+    }
     .sch-dialog-header h3 {
-        font-size: 16px;
+        font-size: 1rem;
     }
+}
 
+@media (min-width: 600px) {
+    .sch-dialog-content {
+        max-width: 500px;
+        padding: 24px 32px;
+    }
     .sch-form-grid {
-        grid-template-columns: 1fr;
+        flex-direction: row;
+        gap: 20px;
     }
+}
 
-    .sch-card-container {
-        gap: 15px;
-    }
-
-    .sch-card {
-        padding: 10px;
-    }
-
-    .sch-card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-    }
-
-    .sch-card-title {
-        font-size: 12px;
-    }
-
-    .sch-card-actions {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+/* Stronger status chips */
+.sch-chip.status-pending {
+  background: #ede9fe !important;
+  color: #5b21b6 !important;
+  border: 2px solid #a78bfa;
+  font-weight: bold;
+}
+.sch-chip.status-accepted {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: 2px solid #4ade80;
+  font-weight: bold;
+}
+.sch-chip.status-declined {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 2px solid #f87171;
+  font-weight: bold;
+}
+.sch-chip.status-tentative {
+  background: #fef9c3 !important;
+  color: #b45309 !important;
+  border: 2px solid #fde68a;
+  font-weight: bold;
+}
+.sch-chip.status-expired {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border: 2px solid #d1d5db;
+  font-weight: bold;
 }

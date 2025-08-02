@@ -143,9 +143,8 @@ export const AuthProvider = ({ children }) => {
       case 'admin':
       case 'super_admin':
         return '/admin';
-      case 'instructor':
+      case 'instructors':
       case 'trainer':
-        console.log('Trainer role detected, redirecting to /trainer-dashboard');
         return '/trainer-dashboard';
       case 'learners':
       case 'learner':

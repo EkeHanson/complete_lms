@@ -1,0 +1,205 @@
+/* StudentOverview.css - Modern, clean, responsive styles for StudentOverview */
+
+.student-overview-root {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  background: #f7f9fc;
+  min-height: 100vh;
+}
+
+.student-header-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(240, 232, 232, 0.06);
+  padding: 32px 24px 24px 24px;
+  margin-bottom: 32px;
+}
+
+.student-header-flex {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 18px;
+}
+
+.student-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+}
+
+.student-header-info {
+  flex: 1;
+}
+
+.student-welcome {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+.student-welcome span {
+  color: #1976d2;
+}
+.student-email {
+  color: #555;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+.student-enrollment {
+  color: #888;
+  font-size: 0.98rem;
+  margin-bottom: 8px;
+}
+.student-points {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: #1976d2;
+  font-weight: 500;
+}
+.points-text {
+  color: #1976d2;
+}
+
+.student-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+  margin-top: 10px;
+}
+.student-metric-card {
+  background: #f2f6fa;
+  border-radius: 12px;
+  padding: 18px 16px;
+  box-shadow: 0 1px 6px rgba(25,118,210,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 110px;
+}
+.metric-label-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.metric-label {
+  font-size: 1.08rem;
+  color: #555;
+  font-weight: 500;
+}
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 4px;
+}
+.metric-progress {
+  width: 100%;
+  height: 8px;
+  background: #e3eaf3;
+  border-radius: 4px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #1976d2 60%, #43a047 100%);
+  border-radius: 4px;
+}
+
+.student-main-grid {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.student-grades-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  padding: 24px 20px;
+  flex: 2;
+  min-width: 320px;
+  margin-bottom: 24px;
+}
+.grades-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1976d2;
+  margin-bottom: 12px;
+}
+.grades-chart {
+  width: 100%;
+  height: 220px;
+}
+
+.student-analytics-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  padding: 24px 20px;
+  flex: 1;
+  min-width: 260px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.analytics-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1976d2;
+  margin-bottom: 10px;
+}
+.analytics-info {
+  font-size: 1.05rem;
+  color: #444;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.analytics-report-btn {
+  margin-top: 12px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.analytics-report-btn:hover {
+  background: #135ba1;
+}
+
+@media (max-width: 900px) {
+  .student-main-grid {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .student-grades-card, .student-analytics-card {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .student-header-flex {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .student-header-card {
+    padding: 18px 8px;
+  }
+  .student-overview-root {
+    padding: 12px 2px;
+  }
+}

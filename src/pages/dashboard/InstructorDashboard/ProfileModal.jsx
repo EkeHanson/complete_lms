@@ -32,7 +32,7 @@ const ProfileModal = ({ instructor, open, onClose }) => {
 
   const handleSubmit = () => {
     console.log('Updating profile:', formData);
-    setSnackbar({ open: true, message: 'Profile updated successfully', severity: 'success' });
+    setSnackbar({ open: true, message: 'QWERTY Profile updated successfully', severity: 'success' });
     onClose();
   };
 

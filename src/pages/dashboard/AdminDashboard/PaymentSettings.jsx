@@ -1,305 +1,340 @@
 import React, { useState, useEffect } from 'react';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { paymentAPI, paymentMethods, currencies } from '../../../config';
+import { paymentAPI } from '../../../config';
 import './PaymentSettings.css';
 
 function PaymentSettings() {
-  const [paymentConfigs, setPaymentConfigs] = useState([]);
-  const [currency, setCurrency] = useState('');
-  const [newMethod, setNewMethod] = useState('');
-  const [openConfirm, setOpenConfirm] = useState(false);
-  const [hasExistingPaymentConfig, setHasExistingPaymentConfig] = useState(false);
-  const [hasExistingSiteConfig, setHasExistingSiteConfig] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [gateways, setGateways] = useState([]);
+  const [gatewayLoading, setGatewayLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedGatewayId, setSelectedGatewayId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [pendingActiveGateway, setPendingActiveGateway] = useState(null);
 
   useEffect(() => {
-    const fetchConfigs = async () => {
-      setLoading(true);
-      setError('');
+    const fetchGateways = async () => {
+      setGatewayLoading(true);
       try {
-        const paymentResponse = await paymentAPI.getPaymentConfig();
-        const paymentData = paymentResponse.data;
-        if (Object.keys(paymentData).length > 0) {
-          setPaymentConfigs(paymentData.configs || []);
-          setHasExistingPaymentConfig(true);
-        }
-
-        const siteResponse = await paymentAPI.getSiteConfig();
-        const siteData = siteResponse.data;
-        if (Object.keys(siteData).length > 0) {
-          setCurrency(siteData.currency || 'USD');
-          setHasExistingSiteConfig(true);
-        }
+        const res = await paymentAPI.getAllGateways();
+        setGateways(res.data);
       } catch (err) {
-        setError('Failed to fetch configurations. Please try again.');
-        console.error('Error fetching configs:', err);
+        setError('Failed to fetch payment gateways.');
       } finally {
-        setLoading(false);
+        setGatewayLoading(false);
       }
     };
-    fetchConfigs();
+    fetchGateways();
   }, []);
 
-  const handleAddMethod = () => {
-    if (newMethod && !paymentConfigs.some(config => config.method === newMethod)) {
-      const methodConfig = {
-        method: newMethod,
-        config: {},
-        isActive: false,
-      };
-      setPaymentConfigs([...paymentConfigs, methodConfig]);
-      setNewMethod('');
-      setSuccess(`Added ${newMethod} to the configuration. Save to persist changes.`);
-    }
+  const activeGateway = gateways.find(g => g.is_active);
+  const inactiveGateways = gateways.filter(g => !g.is_active);
+
+  const selectedGateway = gateways.find(g => g.id === selectedGatewayId);
+
+  const handleGatewayConfigChange = (gatewayId, key, value) => {
+    setGateways(gateways =>
+      gateways.map(g =>
+        g.id === gatewayId
+          ? { ...g, config: { ...g.config, [key]: value } }
+          : g
+      )
+    );
   };
 
-  const handleFieldChange = (methodIndex, key, value) => {
-    setPaymentConfigs(prev => {
-      const newConfigs = [...prev];
-      newConfigs[methodIndex] = {
-        ...newConfigs[methodIndex],
-        config: {
-          ...newConfigs[methodIndex].config,
-          [key]: value,
-        },
-      };
-      return newConfigs;
-    });
-  };
-
-  const handleToggleActive = (index) => {
-    setPaymentConfigs(prev => {
-      const newConfigs = [...prev];
-      newConfigs[index] = {
-        ...newConfigs[index],
-        isActive: !newConfigs[index].isActive,
-      };
-      return newConfigs;
-    });
-    setSuccess('Changes made. Save to persist changes.');
-  };
-
-  const handleDeleteMethod = (index) => {
-    const methodName = paymentConfigs[index].method;
-    setPaymentConfigs(prev => prev.filter((_, i) => i !== index));
-    setSuccess(`Removed ${methodName} from the configuration. Save to persist changes.`);
-  };
-
-  const handleSave = () => {
-    setOpenConfirm(true);
-  };
-
-  const handleConfirmSave = async () => {
-    setLoading(true);
+  const handleSaveGatewayConfig = async (gateway) => {
+    setGatewayLoading(true);
     setError('');
     setSuccess('');
     try {
-      const paymentData = { configs: paymentConfigs };
-      if (hasExistingPaymentConfig) {
-        await paymentAPI.updatePaymentConfig(paymentData);
-      } else {
-        await paymentAPI.createPaymentConfig(paymentData);
-      }
-
-      const siteData = { currency };
-      if (hasExistingSiteConfig) {
-        await paymentAPI.updateSiteConfig(siteData);
-      } else {
-        await paymentAPI.createSiteConfig(siteData);
-      }
-
-      setHasExistingPaymentConfig(true);
-      setHasExistingSiteConfig(true);
-      setSuccess('Payment settings saved successfully!');
-      setOpenConfirm(false);
+      await paymentAPI.updateGatewayConfig(gateway.id, { config: gateway.config });
+      setSuccess(`Config for ${gateway.name} saved.`);
     } catch (err) {
-      setError('Failed to save configurations. Please try again.');
-      console.error('Error saving configs:', err);
+      setError('Failed to save gateway config.');
     } finally {
-      setLoading(false);
+      setGatewayLoading(false);
     }
   };
 
-  const handleDeleteConfig = async () => {
-    setLoading(true);
+  const handleDeleteGatewayConfig = async (gateway) => {
+    setGatewayLoading(true);
     setError('');
     setSuccess('');
     try {
-      await paymentAPI.deletePaymentConfig();
-      setPaymentConfigs([]);
-      setHasExistingPaymentConfig(false);
-      setSuccess('Payment configuration deleted successfully!');
+      await paymentAPI.deleteGatewayConfig(gateway.id);
+      setSuccess(`Config for ${gateway.name} deleted.`);
+      setSelectedGatewayId(null);
+      // Optionally refetch gateways here
     } catch (err) {
-      setError('Failed to delete payment configuration. Please try again.');
-      console.error('Error deleting config:', err);
+      setError('Failed to delete gateway config.');
     } finally {
-      setLoading(false);
+      setGatewayLoading(false);
+    }
+  };
+
+  const handleToggleTestMode = async (gateway) => {
+    setGatewayLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await paymentAPI.updateGateway(gateway.id, { is_test_mode: !gateway.is_test_mode });
+      setGateways(gateways =>
+        gateways.map(g =>
+          g.id === gateway.id ? { ...g, is_test_mode: !g.is_test_mode } : g
+        )
+      );
+      setSuccess(`${gateway.name} switched to ${gateway.is_test_mode ? 'Live' : 'Test'} mode.`);
+    } catch (err) {
+      setError('Failed to switch mode.');
+    } finally {
+      setGatewayLoading(false);
+    }
+  };
+
+  const handleSetActiveGateway = async (gateway) => {
+    setGatewayLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await paymentAPI.updateGateway(gateway.id, { is_active: true });
+      setSuccess(`${gateway.name} is now the active gateway.`);
+      // Optionally refetch gateways to update UI
+      const res = await paymentAPI.getAllGateways();
+      setGateways(res.data);
+      setSelectedGatewayId(null);
+    } catch (err) {
+      setError('Failed to set gateway as active.');
+    } finally {
+      setGatewayLoading(false);
     }
   };
 
   return (
     <div className="ps-container">
-      <h1 className="ps-header">Payment Settings</h1>
+      <h2 className="ps-header">Payment Gateways</h2>
+      {error && <div className="ps-alert ps-alert-error">{error}</div>}
+      {success && <div className="ps-alert ps-alert-success">{success}</div>}
 
-      {loading && (
-        <div className="ps-loading">
-          <div className="ps-spinner"></div>
+      {/* Active Gateway Card */}
+      {activeGateway && (
+        <div className="ps-gateway-card">
+          <div className="ps-gateway-header">
+            <span className="ps-gateway-name">{activeGateway.name}</span>
+            <span className="ps-gateway-badge active">Active</span>
+            {activeGateway.is_default && (
+              <span className="ps-gateway-badge default">Default</span>
+            )}
+          </div>
+          <div className="ps-gateway-desc">{activeGateway.description}</div>
+          {/* Mode Toggle */}
+          <div style={{ margin: '10px 0 16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontWeight: 500, color: '#6366f1' }}>Mode:</span>
+            <button
+              className={`ps-btn ${activeGateway.is_test_mode ? 'ps-btn-test' : 'ps-btn-live'}`}
+              style={{
+                background: activeGateway.is_test_mode ? '#6366f1' : '#22c55e',
+                color: '#fff',
+                borderRadius: 16,
+                padding: '4px 18px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: '0.95em'
+              }}
+              onClick={() => handleToggleTestMode(activeGateway)}
+              disabled={gatewayLoading}
+              type="button"
+            >
+              {activeGateway.is_test_mode ? 'Test' : 'Live'}
+            </button>
+          </div>
+          <div className="ps-gateway-config">
+            {activeGateway.config && Object.keys(activeGateway.config).map(key => (
+              <div key={key} className="ps-form-field">
+                <label>{key}</label>
+                <input
+                  type={key.toLowerCase().includes('secret') ? 'password' : 'text'}
+                  value={activeGateway.config[key] || ''}
+                  onChange={e => handleGatewayConfigChange(activeGateway.id, key, e.target.value)}
+                  disabled={gatewayLoading}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="ps-gateway-actions">
+            <button
+              className="ps-btn ps-btn-confirm"
+              onClick={() => handleSaveGatewayConfig(activeGateway)}
+              disabled={gatewayLoading}
+            >
+              Save Config
+            </button>
+          </div>
         </div>
       )}
 
-      {error && (
-        <div className="ps-alert ps-alert-error">
-          <span>{error}</span>
-          <button onClick={() => setError('')} className="ps-alert-close">
-            <DeleteIcon />
-          </button>
-        </div>
-      )}
-
-      {success && (
-        <div className="ps-alert ps-alert-success">
-          <span>{success}</span>
-          <button onClick={() => setSuccess('')} className="ps-alert-close">
-            <DeleteIcon />
-          </button>
-        </div>
-      )}
-
-      <div className="ps-card">
-        <div className="ps-currency">
-          <label>Currency</label>
+      {/* Dropdown for Inactive Gateways */}
+      {inactiveGateways.length > 0 && (
+        <div style={{ margin: '24px 0' }}>
+          <label htmlFor="inactive-gateway-select" style={{ fontWeight: 500, color: '#7226FF' }}>
+            View or Edit Other Gateways:
+          </label>
           <select
-            value={currency}
-            onChange={(e) => {
-              setCurrency(e.target.value);
-              setSuccess('Currency changed. Save to persist changes.');
-            }}
+            id="inactive-gateway-select"
+            className="ps-select"
+            value={selectedGatewayId || ''}
+            onChange={e => setSelectedGatewayId(Number(e.target.value))}
           >
-            {currencies.map(curr => (
-              <option key={curr} value={curr}>
-                {curr}
-              </option>
+            <option value="">Select a gateway...</option>
+            {inactiveGateways.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
+      )}
 
-        <div className="ps-add-method">
-          <div className="ps-form-field">
-            <label>Add Payment Method</label>
-            <select
-              value={newMethod}
-              onChange={(e) => setNewMethod(e.target.value)}
-            >
-              <option value="">Select a method</option>
-              {paymentMethods
-                .filter(method => !paymentConfigs.some(config => config.method === method.name))
-                .map(method => (
-                  <option key={method.name} value={method.name}>
-                    {method.name}
-                  </option>
-                ))}
-            </select>
+      {/* Selected Inactive Gateway Card */}
+      {selectedGateway && (
+        <div className="ps-gateway-card">
+          <div className="ps-gateway-header">
+            <span className="ps-gateway-name">{selectedGateway.name}</span>
+            <span className="ps-gateway-badge inactive">Inactive</span>
+            {selectedGateway.is_test_mode && (
+              <span className="ps-gateway-badge test">Test Mode</span>
+            )}
+            {selectedGateway.is_default && (
+              <span className="ps-gateway-badge default">Default</span>
+            )}
           </div>
-          <button
-            className="ps-btn ps-btn-primary"
-            onClick={handleAddMethod}
-            disabled={!newMethod}
-          >
-            <AddIcon />
-            Add Method
-          </button>
-        </div>
-
-        <div className="ps-methods-list">
-          {paymentConfigs.map((config, index) => {
-            const methodDetails = paymentMethods.find(m => m.name === config.method);
-            return (
-              <div key={config.method} className="ps-method-item">
-                <div className="ps-method-header">
-                  <span>{config.method}</span>
-                  <div className="ps-method-actions">
-                    <label className="ps-switch">
-                      <input
-                        type="checkbox"
-                        checked={config.isActive}
-                        onChange={() => handleToggleActive(index)}
-                      />
-                      <span className="ps-slider"></span>
-                    </label>
-                    <button
-                      className="ps-btn ps-btn-delete"
-                      onClick={() => handleDeleteMethod(index)}
-                    >
-                      <DeleteIcon />
-                    </button>
-                  </div>
-                </div>
-                <div className="ps-method-fields">
-                  {methodDetails.fields.map(field => (
-                    <div key={field.key} className="ps-form-field">
-                      <label>{field.label}</label>
-                      <input
-                        type={field.key.toLowerCase().includes('secret') ? 'password' : 'text'}
-                        value={config.config[field.key] || ''}
-                        onChange={(e) => handleFieldChange(index, field.key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-                </div>
+          <div className="ps-gateway-desc">{selectedGateway.description}</div>
+          {/* Mode Toggle for selected gateway */}
+          <div style={{ margin: '10px 0 16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontWeight: 500, color: '#6366f1' }}>Mode:</span>
+            <button
+              className={`ps-btn ${selectedGateway.is_test_mode ? 'ps-btn-test' : 'ps-btn-live'}`}
+              style={{
+                background: selectedGateway.is_test_mode ? '#6366f1' : '#22c55e',
+                color: '#fff',
+                borderRadius: 16,
+                padding: '4px 18px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: '0.95em'
+              }}
+              onClick={() => handleToggleTestMode(selectedGateway)}
+              disabled={gatewayLoading}
+              type="button"
+            >
+              {selectedGateway.is_test_mode ? 'Test' : 'Live'}
+            </button>
+          </div>
+          <div className="ps-gateway-config">
+            {selectedGateway.config && Object.keys(selectedGateway.config).map(key => (
+              <div key={key} className="ps-form-field">
+                <label>{key}</label>
+                <input
+                  type={key.toLowerCase().includes('secret') ? 'password' : 'text'}
+                  value={selectedGateway.config[key] || ''}
+                  onChange={e => handleGatewayConfigChange(selectedGateway.id, key, e.target.value)}
+                  disabled={gatewayLoading}
+                />
               </div>
-            );
-          })}
-        </div>
-
-        <div className="ps-actions">
-          <button
-            className="ps-btn ps-btn-confirm"
-            onClick={handleSave}
-            disabled={loading || (!currency && paymentConfigs.length === 0)}
-          >
-            Save Settings
-          </button>
-          {hasExistingPaymentConfig && (
-            <button
-              className="ps-btn ps-btn-delete"
-              onClick={handleDeleteConfig}
-              disabled={loading}
-            >
-              Delete Configuration
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="ps-dialog" style={{ display: openConfirm ? 'block' : 'none' }}>
-        <div className="ps-dialog-backdrop" onClick={() => setOpenConfirm(false)}></div>
-        <div className="ps-dialog-content">
-          <div className="ps-dialog-header">
-            <h3>Confirm Changes</h3>
+            ))}
           </div>
-          <div className="ps-dialog-body">
-            <p>Are you sure you want to {hasExistingPaymentConfig || hasExistingSiteConfig ? 'update' : 'save'} these payment settings?</p>
-          </div>
-          <div className="ps-dialog-actions">
-            <button
-              className="ps-btn ps-btn-cancel"
-              onClick={() => setOpenConfirm(false)}
-              disabled={loading}
-            >
-              Cancel
-            </button>
+          <div className="ps-gateway-actions">
             <button
               className="ps-btn ps-btn-confirm"
-              onClick={handleConfirmSave}
-              disabled={loading}
+              onClick={() => handleSaveGatewayConfig(selectedGateway)}
+              disabled={gatewayLoading}
             >
-              Confirm
+              Save Config
+            </button>
+            <button
+              className="ps-btn ps-btn-delete"
+              onClick={() => handleDeleteGatewayConfig(selectedGateway)}
+              disabled={gatewayLoading}
+            >
+              Delete Config
+            </button>
+            <button
+              className="ps-btn ps-btn-primary"
+              onClick={() => {
+                setPendingActiveGateway(selectedGateway);
+                setShowModal(true);
+              }}
+              disabled={gatewayLoading || selectedGateway.is_active}
+              style={{ marginLeft: 8 }}
+            >
+              Set as Active
             </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Modal for confirming active gateway switch */}
+      {showModal && pendingActiveGateway && (
+        <div className="ps-modal-overlay">
+          <div className="ps-modal">
+            <div className="ps-modal-header">
+              <span className="ps-modal-title">Switch Active Gateway?</span>
+            </div>
+            <div className="ps-modal-body">
+              <p>
+                <strong>Warning:</strong> Changing the active payment gateway will affect all new transactions on your platform.<br />
+                <span style={{ color: "#ef4444" }}>
+                  Users will only be able to pay using <b>{pendingActiveGateway.name}</b> until you change it again.
+                </span>
+              </p>
+            </div>
+            <div className="ps-modal-actions">
+              <button
+                className="ps-btn ps-btn-cancel"
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="ps-btn ps-btn-primary"
+                style={{ marginLeft: 12 }}
+                onClick={async () => {
+                  setShowModal(false);
+                  await handleSetActiveGateway(pendingActiveGateway);
+                  setPendingActiveGateway(null);
+                }}
+              >
+                Yes, Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In each gateway card, add the toggle */}
+      {/* {gateways.map(gateway => (
+        <div key={gateway.id} style={{ margin: '10px 0 16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontWeight: 500, color: '#6366f1' }}>
+            Mode:
+          </span>
+          <button
+            className={`ps-btn ${gateway.is_test_mode ? 'ps-btn-test' : 'ps-btn-live'}`}
+            style={{
+              background: gateway.is_test_mode ? '#6366f1' : '#22c55e',
+              color: '#fff',
+              borderRadius: 16,
+              padding: '4px 18px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.95em'
+            }}
+            onClick={() => handleToggleTestMode(gateway)}
+            disabled={gatewayLoading}
+            type="button"
+          >
+            {gateway.is_test_mode ? 'Test' : 'Live'}
+          </button>
+        </div>
+      ))} */}
     </div>
   );
 }

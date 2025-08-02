@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useReducer, useCallback, useRef } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import './ModuleForm.css';
 import {
   ExpandMore, AddCircle, Delete, Edit, 
@@ -11,7 +13,8 @@ import { coursesAPI } from '../../../../config';
 const lessonTypes = [
   { value: 'video', label: 'Video', icon: <VideoLibrary /> },
   { value: 'file', label: 'File', icon: <InsertDriveFile /> },
-  { value: 'link', label: 'Link', icon: <LinkIcon /> }
+  { value: 'link', label: 'Link', icon: <LinkIcon /> },
+  { value: 'text', label: 'Text', icon: <InsertDriveFile /> }
 ];
 
 const DraggableModule = ({ module, index, moveModule, selectedModules, toggleModuleSelection, ...props }) => {
@@ -83,6 +86,7 @@ const ModuleForm = ({
     lesson_type: 'video',
     content_url: '',
     content_file: null,
+    content_text: '',
     duration: ''
   });
   const [errors, setErrors] = useState({});
@@ -100,6 +104,9 @@ const ModuleForm = ({
     }
     if (['video', 'file'].includes(newLesson.lesson_type) && !newLesson.content_file && !editingLesson) {
       newErrors.content_file = 'File is required for this lesson type';
+    }
+    if (newLesson.lesson_type === 'text' && !newLesson.content_text.trim()) {
+      newErrors.content_text = 'Text content is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -159,6 +166,11 @@ const ModuleForm = ({
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
+  const handleLessonTextChange = (value) => {
+    setNewLesson((prev) => ({ ...prev, content_text: value }));
+    setErrors((prev) => ({ ...prev, content_text: '' }));
+  };
+
   const handleLessonFileChange = (e) => {
     e.preventDefault();
     console.log('File selected:', e.target.files[0]); // Debug log
@@ -168,8 +180,6 @@ const ModuleForm = ({
 
   const addLesson = async () => {
     if (!validateLesson()) return;
-
-    console.log('addLesson called with courseId:', courseId, 'moduleId:', module.id); // Debug log
 
     if (!courseId || !module.id) {
       setErrors({ ...errors, submit: 'Invalid course or module ID' });
@@ -184,15 +194,15 @@ const ModuleForm = ({
     if (newLesson.duration) formData.append('duration', newLesson.duration);
     if (newLesson.lesson_type === 'link') {
       formData.append('content_url', newLesson.content_url);
+    } else if (newLesson.lesson_type === 'text') {
+      formData.append('content_text', newLesson.content_text);
     } else if (newLesson.content_file) {
       formData.append('content_file', newLesson.content_file);
-      console.log('FormData content_file:', newLesson.content_file); // Debug log
     }
 
     try {
       setLoading(true);
       const response = await coursesAPI.createLesson(courseId, module.id, formData);
-      console.log('Lesson created:', response.data);
       onChange(module.id, {
         ...module,
         lessons: [...module.lessons, { ...response.data, order: module.lessons.length }]
@@ -202,12 +212,12 @@ const ModuleForm = ({
         lesson_type: 'video',
         content_url: '',
         content_file: null,
+        content_text: '',
         duration: ''
       });
       setLessonDialogOpen(false);
       setErrors({});
     } catch (error) {
-      console.error('Error creating lesson:', error.response?.data || error.message);
       setErrors({
         ...errors,
         submit: error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail || 'Failed to create lesson'
@@ -226,6 +236,8 @@ const ModuleForm = ({
     if (newLesson.duration) formData.append('duration', newLesson.duration);
     if (newLesson.lesson_type === 'link') {
       formData.append('content_url', newLesson.content_url);
+    } else if (newLesson.lesson_type === 'text') {
+      formData.append('content_text', newLesson.content_text);
     } else if (newLesson.content_file) {
       formData.append('content_file', newLesson.content_file);
     }
@@ -247,11 +259,11 @@ const ModuleForm = ({
         lesson_type: 'video',
         content_url: '',
         content_file: null,
+        content_text: '',
         duration: ''
       });
       setErrors({});
     } catch (error) {
-      console.error('Error updating lesson:', error);
       setErrors((prev) => ({ ...prev, submit: error.response?.data || 'Failed to update lesson' }));
     } finally {
       setLoading(false);
@@ -281,6 +293,7 @@ const ModuleForm = ({
       lesson_type: lesson.lesson_type,
       content_url: lesson.content_url || '',
       content_file: null,
+      content_text: lesson.content_text || '',
       duration: lesson.duration || ''
     });
     setLessonDialogOpen(true);
@@ -527,6 +540,22 @@ const ModuleForm = ({
                 <span className="file-info">Selected: {newLesson.content_file.name}</span>
               )}
               {errors.content_file && <span className="error-text">{errors.content_file}</span>}
+            </div>
+          )}
+
+          {newLesson.lesson_type === 'text' && (
+            <div className="form-group">
+              <label className="label">Lesson Text</label>
+              <div style={{ maxHeight: '300px', overflowY: 'auto', background: '#fff', borderRadius: '4px', border: '1px solid #ccc' }}>
+                <ReactQuill
+                  value={newLesson.content_text}
+                  onChange={handleLessonTextChange}
+                  theme="snow"
+                  placeholder="Enter lesson text..."
+                  style={{ minHeight: '150px', background: '#fff', border: 'none' }}
+                />
+              </div>
+              {errors.content_text && <span className="error-text">{errors.content_text}</span>}
             </div>
           )}
 

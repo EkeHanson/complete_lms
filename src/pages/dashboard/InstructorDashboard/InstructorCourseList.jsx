@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import {
   Paper, Typography, Box, Button, Grid, Card, CardMedia, CardContent, TextField, Select, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions, Chip, IconButton, Snackbar, Alert, Table, TableHead, TableRow, TableCell, TableBody
 } from '@mui/material';
-import { Add, Edit, Delete, FileCopy, Feedback } from '@mui/icons-material';
+import { Add, Edit, Delete, FileCopy, Feedback, People, Search } from '@mui/icons-material';
 import { format } from 'date-fns';
 import dummyData from './dummyData';
 import CourseForm from './CourseForm';
@@ -19,7 +18,7 @@ const StatusChip = ({ status }) => {
   return <Chip label={status} color={colorMap[status] || 'default'} size="small" />;
 };
 
-const InstructorCourseList = ({ courses = dummyData.courses, onAddCourse, onEditCourse, onDeleteCourse, onFeedback }) => {
+const InstructorCourseList = ({ courses, onAddCourse, onEditCourse, onDeleteCourse, onFeedback }) => {
   const [openCourseForm, setOpenCourseForm] = useState(false);
   const [openModuleForm, setOpenModuleForm] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);

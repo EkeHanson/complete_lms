@@ -728,15 +728,6 @@ const UserGroupsManagement = () => {
     }
   };
 
-  // const getRoleIcon = (roleCode) => {
-  //   switch (roleCode) {
-  //     case 'superadmin': return <SuperAdminIcon className="role-icon" />;
-  //     case 'admin': return <AdminIcon className="role-icon" />;
-  //     case 'instructors': return <InstructorIcon className="role-icon" />;
-  //     case 'learners': return <LearnerIcon className="role-icon" />;
-  //     default: return <PeopleIcon className="role-icon" />;
-  //   }
-  // };
 
     const getRoleIcon = (roleCode) => {
     if (!roleCode) return <PeopleIcon className="role-icon" />;

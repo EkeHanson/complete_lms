@@ -325,35 +325,154 @@
 }
 
 .ps-btn-cancel {
-    background-color: #f7f5ff;
+    background: #f3f4f6;
     color: #6251a4;
+    border: none;
+    border-radius: 16px;
+    padding: 7px 20px;
+    font-weight: 500;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.18s;
 }
 
 .ps-btn-cancel:hover {
-    background-color: #ece8f9;
+    background: #ece8f9;
+}
+
+.ps-gateway-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px #e0e7ff;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+.ps-gateway-card:hover {
+  box-shadow: 0 4px 24px #c7d2fe;
+}
+.ps-gateway-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ps-gateway-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #3b2f63;
+}
+.ps-gateway-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  margin-right: 6px;
+  color: #fff;
+  background: #64748b;
+}
+.ps-gateway-badge.active {
+  background: #22c55e;
+}
+.ps-gateway-badge.inactive {
+  background: #ef4444;
+}
+.ps-gateway-badge.test {
+  background: #6366f1;
+}
+.ps-gateway-badge.default {
+  background: #f59e42;
+}
+.ps-gateway-desc {
+  color: #64748b;
+  margin-bottom: 10px;
+}
+.ps-gateway-config {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.ps-gateway-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.ps-gateway-saveall {
+  text-align: right;
+  margin-top: 16px;
+}
+
+.ps-select {
+  margin-left: 10px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid #a78bfa;
+  background: #f8fafc;
+  color: #4b2994;
+  font-size: 1rem;
+  transition: border 0.2s;
+  outline: none;
+}
+.ps-select:focus {
+  border: 1.5px solid #7226FF;
+  background: #fff;
+}
+
+/* Modal Overlay */
+.ps-modal-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  background: rgba(60, 41, 112, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal Box */
+.ps-modal {
+  background: linear-gradient(120deg, #fff 70%, #e0e7ff 100%);
+  border-radius: 18px;
+  box-shadow: 0 8px 40px #a78bfa55;
+  min-width: 0;
+  max-width: 95vw;
+  width: 100%;
+  max-width: 370px;
+  padding: 20px 16px 16px 16px;
+  animation: ps-modal-in 0.18s;
+  box-sizing: border-box;
+}
+
+@keyframes ps-modal-in {
+  from { transform: translateY(40px) scale(0.97); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.ps-modal-header {
+  margin-bottom: 10px;
+}
+.ps-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #7226FF;
+  letter-spacing: 0.2px;
+}
+.ps-modal-body {
+  color: #3b2f63;
+  font-size: 1.05rem;
+  margin-bottom: 18px;
+}
+.ps-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 480px) {
-    .ps-dialog-content {
-        width: 95vw;
-        padding: 16px;
-    }
-
-    .ps-dialog-header h3 {
-        font-size: 16px;
-    }
-
-    .ps-dialog-body p {
-        font-size: 12px;
-    }
-
-    .ps-add-method {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .ps-form-field select,
-    .ps-form-field input {
-        width: 100%;
-    }
+  .ps-modal {
+    max-width: 98vw;
+    padding: 12px 4vw 12px 4vw;
+  }
 }

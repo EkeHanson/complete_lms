@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText,
   Box, Avatar, Badge, Menu, MenuItem as MenuItemMUI, Chip, Divider, Fab, Snackbar, Alert, Button
@@ -89,11 +90,11 @@ const fetchDashboardData = async (userId) => {
   // Fetch enrolled courses with full course data
   let enrolledCourses = defaultData.enrolledCourses;
   try {
-    const enrollmentsResponse = await coursesAPI.getUserEnrollments(userId);
+    const enrollmentsResponse = await coursesAPI.getAllMyEnrollments();
     
-    console.log("enrollmentsResponse")
-    console.log(enrollmentsResponse)
-    console.log("enrollmentsResponse")
+    // console.log("enrollmentsResponse")
+    // console.log(enrollmentsResponse)
+    // console.log("enrollmentsResponse")
 
     enrolledCourses = (enrollmentsResponse.data || []).map((enrollment) => ({
       id: enrollment.id || 0,
@@ -156,7 +157,7 @@ const fetchDashboardData = async (userId) => {
       course: activity.course?.title || null,
       type: activity.activity_type || 'unknown',
     }));
-    console.log('Activities response:', activitiesResponse);
+    //console.log('Activities response:', activitiesResponse);
   } catch (error) {
     console.warn('Error fetching user activities:', error);
   }
@@ -457,9 +458,71 @@ const StudentDashboard = () => {
     }
   };
 
+  // Move these utilities **inside** the StudentDashboard component so they have access to `user` from useAuth()
+  // Utility to ensure course progress is tracked when a user starts a course
+  const ensureCourseProgress = async (userId, courseId) => {
+    try {
+      // Try to get existing progress
+      const response = await coursesAPI.getCourseProgress({ user: userId, course: courseId });
+      console.log('getCourseProgress response:', response); // Log response
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        return response.data[0]; // Already exists
+      }
+      // If not exists, create it
+      const createResponse = await coursesAPI.createCourseProgress({ user: userId, course: courseId });
+      console.log('createCourseProgress response:', createResponse); // Log response
+      return createResponse.data;
+    } catch (err) {
+      console.warn('Error ensuring course progress:', err);
+      return null;
+    }
+  };
+
+  // Track course progress when a course is opened
+  const handleCourseOpen = useCallback(async (courseId) => {
+    if (!user?.id || !courseId) return;
+    console.log("Course Started: ", courseId);
+    const progress = await ensureCourseProgress(user.id, courseId);
+    console.log('Progress after ensureCourseProgress:', progress); // Log progress
+    alert('Progress after ensureCourseProgress:'); // Log progress
+
+    if (progress && progress.started_at) {
+      showSnackbar('Course started! Your progress will now be tracked.', 'success');
+    }
+
+    const data = await fetchDashboardData(user.id);
+    setDashboardData(data);
+  }, [user]);
+
+  // Utility to mark lesson as completed and update course progress
+  const completeLesson = async (userId, courseId, lessonId) => {
+    try {
+      const completeResponse = await coursesAPI.completeLesson({ user: userId, lesson: lessonId });
+      console.log('completeLesson response:', completeResponse); // Log response
+      const updateResponse = await coursesAPI.updateCourseProgress({ user: userId, course: courseId });
+      console.log('updateCourseProgress response:', updateResponse); // Log response
+    } catch (err) {
+      console.warn('Error completing lesson:', err);ensureCourseProgress
+    }
+  };
+
+  // Mark lesson as completed and update progress
+  const handleLessonComplete = useCallback(async (courseId, lessonId) => {
+    if (!user?.id || !courseId || !lessonId) return;
+    await completeLesson(user.id, courseId, lessonId);
+    // Optionally, refresh dashboard data to show updated progress
+    const data = await fetchDashboardData(user.id);
+    setDashboardData(data);
+  }, [user]);
+
   const renderContent = () => {
     if (loading || authLoading) {
-      return <Typography>Loading...</Typography>;
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+          <CircularProgress color="primary" size={48} thickness={4} />
+          <Typography sx={{ mt: 2 }} color="text.secondary">Loading your dashboard...</Typography>
+        </Box>
+      );
     }
     if (!dashboardData) {
       return (
@@ -500,7 +563,98 @@ const StudentDashboard = () => {
           />
         );
       case 'courses':
-        return <StudentCourseList courses={dashboardData.enrolledCourses || []} onFeedback={handleFeedbackClick} />;
+        return (
+          <>
+            <StudentCourseList
+              courses={dashboardData.enrolledCourses || []}
+              onFeedback={handleFeedbackClick}
+              onCourseOpen={handleCourseOpen}
+              onLessonComplete={handleLessonComplete}
+            />
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography variant="h5" gutterBottom align="center">My Enrolled Courses</Typography>
+              {(dashboardData?.enrolledCourses?.length > 0) ? (
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: '1fr 1fr',
+                    md: '1fr 1fr 1fr'
+                  },
+                  gap: { xs: 2, sm: 2, md: 3 },
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: '100%',
+                  maxWidth: 1200,
+                  mx: 'auto',
+                }}>
+                  {dashboardData.enrolledCourses.map((course) => {
+                    const modules = course.course?.modules || [];
+                    const lessons = modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+                    const resources = course.course?.resources?.length || 0;
+                    const instructors = course.course?.instructors?.map(i => i.name).join(', ') || 'No instructor';
+
+                    // Add a handler to open the course and track progress
+                    const handleOpenCourse = async () => {
+                      await handleCourseOpen(course.course?.id);
+                      // Optionally, navigate to course details page here
+                    };
+
+                    return (
+                      <Box
+                        key={course.id}
+                        sx={{
+                          p: { xs: 2, sm: 2, md: 2 },
+                          bgcolor: '#fff',
+                          borderRadius: 2,
+                          boxShadow: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 1,
+                          minWidth: 0,
+                          maxWidth: 370,
+                          mx: 'auto',
+                          cursor: 'pointer',
+                          transition: 'box-shadow 0.2s',
+                          '&:hover': { boxShadow: 3 },
+                        }}
+                        onClick={handleOpenCourse}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar src={course.course?.thumbnail} variant="rounded" sx={{ width: 48, height: 36, mr: 1 }} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '1rem', md: '1.1rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{course.course?.title || 'Untitled Course'}</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: { xs: '0.9rem', md: '1rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>{course.course?.description || 'No description available'}</Typography>
+                          </Box>
+                          <Chip label={course.progress ? `${Math.round(course.progress)}%` : '0%'} color="primary" sx={{ ml: 'auto', fontWeight: 600, fontSize: { xs: '0.8rem', md: '0.95rem' } }} />
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                          <Chip label={`Modules: ${modules.length}`} color="info" sx={{ fontSize: { xs: '0.8rem', md: '0.95rem' } }} />
+                          <Chip label={`Lessons: ${lessons}`} color="success" sx={{ fontSize: { xs: '0.8rem', md: '0.95rem' } }} />
+                          <Chip label={`Resources: ${resources}`} color="warning" sx={{ fontSize: { xs: '0.8rem', md: '0.95rem' } }} />
+                        </Box>
+                        <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 500, fontSize: { xs: '0.9rem', md: '1rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          Instructor(s): {instructors}
+                        </Typography>
+                        {/* Show started date if available */}
+                        {course.enrolled_at && (
+                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                            Started: {new Date(course.enrolled_at).toLocaleDateString()}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 180 }}>
+                  <Typography align="center" color="text.secondary" sx={{ fontSize: '1.1rem', fontWeight: 500 }}>No enrolled courses found.</Typography>
+                </Box>
+              )}
+            </Box>
+          </>
+        );
       case 'assignments':
         return <StudentAssignments assignments={dashboardData.assignments || []} />;
       case 'messages':
@@ -594,7 +748,19 @@ const StudentDashboard = () => {
               onClick={async () => {
                 try {
                   await authAPI.logout();
+                  // Clear all user-related state and local/session storage
+                  setDashboardData(null);
+                  setProfileOpen(false);
+                  setActiveSection('overview');
+                  setFeedbackOpen(false);
+                  setFeedbackTarget(null);
+                  setSnackbar({ open: false, message: '', severity: 'info' });
+                  // Optionally clear localStorage/sessionStorage if you store user info there
+                  localStorage.clear();
+                  sessionStorage.clear();
                   showSnackbar('Logged out successfully', 'success');
+                  // Optionally redirect to login page
+                  window.location.href = '/login';
                 } catch (error) {
                   showSnackbar('Error logging out', 'error');
                 }
@@ -717,6 +883,7 @@ const StudentDashboard = () => {
               maxWidth: '1400px',
               mx: 'auto',
               mt: '64px',
+              pb: { xs: 10, md: 12 }, // Add padding-bottom for FAB/snackbar
             }}
           >
             {renderContent()}
@@ -736,20 +903,6 @@ const StudentDashboard = () => {
               }}
             />
           )}
-
-          {/* Feedback Modal */}
-          <StudentFeedback
-            open={feedbackOpen}
-            onClose={() => setFeedbackOpen(false)}
-            type={feedbackType}
-            target={feedbackTarget}
-            onSubmit={() => {
-              showSnackbar('Feedback submitted successfully', 'success');
-              fetchDashboardData(user?.id).then((data) => {
-                setDashboardData(data);
-              });
-            }}
-          />
 
           {/* Floating Feedback Button */}
           <Fab

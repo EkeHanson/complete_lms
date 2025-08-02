@@ -26,6 +26,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/auth';
 import './Login.css';
 
+function extractErrorString(detail) {
+  if (typeof detail === 'string') return detail;
+  if (typeof detail === 'object' && detail !== null) {
+    if ('string' in detail) return detail.string;
+    return Object.values(detail).map(extractErrorString).join(' ');
+  }
+  return '';
+}
+
 const Login = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -142,44 +151,15 @@ const Login = () => {
       let parsedRemainingAttempts = null;
 
       if (error.response?.data) {
-        try {
-          // Handle complex error structure where detail is a string containing JSON-like data
-          if (typeof error.response.data.detail === 'string') {
-            // Attempt to parse the nested error details
-            const detailStr = error.response.data.detail.replace(/'/g, '"');
-            const parsed = JSON.parse(detailStr);
-            console.log('Parsed error detail:', parsed);
-            
-            if (parsed.detail) {
-              parsedDetail = parsed.detail;
-              if (typeof parsedDetail === 'object' && parsedDetail.string) {
-                errorMessage = parsedDetail.string;
-              } else if (typeof parsedDetail === 'string') {
-                errorMessage = parsedDetail;
-              }
-            }
-            
-            if (parsed.remaining_attempts) {
-              if (typeof parsed.remaining_attempts === 'object' && parsed.remaining_attempts.string) {
-                parsedRemainingAttempts = parseInt(parsed.remaining_attempts.string, 10);
-              } else {
-                parsedRemainingAttempts = parseInt(parsed.remaining_attempts, 10);
-              }
-            }
-          }
-          
-          // Handle simple error structure
-          if (error.response.data.detail && typeof error.response.data.detail === 'string') {
-            errorMessage = error.response.data.detail;
-          }
-          
-          if (error.response.data.remaining_attempts) {
-            parsedRemainingAttempts = parseInt(error.response.data.remaining_attempts, 10);
-          }
-        } catch (parseError) {
-          console.error('Error parsing server response:', parseError);
-          // Fallback to simple error display
-          errorMessage = error.response.data.detail || JSON.stringify(error.response.data);
+        // If detail is an object (like ErrorDetail), extract the string
+        let detail = error.response.data.detail;
+        errorMessage = extractErrorString(detail);
+
+        if (error.response.data.remaining_attempts) {
+          parsedRemainingAttempts = parseInt(
+            error.response.data.remaining_attempts.string || error.response.data.remaining_attempts,
+            10
+          );
         }
 
         if (Array.isArray(error.response.data.non_field_errors)) {

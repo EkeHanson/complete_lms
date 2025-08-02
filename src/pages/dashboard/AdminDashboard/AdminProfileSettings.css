@@ -1,0 +1,83 @@
+.admin-profile-root {
+  background: linear-gradient(120deg, #f8fafc 0%, #e0e7ff 100%);
+  min-height: 100vh;
+  padding: 32px 0;
+}
+
+.admin-profile-title {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #3b2f63;
+  margin-bottom: 32px;
+  text-shadow: 0 2px 8px #e0e7ff;
+}
+
+.admin-profile-paper {
+  border-radius: 18px !important;
+  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.12) !important;
+  background: linear-gradient(120deg, #fff 60%, #e0e7ff 100%) !important;
+  border: 2px solid #a5b4fc;
+}
+
+.admin-profile-avatar {
+  border: 3px solid #1976d2;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+}
+
+.admin-profile-upload-btn {
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  background: linear-gradient(90deg, #6366f1 0%, #3b82f6 100%);
+  color: #fff !important;
+  box-shadow: 0 2px 8px #a5b4fc;
+}
+
+.admin-profile-upload-btn:disabled {
+  background: #c7d2fe !important;
+  color: #fff !important;
+}
+
+.admin-profile-section-title {
+  font-weight: 600;
+  color: #6366f1;
+  margin-bottom: 12px !important;
+  letter-spacing: 0.5px;
+}
+
+.admin-profile-divider {
+  margin: 32px 0 !important;
+}
+
+.admin-profile-form .MuiTextField-root {
+  margin-bottom: 18px !important;
+}
+
+.admin-profile-photo-label {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admin-profile-password-reqs {
+  background: #f0f4fa;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: #6366f1;
+  font-size: 14px;
+  border-left: 4px solid #6366f1;
+}
+
+@media (max-width: 900px) {
+  .admin-profile-root {
+    padding: 16px 0;
+  }
+  .admin-profile-title {
+    font-size: 1.7rem;
+  }
+  .admin-profile-paper {
+    padding: 18px !important;
+  }
+}

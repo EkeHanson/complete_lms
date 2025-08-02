@@ -94,6 +94,8 @@ const AdminUserManagement = () => {
       };
       const response = await userAPI.getUsers(params);
       setUsers(response.data.results || []);
+
+     // console.log("Users fetched:", response.data.results);
       setPagination({
         count: response.data.count || 0,
         next: response.data.links?.next || null,
@@ -153,6 +155,8 @@ const AdminUserManagement = () => {
       });
     }
   };
+
+  // console.log("QwERTY", users);
 
   const fetchCourses = async () => {
     try {

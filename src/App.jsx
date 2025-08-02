@@ -97,7 +97,7 @@ function AppWrapper() {
                 <Route
                   path="/trainer-dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['TRAINER']}>
+                    <ProtectedRoute allowedRoles={['teacher', 'instructors','TRAINER']}>
                       <InstructorDashboards />
                     </ProtectedRoute>
                   }

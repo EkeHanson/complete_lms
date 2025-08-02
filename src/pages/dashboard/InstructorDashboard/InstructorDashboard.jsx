@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText,
   Box, Avatar, Badge, Menu, MenuItem as MenuItemMUI, Chip, Divider, Fab, Snackbar, Alert, Button
@@ -10,7 +9,7 @@ import {
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import dummyData from './dummyData';
+// import dummyData from './dummyData'; // REMOVE this line
 import InstructorOverview from './InstructorOverview';
 import InstructorCourseList from './InstructorCourseList';
 import InstructorStudentProgress from './InstructorStudentProgress';
@@ -24,9 +23,16 @@ import InstructorAnalytics from './InstructorAnalytics';
 import InstructorSettings from './InstructorSettings';
 import ProfileModal from './ProfileModal';
 
+// Import AuthContext
+import { useAuth } from '../../../contexts/AuthContext';
+// Import your API for instructor dashboard data
+import { instructorAPI } from '../../../config';
+
 const InstructorDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user, loading: authLoading } = useAuth();
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [profileOpen, setProfileOpen] = useState(false);
@@ -35,7 +41,49 @@ const InstructorDashboard = () => {
   const [feedbackType, setFeedbackType] = useState('lms');
   const [feedbackTarget, setFeedbackTarget] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const unreadCount = dummyData.messages.filter(msg => !msg.read).length;
+
+  // Dashboard data state
+  const [dashboardData, setDashboardData] = useState(null);
+
+  // Fetch instructor dashboard data
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await instructorAPI.getDashboardData();
+        // Example: mapping API response to dashboardData
+        const data = response.data;
+        const mappedData = {
+          instructor: {
+            id: data.id,
+            name: `${data.user.first_name} ${data.user.last_name}`,
+            email: data.user.email,
+            avatar: data.user.avatar,
+            phone: data.user.phone,
+            bio: data.bio,
+            department: data.department,
+            isActive: data.is_active,
+          },
+          courses: data.courses,
+          students: data.students,
+          assignments: data.assignments,
+          quizzes: data.quizzes,
+          messages: data.messages,
+          schedule: data.schedule,
+          analytics: data.analytics,
+          feedbackHistory: data.feedbackHistory,
+          compliance: data.compliance,
+        };
+        setDashboardData(mappedData);
+      } catch (error) {
+        setSnackbar({ open: true, message: 'Error loading dashboard data', severity: 'error' });
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  // Unread messages count
+  const unreadCount = dashboardData?.messages?.filter(msg => !msg.read).length || 0;
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: <Dashboard /> },
@@ -66,19 +114,32 @@ const InstructorDashboard = () => {
   };
 
   const renderContent = () => {
+    if (authLoading || !dashboardData) {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+          <Typography sx={{ mt: 2 }} color="text.secondary">Loading your dashboard...</Typography>
+        </Box>
+      );
+    }
     switch (activeSection) {
       case 'overview':
         return (
           <InstructorOverview
-            instructor={dummyData.instructor}
-            metrics={dummyData.metrics}
-            activities={dummyData.activities}
+            instructor={dashboardData.instructor}
+            metrics={dashboardData.metrics || {
+              courses: 0,
+              students: 0,
+              pendingTasks: 0,
+              completionRate: 0,
+              upcomingEvents: 0
+            }}
+            activities={dashboardData.activities || []}
           />
         );
       case 'courses':
         return (
           <InstructorCourseList
-            courses={dummyData.courses}
+            courses={dashboardData.courses}
             onAddCourse={handleAddCourse}
             onEditCourse={handleEditCourse}
             onDeleteCourse={handleDeleteCourse}
@@ -86,28 +147,28 @@ const InstructorDashboard = () => {
           />
         );
       case 'students':
-        return <InstructorStudentProgress students={dummyData.students} />;
+        return <InstructorStudentProgress students={dashboardData.students} />;
       case 'assignments':
-        return <InstructorAssignmentList assignments={dummyData.assignments} />;
+        return <InstructorAssignmentList assignments={dashboardData.assignments} />;
       case 'quizzes':
-        return <InstructorQuizzes quizzes={dummyData.quizzes} />;
+        return <InstructorQuizzes quizzes={dashboardData.quizzes} />;
       case 'messages':
-        return <InstructorMessages messages={dummyData.messages} />;
+        return <InstructorMessages messages={dashboardData.messages} />;
       case 'schedule':
-        return <InstructorSchedule schedules={dummyData.schedules} attendance={dummyData.attendance} />;
+        return <InstructorSchedule schedules={dashboardData.schedules} attendance={dashboardData.attendance} />;
       case 'forums':
-        return <InstructorForums forums={dummyData.forums} />;
+        return <InstructorForums forums={dashboardData.forums} />;
       case 'analytics':
-        return <InstructorAnalytics analytics={dummyData.analytics} certifications={dummyData.certifications} />;
+        return <InstructorAnalytics analytics={dashboardData.analytics} certifications={dashboardData.certifications} />;
       case 'feedback':
         return (
           <InstructorFeedback
-            feedback={dummyData.feedbackHistory}
+            feedback={dashboardData.feedbackHistory}
             onFeedback={handleFeedbackClick}
           />
         );
       case 'settings':
-        return <InstructorSettings compliance={dummyData.compliance} />;
+        return <InstructorSettings compliance={dashboardData.compliance} />;
       default:
         return null;
     }
@@ -175,7 +236,19 @@ const InstructorDashboard = () => {
             fullWidth
             startIcon={<Logout />}
             sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.2)', '&:hover': { borderColor: 'rgba(255,255,255,0.4)' } }}
-            onClick={() => showSnackbar('Logged out successfully', 'success')}
+            onClick={() => {
+              // Clear all user-related state and local/session storage
+              setDashboardData(null);
+              setProfileOpen(false);
+              setActiveSection('overview');
+              setFeedbackOpen(false);
+              setFeedbackTarget(null);
+              setSnackbar({ open: false, message: '', severity: 'info' });
+              localStorage.clear();
+              sessionStorage.clear();
+              showSnackbar('Logged out successfully', 'success');
+              window.location.href = '/login';
+            }}
           >
             Logout
           </Button>
@@ -211,7 +284,7 @@ const InstructorDashboard = () => {
                 edge="end"
                 onClick={() => setProfileOpen(true)}
               >
-                <Avatar src={dummyData.instructor.avatar} sx={{ width: 32, height: 32 }} />
+                <Avatar src={dashboardData?.instructor?.avatar} sx={{ width: 32, height: 32 }} />
               </IconButton>
             </Box>
             <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
@@ -240,7 +313,7 @@ const InstructorDashboard = () => {
           <MenuItemMUI dense disabled>
             <Typography variant="subtitle1">Notifications</Typography>
           </MenuItemMUI>
-          {dummyData.messages.slice(0, 3).map(msg => (
+          {(dashboardData?.messages || []).slice(0, 3).map(msg => (
             <MenuItemMUI
               key={msg.id}
               onClick={() => {
@@ -296,7 +369,7 @@ const InstructorDashboard = () => {
 
         {/* Profile Modal */}
         <ProfileModal
-          instructor={dummyData.instructor}
+          instructor={dashboardData?.instructor}
           open={profileOpen}
           onClose={() => setProfileOpen(false)}
         />
@@ -308,7 +381,7 @@ const InstructorDashboard = () => {
           type={feedbackType}
           target={feedbackTarget}
           onSubmit={() => showSnackbar('Feedback submitted successfully', 'success')}
-          feedback={[]} // Explicitly pass empty array for modal
+          feedback={dashboardData?.feedbackHistory || []}
         />
 
         {/* Floating Feedback Button */}

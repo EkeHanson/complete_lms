@@ -1,3 +1,18 @@
+// Mark a schedule as read
+  const handleMarkAsRead = async (scheduleId) => {
+    try {
+      await scheduleAPI.markAsRead(scheduleId);
+      enqueueSnackbar('Marked as read!', { variant: 'success' });
+      fetchData();
+    } catch (error) {
+      enqueueSnackbar('Error marking as read', { variant: 'error' });
+    }
+  };
+
+  // Download an attachment
+  const handleDownloadAttachment = (scheduleId) => {
+    window.open(`/api/schedule/schedules/${scheduleId}/download_attachment/`, '_blank');
+  };
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
@@ -18,6 +33,7 @@ import {
   EventAvailable as EventAvailableIcon, EventBusy as EventBusyIcon,
   LocationOn as LocationIcon, Refresh as RefreshIcon,
   Videocam as VideocamIcon, Groups as TeamsIcon,Search as SearchIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -159,7 +175,8 @@ const StudentSchedule = () => {
       };
 
       const response = await scheduleAPI.getSchedules(params);
-      setSchedules(response.data.results || []);
+      console.log('Fetched schedules:', response.data);
+      setSchedules(response.data || []);
       setPagination({
         count: response.data.count || 0,
         next: response.data.next,
@@ -275,10 +292,15 @@ const StudentSchedule = () => {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  // Only show expired schedules if "Show Past Events" is checked
+  const filteredSchedules = filters.showPast
+    ? schedules.filter(s => isPastEvent(s))
+    : schedules.filter(s => !isPastEvent(s));
+
   // Mobile view for schedules
   const renderMobileScheduleCards = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {schedules.map((schedule) => (
+      {filteredSchedules.map((schedule) => (
         <Card key={schedule.id} elevation={3}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -358,6 +380,24 @@ const StudentSchedule = () => {
                   </Stack>
                 </Box>
 
+                {/* Mark as Read and Download Attachment buttons */}
+                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleMarkAsRead(schedule.id)}
+                  >
+                    Mark as Read
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleDownloadAttachment(schedule.id)}
+                  >
+                    Download Attachment
+                  </Button>
+                </Stack>
+
                 {/* Add to Google Calendar button in expanded view */}
                 <Button
                   variant="contained"
@@ -400,7 +440,7 @@ const StudentSchedule = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {schedules.map((schedule) => (
+          {filteredSchedules.map((schedule) => (
             <React.Fragment key={schedule.id}>
               <TableRow 
                 hover 
@@ -474,6 +514,28 @@ const StudentSchedule = () => {
                         }}
                       >
                         <CalendarIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Mark as Read">
+                      <IconButton
+                        size="small"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleMarkAsRead(schedule.id);
+                        }}
+                      >
+                        <CheckIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download Attachment">
+                      <IconButton
+                        size="small"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDownloadAttachment(schedule.id);
+                        }}
+                      >
+                        <DownloadIcon />
                       </IconButton>
                     </Tooltip>
                   </Stack>
