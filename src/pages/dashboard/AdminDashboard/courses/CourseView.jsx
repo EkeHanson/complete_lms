@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './CourseView.css';
 import {
-  ArrowBack, Edit, People, Schedule,
-  MonetizationOn, Assessment, InsertDriveFile,
-  VideoLibrary, Quiz, Assignment, PictureAsPdf,
-  Description, Image, Link, Slideshow, YouTube
+  ArrowBack, Edit, People, Schedule, MonetizationOn, Assessment,
+  VideoLibrary, Quiz, Assignment, PictureAsPdf, Description, Image, Link, Slideshow, YouTube, InsertDriveFile
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../../../config';
@@ -15,7 +13,7 @@ import draftToHtml from 'draftjs-to-html';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
-// Configure PDF.js worker
+// PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // YouTube Player Component
@@ -30,223 +28,56 @@ const YouTubePlayer = ({ url, title }) => {
         videoId = urlObj.pathname.split('/')[1] || '';
       }
       return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
-    } catch (error) {
-      console.error(`Error parsing YouTube URL for ${title}:`, error, { url });
+    } catch {
       return url;
     }
   };
-
   return (
-    <div className="media-container">
+    <div className="responsive-iframe-container">
       <iframe
-        src={getYouTubeEmbedUrl(url)}
         className="media-iframe"
-        title={`YouTube: ${title}`}
-        frameBorder="0"
+        src={getYouTubeEmbedUrl(url)}
+        title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
-        onError={(e) => console.error(`YouTube iframe error for ${title}:`, e, { url })}
       />
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="action-btn"
-      >
-        Open YouTube Video in New Tab
-      </a>
     </div>
   );
 };
 
 // PowerPoint Viewer Component
-const PPTViewer = ({ url, title }) => {
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch(url, { method: 'HEAD', credentials: 'include' })
-      .then(response => {
-        if (!response.ok) {
-          const headers = {};
-          response.headers.forEach((value, key) => { headers[key] = value; });
-          const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-          console.error(`PowerPoint fetch error for ${title}:`, errorMsg, { url, headers });
-          setError(`Failed to access PowerPoint: ${errorMsg}`);
-        }
-      })
-      .catch(err => {
-        console.error(`PowerPoint fetch error for ${title}:`, err, { url });
-        setError('Failed to access PowerPoint: Network or CORS issue');
-      });
-  }, [url, title]);
-
-  return (
-    <div className="media-container">
-      {error ? (
-        <div className="error-message">
-          <span>{error}</span>
-          <a
-            href={url}
-            download
-            className="action-btn primary"
-          >
-            Download PowerPoint
-          </a>
-        </div>
-      ) : (
-        <>
-          <iframe
-            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
-            className="media-iframe"
-            title={`PowerPoint: ${title}`}
-            frameBorder="0"
-            onError={(e) => {
-              const errorMsg = 'Unable to load PowerPoint. File may not be publicly accessible or is invalid.';
-              console.error(`PowerPoint iframe error for ${title}:`, e, { url, errorMsg });
-              setError(errorMsg);
-            }}
-          />
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="action-btn"
-          >
-            Open PowerPoint in New Tab
-          </a>
-        </>
-      )}
-    </div>
-  );
-};
+const PPTViewer = ({ url, title }) => (
+  <div className="media-container">
+    <iframe
+      src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+      className="media-iframe"
+      title={title}
+    />
+  </div>
+);
 
 // Video Player Component
 const VideoPlayer = ({ url, title }) => (
   <div className="media-container">
-    <video
-      controls
-      src={url}
-      className="media"
-      onError={(e) => console.error(`Video load error for ${title}:`, e, { url })}
-    >
-      <source src={url} type="video/mp4" />
-      Your browser does not support the video tag.
-    </video>
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="action-btn"
-    >
-      Open Video in New Tab
-    </a>
+    <video controls src={url} className="media" style={{ width: '100%', borderRadius: 10 }} />
   </div>
 );
 
 // PDF Viewer Component
-const PDFViewer = ({ url, title }) => {
-  const [numPages, setNumPages] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch(url, { method: 'HEAD', credentials: 'include' })
-      .then(response => {
-        if (!response.ok) {
-          const headers = {};
-          response.headers.forEach((value, key) => { headers[key] = value; });
-          const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-          console.error(`PDF fetch error for ${title}:`, errorMsg, { url, headers });
-          setError(`Failed to access PDF: ${errorMsg}`);
-        }
-      })
-      .catch(err => {
-        console.error(`PDF fetch error for ${title}:`, err, { url });
-        setError('Failed to access PDF: Network or CORS issue');
-      });
-  }, [url, title]);
-
-  return (
-    <div className="media-container">
-      {error ? (
-        <div className="error-message">
-          <span>{error}</span>
-          <a
-            href={url}
-            download
-            className="action-btn primary"
-          >
-            Download PDF
-          </a>
-        </div>
-      ) : (
-        <>
-          <Document
-            file={url}
-            onLoadSuccess={({ numPages }) => {
-              setNumPages(numPages);
-              setError(null);
-            }}
-            onLoadError={(err) => {
-              const errorMsg = 'Unable to load PDF. File may be corrupted or inaccessible.';
-              console.error(`PDF load error for ${title}:`, err, { url, errorMsg });
-              setError(errorMsg);
-            }}
-          >
-            {numPages ? (
-              Array.from(new Array(numPages), (_, index) => (
-                <Page
-                  key={`page_${index + 1}`}
-                  pageNumber={index + 1}
-                  width={800}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
-              ))
-            ) : (
-              <div>Loading PDF...</div>
-            )}
-          </Document>
-          <span className="pdf-page-info">
-            Page {numPages ? 1 : 0} of {numPages || 'loading'}
-          </span>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="action-btn"
-          >
-            Open PDF in New Tab
-          </a>
-        </>
-      )}
-    </div>
-  );
-};
+const PDFViewer = ({ url, title }) => (
+  <div className="media-container">
+    <iframe src={url} className="media-iframe" title={title} />
+  </div>
+);
 
 // Word Document Viewer Component
 const WordViewer = ({ url, title }) => (
   <div className="media-container">
     <iframe
-      src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+      src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
       className="media-iframe"
-      title={`Word Document: ${title}`}
-      onError={(e) => console.error(`Word document load error for ${title}:`, e, { url })}
+      title={title}
     />
-    <a
-      href={url}
-      download
-      className="action-btn primary"
-    >
-      Download Word Document
-    </a>
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="action-btn"
-    >
-      Open Document in New Tab
-    </a>
   </div>
 );
 
@@ -256,8 +87,7 @@ const CourseView = () => {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState(0);
-  const [expandedResource, setExpandedResource] = useState(null);
+  const [activeSection, setActiveSection] = useState('overview');
   const [expandedLesson, setExpandedLesson] = useState(null);
 
   const parseArrayField = (field) => {
@@ -321,19 +151,22 @@ const CourseView = () => {
       setLoading(true);
       try {
         const response = await coursesAPI.getCourse(id);
-       // console.log('Fetched course data:', response.data);
         setCourse({
           ...response.data,
           learning_outcomes: parseListField(response.data.learning_outcomes),
           prerequisites: parseListField(response.data.prerequisites),
-          modules: response.data.modules.map(module => ({
-            ...module,
-            lessons: module.lessons.map(lesson => ({
-              ...lesson,
-              content_file: lesson.content_file ? `${lesson.content_file}?t=${Date.now()}` : null,
-              content_url: lesson.content_url ? `${lesson.content_url}?t=${Date.now()}` : null
-            }))
-          }))
+          modules: Array.isArray(response.data.modules)
+            ? response.data.modules.map(module => ({
+                ...module,
+                lessons: Array.isArray(module.lessons)
+                  ? module.lessons.map(lesson => ({
+                      ...lesson,
+                      content_file: lesson.content_file ? `${lesson.content_file}?t=${Date.now()}` : null,
+                      content_url: lesson.content_url ? `${lesson.content_url}?t=${Date.now()}` : null
+                    }))
+                  : []
+              }))
+            : []
         });
         setError('');
       } catch (error) {
@@ -440,353 +273,271 @@ const CourseView = () => {
     }
   };
 
-  const handleToggleResource = (resourceId) => {
-    setExpandedResource(expandedResource === resourceId ? null : resourceId);
-  };
-
-  const handleToggleLesson = (lessonId) => {
-    setExpandedLesson(expandedLesson === lessonId ? null : lessonId);
-  };
-
   if (loading) {
     return (
-      <div className="CourseView-Loading">
-        <div className="spinner" />
+      <div className="cv-drastic-loading">
+        <div className="cv-spinner" />
       </div>
     );
   }
 
   if (error || !course) {
     return (
-      <div className="CourseView-Error">
+      <div className="cv-drastic-error">
         <span>{error || 'Course not found'}</span>
       </div>
     );
   }
 
   return (
-    <div className="CourseView">
-      <div className="CourseView-Top">
-        <div className="CourseView-Top-Grid">
-          <div className="CourseView-Top-Left">
-            <button onClick={handleBack} className="back-btn">
-              <ArrowBack className="icon" />
-            </button>
-            <h2>{course.title}</h2>
-            <span className="status-badge" style={{ backgroundColor: getStatusColor(course.status) }}>
-              {course.status}
-            </span>
-          </div>
-          <div className="CourseView-Top-Right">
-            <button onClick={handleEdit} className="edit-btn">
-              <Edit className="icon" /> Edit Course
-            </button>
-          </div>
+    <div className="cv-drastic-root">
+      {/* Sidebar */}
+      <aside className="cv-drastic-sidebar">
+        <button className="cv-back-btn" onClick={() => navigate('/admin/courses')}>
+          <ArrowBack /> <span>Back to Courses</span>
+        </button>
+        <div className="cv-sidebar-section">
+          <img
+            src={course.thumbnail || '/no-image.png'}
+            alt={course.title}
+            className="cv-course-thumb"
+          />
+          <h2 className="cv-course-title">{course.title}</h2>
+          <span className={`cv-status-badge cv-status-${course.status?.toLowerCase()}`}>{course.status}</span>
+          <button className="cv-edit-btn" onClick={() => navigate(`/admin/courses/edit/${id}`)}>
+            <Edit /> Edit Course
+          </button>
         </div>
-      </div>
+        <nav className="cv-sidebar-nav">
+          <button className={activeSection === 'overview' ? 'active' : ''} onClick={() => setActiveSection('overview')}>Overview</button>
+          <button className={activeSection === 'modules' ? 'active' : ''} onClick={() => setActiveSection('modules')}>Modules</button>
+          <button className={activeSection === 'resources' ? 'active' : ''} onClick={() => setActiveSection('resources')}>Resources</button>
+          <button className={activeSection === 'meta' ? 'active' : ''} onClick={() => setActiveSection('meta')}>Meta</button>
+        </nav>
+      </aside>
 
-      <div className="CourseView-Grid">
-        {/* Left Column - Course Details */}
-        <div className="CourseView-Left">
-          <div className="CourseView-Card">
+      {/* Main Content */}
+      <main className="cv-drastic-main">
+        {activeSection === 'overview' && (
+          <section className="cv-section">
             <h3>Course Description</h3>
-            <div 
-              className="course-description"
-              dangerouslySetInnerHTML={convertDraftToHTML(course.description)} 
-            />
-
-            <h3>Learning Outcomes</h3>
-            <ul className="outcomes-list">
-              {parseArrayField(course.learning_outcomes).map((outcome, index) => (
-                <li key={index}>{outcome}</li>
-              ))}
-            </ul>
-
-            <h3>Prerequisites</h3>
-            <ul className="outcomes-list">
-              {parseArrayField(course.prerequisites).map((prereq, index) => (
-                <li key={index}>{prereq}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="CourseView-Card">
-            <div className="tabs">
-              <button
-                className={activeTab === 0 ? 'tab active' : 'tab'}
-                onClick={() => setActiveTab(0)}
-              >
-                Modules
-              </button>
-              <button
-                className={activeTab === 1 ? 'tab active' : 'tab'}
-                onClick={() => setActiveTab(1)}
-              >
-                Resources
-              </button>
+            <div className="cv-description" dangerouslySetInnerHTML={convertDraftToHTML(course.description)} />
+            <div className="cv-flex-row">
+              <div className="cv-card">
+                <h4>Learning Outcomes</h4>
+                <ul>
+                  {parseArrayField(course.learning_outcomes).map((outcome, i) => <li key={i}>{outcome}</li>)}
+                </ul>
+              </div>
+              <div className="cv-card">
+                <h4>Prerequisites</h4>
+                <ul>
+                  {parseArrayField(course.prerequisites).map((prereq, i) => <li key={i}>{prereq}</li>)}
+                </ul>
+              </div>
             </div>
-            <div className="tab-content">
-              {activeTab === 0 && (
-                <div>
-                  {course.modules && course.modules.length > 0 ? (
-                    course.modules.map((module) => (
-                      <div key={module.id} className="module">
-                        <h4>{module.title}</h4>
-                        <p className="module-description">{module.description}</p>
-                        <ul className="lesson-list">
-                          {module.lessons && module.lessons.length > 0 ? (
-                            module.lessons.map((lesson) => {
-                              const lessonType = getLessonType(lesson);
-                              const contentUrl = lesson.content_file || lesson.content_url;
-                              return (
-                                <li key={lesson.id} className="lesson-item">
-                                  <div
-                                    className="lesson-header"
-                                    onClick={() => handleToggleLesson(lesson.id)}
-                                  >
-                                    <span className="lesson-icon">{getLessonIcon(lessonType)}</span>
-                                    <div className="lesson-text">
-                                      <span className="lesson-title">{lesson.title}</span>
-                                      <span className="lesson-secondary">
-                                        {lessonType === 'video' ? 'Click to play video' :
-                                         lessonType === 'pdf' ? 'Click to view PDF' :
-                                         lessonType === 'word' ? 'Click to view Word document' :
-                                         lessonType === 'powerpoint' ? 'Click to view PowerPoint' :
-                                         lessonType === 'image' ? 'Click to view image' :
-                                         lessonType === 'youtube' ? 'Click to play YouTube video' :
-                                         lessonType === 'link' ? lesson.content_url :
-                                         lesson.duration || 'Not specified'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  {expandedLesson === lesson.id && contentUrl && (
-                                    <div className="lesson-content">
-                                      {lessonType === 'video' && (
-                                        <VideoPlayer url={contentUrl} title={lesson.title} />
-                                      )}
-                                      {lessonType === 'pdf' && (
-                                        <PDFViewer url={contentUrl} title={lesson.title} />
-                                      )}
-                                      {lessonType === 'word' && (
-                                        <WordViewer url={contentUrl} title={lesson.title} />
-                                      )}
-                                      {lessonType === 'powerpoint' && (
-                                        <PPTViewer url={contentUrl} title={lesson.title} />
-                                      )}
-                                      {lessonType === 'image' && (
-                                        <div className="media-container">
-                                          <img
-                                            src={contentUrl}
-                                            alt={lesson.title}
-                                            className="media"
-                                            onError={(e) => console.error(`Image load error for ${lesson.title}:`, e, { url: contentUrl })}
-                                          />
-                                          <a
-                                            href={contentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="action-btn"
-                                          >
-                                            Open Image in New Tab
-                                          </a>
-                                        </div>
-                                      )}
-                                      {lessonType === 'youtube' && (
-                                        <YouTubePlayer url={contentUrl} title={lesson.title} />
-                                      )}
-                                      {lessonType === 'link' && (
-                                        <div className="media-container">
-                                          <a
-                                            href={contentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="action-btn primary"
-                                          >
-                                            Visit Link
-                                          </a>
-                                        </div>
-                                      )}
-                                      {lessonType === 'default' && contentUrl && (
-                                        <div className="media-container">
-                                          <a
-                                            href={contentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="action-btn primary"
-                                          >
-                                            Download Resource
-                                          </a>
-                                        </div>
-                                      )}
+          </section>
+        )}
+
+        {activeSection === 'modules' && (
+          <section className="cv-section">
+            <h3>Modules & Lessons</h3>
+            {course.modules && course.modules.length > 0 ? (
+              course.modules.map(module => (
+                <div key={module.id} className="cv-module-card">
+                  <div className="cv-module-header">
+                    <h4>{module.title}</h4>
+                    <span>{module.lessons.length} Lessons</span>
+                  </div>
+                  <p className="cv-module-desc">{module.description}</p>
+                  <ul className="cv-lesson-list">
+                    {module.lessons.length > 0 ? (
+                      module.lessons.map(lesson => {
+                        const lessonType = getLessonType(lesson);
+                        const contentUrl = lesson.content_file || lesson.content_url;
+                        return (
+                          <li key={lesson.id} className={`cv-lesson-item${expandedLesson === lesson.id ? ' expanded' : ''}`}>
+                            <div className="cv-lesson-header" onClick={() => setExpandedLesson(expandedLesson === lesson.id ? null : lesson.id)}>
+                              <span className="cv-lesson-icon">{getLessonIcon(lessonType)}</span>
+                              <div>
+                                <span className="cv-lesson-title">{lesson.title}</span>
+                                <span className="cv-lesson-meta">{lesson.duration || lessonType}</span>
+                              </div>
+                            </div>
+                            {expandedLesson === lesson.id && (
+                              <div className="cv-lesson-content-area">
+                                <div className="cv-lesson-content-title">{lesson.title}</div>
+                                <div className="cv-lesson-content">
+                                  {/* Text/HTML/Markdown */}
+                                  {lessonType === 'text' && (
+                                    <div dangerouslySetInnerHTML={convertDraftToHTML(lesson.content_text)} />
+                                  )}
+
+                                  {/* YouTube */}
+                                  {lessonType === 'youtube' && (
+                                    <YouTubePlayer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                  )}
+
+                                  {/* Video */}
+                                  {lessonType === 'video' && (
+                                    <VideoPlayer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                  )}
+
+                                  {/* PDF */}
+                                  {lessonType === 'pdf' && (
+                                    <PDFViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                  )}
+
+                                  {/* PowerPoint */}
+                                  {lessonType === 'powerpoint' && (
+                                    <PPTViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                  )}
+
+                                  {/* Word */}
+                                  {lessonType === 'word' && (
+                                    <WordViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                  )}
+
+                                  {/* Image */}
+                                  {lessonType === 'image' && (
+                                    <div className="media-container">
+                                      <img
+                                        src={lesson.content_url || lesson.content_file}
+                                        alt={lesson.title}
+                                        className="media"
+                                        style={{ maxWidth: '100%', borderRadius: 10 }}
+                                      />
                                     </div>
                                   )}
-                                </li>
-                              );
-                            })
-                          ) : (
-                            <li>No lessons available</li>
-                          )}
-                        </ul>
-                      </div>
-                    ))
-                  ) : (
-                    <div>No modules available</div>
-                  )}
-                </div>
-              )}
-              {activeTab === 1 && (
-                <ul className="resource-list">
-                  {course.resources && course.modules.length > 0 ? (
-                    course.resources.map((resource) => {
-                      const resourceUrl = resource.url || resource.file;
-                      const resourceType = resource.resource_type === 'file' && resourceUrl.match(/\.(ppt|pptx)$/i) ? 'powerpoint' : 
-                                          resource.resource_type === 'link' && resourceUrl.match(/youtube\.com|youtu\.be/) ? 'youtube' : 
-                                          resource.resource_type;
-                      return (
-                        <li key={resource.id} className="resource-item">
-                          <div
-                            className="resource-header"
-                            onClick={() => handleToggleResource(resource.id)}
-                          >
-                            <span className="resource-icon">{getResourceIcon(resourceType)}</span>
-                            <div className="resource-text">
-                              <span className="resource-title">{resource.title}</span>
-                              <span className="resource-secondary">
-                                {resourceType === 'link' ? resourceUrl :
-                                 resourceType === 'video' ? 'Click to play video' :
-                                 resourceType === 'pdf' ? 'Click to view PDF' :
-                                 resourceType === 'powerpoint' ? 'Click to view PowerPoint' :
-                                 resourceType === 'youtube' ? 'Click to play YouTube video' :
-                                 resourceType === 'file' ? 'Click to view document' :
-                                 'Resource'}
-                              </span>
-                            </div>
-                          </div>
-                          {expandedResource === resource.id && resourceUrl && (
-                            <div className="resource-content">
-                              {resourceType === 'video' && (
-                                <VideoPlayer url={resourceUrl} title={resource.title} />
-                              )}
-                              {resourceType === 'pdf' && (
-                                <PDFViewer url={resourceUrl} title={resource.title} />
-                              )}
-                              {resourceType === 'file' && (
-                                <WordViewer url={resourceUrl} title={resource.title} />
-                              )}
-                              {resourceType === 'powerpoint' && (
-                                <PPTViewer url={resourceUrl} title={resource.title} />
-                              )}
-                              {resourceType === 'youtube' && (
-                                <YouTubePlayer url={resourceUrl} title={resource.title} />
-                              )}
-                              {resourceType === 'link' && (
-                                <a
-                                  href={resourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="action-btn primary"
-                                >
-                                  Visit Link
-                                </a>
-                              )}
-                              <a
-                                href={resourceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="action-btn"
-                              >
-                                {resourceType === 'link' || resourceType === 'youtube' ? 'Open Link' : 'Download'}
-                              </a>
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })
-                  ) : (
-                    <li>No resources available</li>
-                  )}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Right Column - Course Meta */}
-        <div className="CourseView-Right">
-          <div className="CourseView-Card">
-            <div className="thumbnail">
-              {course.thumbnail ? (
-                <img src={course.thumbnail} alt={course.title} className="thumbnail-img" />
+                                  {/* Link */}
+                                  {lessonType === 'link' && (
+                                    <div className="media-container">
+                                      <a
+                                        href={lesson.content_url || lesson.content_file}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn primary"
+                                      >
+                                        Visit Link
+                                      </a>
+                                    </div>
+                                  )}
+
+                                  {/* Fallback */}
+                                  {lessonType === 'default' && (lesson.content_url || lesson.content_file) && (
+                                    <div className="media-container">
+                                      <a
+                                        href={lesson.content_url || lesson.content_file}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="action-btn primary"
+                                      >
+                                        Download Resource
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li className="cv-lesson-empty">No lessons available</li>
+                    )}
+                  </ul>
+                </div>
+              ))
+            ) : (
+              <div className="cv-empty">No modules available</div>
+            )}
+          </section>
+        )}
+
+        {activeSection === 'resources' && (
+          <section className="cv-section">
+            <h3>Course Resources</h3>
+            <ul className="cv-resource-list">
+              {course.resources && course.resources.length > 0 ? (
+                course.resources.map(resource => {
+                  const resourceUrl = resource.url || resource.file;
+                  const resourceType = resource.resource_type === 'file' && resourceUrl.match(/\.(ppt|pptx)$/i) ? 'powerpoint' :
+                    resource.resource_type === 'link' && resourceUrl.match(/youtube\.com|youtu\.be/) ? 'youtube' :
+                    resource.resource_type;
+                  return (
+                    <li key={resource.id} className="cv-resource-item">
+                      <div className="cv-resource-header">
+                        <span className="cv-resource-icon">{getResourceIcon(resourceType)}</span>
+                        <div>
+                          <span className="cv-resource-title">{resource.title}</span>
+                          <span className="cv-resource-meta">{resourceType}</span>
+                        </div>
+                        <a href={resourceUrl} target="_blank" rel="noopener noreferrer" className="action-btn">Open</a>
+                      </div>
+                    </li>
+                  );
+                })
               ) : (
-                <span className="thumbnail-placeholder">No thumbnail</span>
+                <li className="cv-empty">No resources available</li>
               )}
-            </div>
-            <div className="meta-grid">
-              <div className="meta-item">
-                <span className="meta-label">
-                  <People className="icon small" /> Students
-                </span>
-                <span className="meta-value">{course.total_enrollments || 0}</span>
+            </ul>
+          </section>
+        )}
+
+        {activeSection === 'meta' && (
+          <section className="cv-section">
+            <h3>Course Meta Information</h3>
+            <div className="cv-meta-grid">
+              <div className="cv-meta-card">
+                <People className="icon" /> <span>Students</span>
+                <strong>{course.total_enrollments || 0}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">
-                  <Schedule className="icon small" /> Duration
-                </span>
-                <span className="meta-value">{course.duration || 'Not specified'}</span>
+              <div className="cv-meta-card">
+                <Schedule className="icon" /> <span>Duration</span>
+                <strong>{course.duration || 'Not specified'}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">
-                  <MonetizationOn className="icon small" /> Price
-                </span>
-                <span className="meta-value">
+              <div className="cv-meta-card">
+                <MonetizationOn className="icon" /> <span>Price</span>
+                <strong>
                   {course.discount_price ? (
                     <>
-                      <span className="price-strikethrough">
-                        {formatPrice(course.price, course.currency)}
-                      </span>
-                      <span className="price-discounted">
-                        {formatPrice(course.discount_price, course.currency)}
-                      </span>
+                      <span className="cv-price-strike">{formatPrice(course.price, course.currency)}</span>
+                      <span className="cv-price-discount">{formatPrice(course.discount_price, course.currency)}</span>
                     </>
                   ) : (
                     formatPrice(course.price, course.currency)
                   )}
-                </span>
+                </strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">
-                  <Assessment className="icon small" /> Status
-                </span>
-                <span className="meta-value">
-                  <span className="status-badge" style={{ backgroundColor: getStatusColor(course.status) }}>
-                    {course.status}
-                  </span>
-                </span>
+              <div className="cv-meta-card">
+                <Assessment className="icon" /> <span>Status</span>
+                <span className={`cv-status-badge cv-status-${course.status?.toLowerCase()}`}>{course.status}</span>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Course Code</span>
-                <span className="meta-value">{course.code}</span>
+              <div className="cv-meta-card">
+                <span>Course Code</span>
+                <strong>{course.code}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Category</span>
-                <span className="meta-value">{course.category?.name || 'Not specified'}</span>
+              <div className="cv-meta-card">
+                <span>Category</span>
+                <strong>{course.category?.name || 'Not specified'}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Level</span>
-                <span className="meta-value">{course.level}</span>
+              <div className="cv-meta-card">
+                <span>Level</span>
+                <strong>{course.level}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Created</span>
-                <span className="meta-value">{new Date(course.created_at).toLocaleDateString()}</span>
+              <div className="cv-meta-card">
+                <span>Created</span>
+                <strong>{new Date(course.created_at).toLocaleDateString()}</strong>
               </div>
-              <div className="meta-item">
-                <span className="meta-label">Last Updated</span>
-                <span className="meta-value">{new Date(course.updated_at).toLocaleDateString()}</span>
+              <div className="cv-meta-card">
+                <span>Last Updated</span>
+                <strong>{new Date(course.updated_at).toLocaleDateString()}</strong>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 };

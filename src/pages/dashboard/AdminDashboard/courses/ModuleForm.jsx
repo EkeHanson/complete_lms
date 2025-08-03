@@ -442,12 +442,14 @@ const ModuleForm = ({
                       <div className="lesson-actions">
                         <button
                           className="action-btn small"
+                          type="button"
                           onClick={() => editLesson(lesson)}
                         >
                           <Edit />
                         </button>
                         <button
                           className="action-btn small danger"
+                          type="button"
                           onClick={() => deleteLesson(lesson.id)}
                         >
                           <Delete />
@@ -592,6 +594,7 @@ const ModuleForm = ({
             </button>
             <button
               className="action-btn primary"
+              type="button"
               onClick={editingLesson ? updateLesson : addLesson}
               disabled={!newLesson.title.trim() || loading}
             >
