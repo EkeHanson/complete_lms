@@ -291,6 +291,13 @@
   border: 1px solid #eeeafa;
   padding: 20px;
   overflow-x: auto; /* Allow horizontal scrolling on small screens */
+  width: 100%;
+}
+
+.CourseList-Table .table {
+  min-width: 700px;
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .table {
@@ -580,6 +587,36 @@
   padding: 0;
   opacity: 1;
   visibility: visible;
+}
+
+.dialog-content,
+.bulk-enroll-dialog .dialog-content,
+.enroll-dialog .dialog-content {
+  min-width: 350px;
+  max-width: 500px;
+  width: 90vw;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 24px;
+  z-index: 1001;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .dialog-content,
+  .bulk-enroll-dialog .dialog-content,
+  .enroll-dialog .dialog-content {
+    min-width: 0;
+    width: 98vw;
+    max-width: 98vw;
+    padding: 12px 4vw;
+    top: 2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 96vh;
+  }
 }
 
 .dialog-header {
@@ -950,4 +987,100 @@
 
 .MuiTooltip-arrow {
   color: #372580;
+}
+
+/* 1. Table responsiveness */
+.CourseList-Table {
+  width: 100%;
+  overflow-x: auto;
+}
+.CourseList-Table .table {
+  min-width: 700px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 2. Responsive filters and top bar */
+@media (max-width: 700px) {
+  .CourseList-Top-Grid {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .CourseList-Filters {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .filter-group {
+    width: 100%;
+  }
+  .filter-buttons {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  .status-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* 3. Table cells and actions on mobile */
+@media (max-width: 700px) {
+  .CourseList-Table .table th,
+  .CourseList-Table .table td {
+    font-size: 14px;
+    padding: 8px 4px;
+  }
+  .action-icons {
+    flex-direction: row;
+    gap: 4px;
+  }
+}
+
+/* 4. Dialog/modal responsiveness */
+.dialog-content,
+.bulk-enroll-dialog .dialog-content,
+.enroll-dialog .dialog-content {
+  min-width: 350px;
+  max-width: 500px;
+  width: 90vw;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 24px;
+  z-index: 1001;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+@media (max-width: 600px) {
+  .dialog-content,
+  .bulk-enroll-dialog .dialog-content,
+  .enroll-dialog .dialog-content {
+    min-width: 0;
+    width: 98vw;
+    max-width: 98vw;
+    padding: 12px 4vw;
+    top: 2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 96vh;
+  }
+}
+
+/* 5. Miscellaneous mobile tweaks */
+@media (max-width: 500px) {
+  .CourseList-Table .table th,
+  .CourseList-Table .table td {
+    font-size: 12px;
+    padding: 6px 2px;
+  }
+  .CourseList-Top h2 {
+    font-size: 1.1rem;
+  }
+  .status-tabs .tab {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
 }
