@@ -116,14 +116,12 @@ const CourseView = () => {
         }
       }).filter(item => typeof item === 'string' && item.trim());
     } catch (error) {
-      console.error('Error parsing list field:', error);
       return [];
     }
   };
 
   const convertDraftToHTML = (draftString) => {
     if (!draftString || typeof draftString !== 'string') {
-      console.warn('Draft.js content is empty or invalid:', draftString);
       return { __html: DOMPurify.sanitize('No description available') };
     }
     if (draftString.trim().startsWith('{')) {
@@ -133,7 +131,7 @@ const CourseView = () => {
         const htmlContent = draftToHtml(contentState);
         return { __html: DOMPurify.sanitize(htmlContent) };
       } catch (error) {
-        console.error('Error converting Draft.js content:', error, { draftString });
+        // silent fail
       }
     }
     // Handle markdown or plain text
@@ -141,7 +139,6 @@ const CourseView = () => {
       const htmlContent = marked ? marked.parse(draftString) : draftString;
       return { __html: DOMPurify.sanitize(htmlContent) };
     } catch (error) {
-      console.error('Error parsing markdown content:', error, { draftString });
       return { __html: DOMPurify.sanitize(draftString) };
     }
   };
@@ -214,7 +211,6 @@ const CourseView = () => {
   };
 
   const getLessonType = (lesson) => {
-    console.log('Lesson:', lesson.title, 'Type:', lesson.lesson_type, 'URL:', lesson.content_file || lesson.content_url);
     if (lesson.lesson_type) {
       const type = lesson.lesson_type.toLowerCase();
       if (type === 'link' && lesson.content_url) {
