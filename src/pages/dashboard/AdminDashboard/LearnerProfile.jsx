@@ -22,14 +22,52 @@ import {
 } from '@mui/material';
 import './LearnerProfile.css';
 
-const LearnerProfile = ({ learnerId }) => {
+const ROLE_DISPLAY_MAP = {
+  learners: 'Learner',
+  instructors: 'Instructor',
+  admins: 'Admin',
+  learner: 'Learner',
+  instructor: 'Instructor',
+  admin: 'Admin',
+};
+
+const ICON_MAP = {
+  admin: <StarIcon className="lp-role-icon" />,
+  admins: <StarIcon className="lp-role-icon" />,
+  instructor: <CheckCircleIcon className="lp-role-icon" />,
+  instructors: <CheckCircleIcon className="lp-role-icon" />,
+  learner: <PendingIcon className="lp-role-icon" />,
+  learners: <PendingIcon className="lp-role-icon" />,
+};
+
+const LearnerProfile = ({ learnerId, user, onBack }) => {
   const navigate = useNavigate();
   const [openModal, setOpenModal] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [isEditingContact, setIsEditingContact] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [learnerData, setLearnerData] = useState({
+  // Use user prop for main details
+  const rawRole = user?.role || 'learner';
+  const role = ROLE_DISPLAY_MAP[rawRole] ? rawRole : 'learner';
+  const displayRole = ROLE_DISPLAY_MAP[rawRole] || 'Learner';
+  const name = `${user?.first_name || 'Unknown'} ${user?.last_name || ''}`.trim();
+  const email = user?.email || 'No email';
+  const phone = user?.phone || 'Not provided';
+
+  // Dummy data for courses
+  const enrolledCourses = [
+    { id: 1, name: 'React Fundamentals', status: 'completed' },
+    { id: 2, name: 'Advanced JavaScript', status: 'in-progress' },
+    { id: 3, name: 'Node.js Basics', status: 'pending' }
+  ];
+  const assignedCourses = [
+    { id: 10, name: 'Fullstack Bootcamp', students: 30 },
+    { id: 11, name: 'UI/UX Design', students: 18 }
+  ];
+
+  // Dummy data for contact logs and gamification
+  const learnerData = {
     id: learnerId,
     name: 'Alex Johnson',
     email: 'alex@example.com',
@@ -52,7 +90,7 @@ const LearnerProfile = ({ learnerId }) => {
       { id: 2, date: '2023-05-15', method: 'phone', notes: 'Initial consultation', admin: 'Jane Smith' },
       { id: 3, date: '2023-04-10', method: 'messaging', notes: 'Course recommendation', admin: 'John Doe' }
     ]
-  });
+  };
   const [userBadges, setUserBadges] = useState([]);
   const [userPoints, setUserPoints] = useState(0);
   const [newContactLog, setNewContactLog] = useState({
@@ -142,7 +180,7 @@ const LearnerProfile = ({ learnerId }) => {
       <ToastContainer />
       <button
         className="lp-back-btn"
-        onClick={() => navigate('/admin/users')}
+        onClick={onBack ? onBack : () => navigate('/admin/users')}
       >
         <ArrowBackIcon />
         Back to Users
@@ -150,19 +188,23 @@ const LearnerProfile = ({ learnerId }) => {
 
       <div className="lp-profile-card">
         <div className="lp-profile-header">
-          <div className="lp-avatar">{learnerData.name.charAt(0)}</div>
-          <h1>{learnerData.name}</h1>
+          <div className="lp-avatar">{name.charAt(0)}</div>
+          <h1>{name}</h1>
+          <span className={`lp-role-badge lp-role-${displayRole.toLowerCase()}`}>
+            {ICON_MAP[rawRole]}
+            {displayRole}
+          </span>
         </div>
         <div className="lp-profile-content">
           <div className="lp-profile-grid">
             <div className="lp-profile-info">
               <div className="lp-info-item">
                 <EmailIcon />
-                <span>{learnerData.email}</span>
+                <span>{email}</span>
               </div>
               <div className="lp-info-item">
                 <PhoneIcon />
-                <span>{learnerData.phone || 'Not provided'}</span>
+                <span>{phone}</span>
               </div>
             </div>
             <div className="lp-profile-stats">
@@ -209,7 +251,11 @@ const LearnerProfile = ({ learnerId }) => {
           className={`lp-tab ${tabValue === 0 ? 'active' : ''}`}
           onClick={() => setTabValue(0)}
         >
-          Courses
+          {displayRole === 'Instructor'
+            ? assignedCourses.length === 1 ? 'Assigned Course' : 'Assigned Courses'
+            : displayRole === 'Admin'
+            ? 'Overview'
+            : 'Courses'}
         </button>
         <button
           className={`lp-tab ${tabValue === 1 ? 'active' : ''}`}
@@ -227,34 +273,70 @@ const LearnerProfile = ({ learnerId }) => {
 
       {tabValue === 0 && (
         <div className="lp-section-card">
-          <h2>Course Progress</h2>
-          <div className="lp-courses-grid">
-            <div className="lp-courses-section">
-              <h4>Completed Courses</h4>
-              {learnerData.coursesTaken
-                .filter(course => course.status === 'completed')
-                .map(course => (
+          {role === 'learner' && (
+            <>
+              <h2>Course Progress</h2>
+              <div className="lp-courses-grid">
+                <div className="lp-courses-section">
+                  <h4>
+                    {enrolledCourses.filter(course => course.status === 'completed').length === 1
+                      ? 'Completed Course'
+                      : 'Completed Courses'}
+                  </h4>
+                  {enrolledCourses
+                    .filter(course => course.status === 'completed')
+                    .map(course => (
+                      <div key={course.id} className="lp-course-item">
+                        <CheckCircleIcon />
+                        <span>{course.name}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="lp-courses-section">
+                  <h4>
+                    {enrolledCourses.filter(course => course.status !== 'completed').length === 1
+                      ? 'Pending/In-Progress Course'
+                      : 'Pending/In-Progress Courses'}
+                  </h4>
+                  {enrolledCourses
+                    .filter(course => course.status !== 'completed')
+                    .map(course => (
+                      <div key={course.id} className="lp-course-item">
+                        <PendingIcon className={course.status === 'in-progress' ? 'lp-icon-warning' : 'lp-icon-disabled'} />
+                        <span>{course.name}</span>
+                        <span className={`lp-chip ${course.status === 'in-progress' ? 'in-progress' : 'pending'}`}>
+                          {course.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </>
+          )}
+          {role === 'instructor' && (
+            <>
+              <h2>
+                {assignedCourses.length === 1 ? 'Assigned Course' : 'Assigned Courses'}
+              </h2>
+              <div className="lp-courses-grid">
+                {assignedCourses.map(course => (
                   <div key={course.id} className="lp-course-item">
                     <CheckCircleIcon />
                     <span>{course.name}</span>
-                  </div>
-                ))}
-            </div>
-            <div className="lp-courses-section">
-              <h4>Pending/In-Progress Courses</h4>
-              {learnerData.coursesTaken
-                .filter(course => course.status !== 'completed')
-                .map(course => (
-                  <div key={course.id} className="lp-course-item">
-                    <PendingIcon className={course.status === 'in-progress' ? 'lp-icon-warning' : 'lp-icon-disabled'} />
-                    <span>{course.name}</span>
-                    <span className={`lp-chip ${course.status === 'in-progress' ? 'in-progress' : 'pending'}`}>
-                      {course.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                    <span className="lp-chip">
+                      {course.students} {course.students === 1 ? 'student' : 'students'}
                     </span>
                   </div>
                 ))}
+              </div>
+            </>
+          )}
+          {role === 'admin' && (
+            <div>
+              <h2>Admin Overview</h2>
+              <p>This user is an admin and does not have course enrollments or assignments.</p>
             </div>
-          </div>
+          )}
         </div>
       )}
 

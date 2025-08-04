@@ -259,6 +259,17 @@
   cursor: pointer;
 }
 
+.aum-avatar-clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s, border 0.2s, background 0.2s;
+}
+
+.aum-avatar-clickable:hover {
+  box-shadow: 0 0 0 2px #7226FF;
+  border: 2px solid #7226FF;
+  background: #f3e8ff;
+}
+
 .aum-text-secondary {
   font-size: 12px;
   color: #7C3AED;
