@@ -166,13 +166,15 @@ const CourseForm = () => {
               }))
             })),
             resources: courseRes.data.resources || [],
-            instructors: (courseRes.data.course_instructors || []).map(i => ({
-              instructorId: i.instructor.id,
-              name: `${i.instructor.user.first_name} ${i.instructor.user.last_name}`.trim() || i.instructor.user.email,
-              email: i.instructor.user.email,
-              isActive: i.is_active,
-              assignedModules: i.assignment_type === 'all' ? 'all' : i.modules.map(m => m.id)
-            }))
+            instructors: (courseRes.data.course_instructors || [])
+              .filter(i => i.instructor) // Only include if instructor exists
+              .map(i => ({
+                instructorId: i.instructor.id,
+                name: `${i.instructor.user.first_name} ${i.instructor.user.last_name}`.trim() || i.instructor.user.email,
+                email: i.instructor.user.email,
+                isActive: i.is_active,
+                assignedModules: i.assignment_type === 'all' ? 'all' : (i.modules || []).map(m => m.id)
+              }))
           }
         });
       } else if (!isEdit) {
@@ -187,20 +189,6 @@ const CourseForm = () => {
     }
   }, [id, isEdit]);
 
-
-  const handleEditFirstInstructor = () => {
-  if (course.instructors.length > 0) {
-    const firstInstructor = course.instructors[0];
-    setCurrentResource({
-      instructorId: firstInstructor.instructorId,
-      name: firstInstructor.name,
-      email: firstInstructor.email,
-      isActive: firstInstructor.isActive,
-      assignedModules: firstInstructor.assignedModules
-    });
-    setInstructorDialogOpen(true);
-  }
-};
 
 
   useEffect(() => {
@@ -650,35 +638,24 @@ const CourseForm = () => {
   };
 
   const handleRemoveInstructor = async (instructorId) => {
-    if (!course) {
-      setApiError('Course data is not loaded. Please try again.');
-      return;
-    }
-    if (!id && !course.id) {
-      setApiError('Please save the course before removing instructors.');
-      return;
-    }
-
+    if (!window.confirm('Remove this instructor from the course?')) return;
     try {
-      setLoading(true);
-      setApiError('');
-      await coursesAPI.deleteInstructorAssignment(id || course.id, instructorId);
+      await coursesAPI.deleteInstructorAssignment(course.id, instructorId);
+      // Remove from local state without full refresh
       dispatch({
         type: 'UPDATE_FIELD',
-        field: 'instructors',
-        value: course.instructors.filter(i => i.instructorId !== instructorId)
+        field: 'course_instructors',
+        value: course.course_instructors.filter(
+          (ci) => ci.instructor?.id !== instructorId
+        ),
       });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      console.error('Error removing instructor:', error);
-      setApiError(error.response?.data?.detail || 'Failed to remove instructor');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      alert('Failed to remove instructor');
     }
   };
 
   const handleOpenInstructorDialog = () => {
+    console.log('DEBUG: id:', id, 'course.id:', course.id, 'course:', course);
     if (!course) {
       setApiError('Course data is not loaded. Please try again.');
       return;
@@ -728,6 +705,10 @@ const tabLabels = [
     setNewCategory({ name: '', description: '' });
     setEditingCategory(null);
     setErrors({});
+  };
+
+  const handleCloseInstructorDialog = () => {
+    setInstructorDialogOpen(false);
   };
 
   if (!course) {
@@ -1084,86 +1065,6 @@ const tabLabels = [
                   </div>
                 )}
 
-                {/* {activeTab === 2 && (
-                  <div>
-                    <div className="section-header">
-                      <h3>Course Instructors</h3>
-                      <button
-                        className="action-btn primary"
-                        type="button"
-                        onClick={handleOpenInstructorDialog}
-                        disabled={!id && !course.id}
-                      >
-                        <People className="icon" /> Assign Instructor
-                      </button>
-                    </div>
-                    {course.instructors.length === 0 && (
-                      <div className="empty-state">
-                        <Person className="empty-icon" />
-                        <h4>No instructors assigned</h4>
-                        <p>Assign instructors to teach this course</p>
-                        <button
-                          className="action-btn primary"
-                          type="button"
-                          onClick={handleOpenInstructorDialog}
-                          disabled={!id && !course.id}
-                        >
-                          <People className="icon" /> Assign Instructor
-                        </button>
-                      </div>
-                    )}
-                    <ul className="instructor-list">
-                      {course.instructors.map((instructor) => (
-                        <li key={instructor.instructorId} className="instructor-item">
-                          <div className="instructor-info">
-                            <span className="avatar">{instructor.name.charAt(0)}</span>
-                            <div>
-                              <span className="instructor-name">{instructor.name}</span>
-                              <p className="instructor-details">
-                                {instructor.email} • Assigned to: {getAssignedModulesText(instructor)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="instructor-actions">
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={instructor.isActive}
-                                onChange={() => toggleInstructorStatus(instructor.instructorId)}
-                                className="checkbox"
-                              />
-                              Active
-                            </label>
-                            <button
-                              className="icon-btn"
-                              type="button"
-                              onClick={() => {
-                                setCurrentResource({
-                                  instructorId: instructor.instructorId,
-                                  name: instructor.name,
-                                  email: instructor.email,
-                                  isActive: instructor.isActive,
-                                  assignedModules: instructor.assignedModules
-                                });
-                                setInstructorDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="icon" />
-                            </button>
-                            <button
-                              className="icon-btn danger"
-                              type="button"
-                              onClick={() => handleRemoveInstructor(instructor.instructorId)}
-                            >
-                              <Delete className="icon" />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )} */}
-
                 {activeTab === 2 && (
                   <div>
                     <div className="section-header">
@@ -1177,7 +1078,8 @@ const tabLabels = [
                         <People className="icon" /> Assign Instructor
                       </button>
                     </div>
-                    {course.instructors.length === 0 && (
+                    {/* Show instructors from course.course_instructors */}
+                    {(!course.course_instructors || course.course_instructors.length === 0) ? (
                       <div className="empty-state">
                         <Person className="empty-icon" />
                         <h4>No instructors assigned</h4>
@@ -1191,56 +1093,27 @@ const tabLabels = [
                           <People className="icon" /> Assign Instructor
                         </button>
                       </div>
+                    ) : (
+                      <ul className="instructor-list compact grid">
+                        {course.course_instructors.map((ci) => (
+  <li key={ci.id} className="instructor-item compact grid-item" tabIndex={0}>
+    <span className="avatar small">{ci.first_name?.charAt(0) || ci.email?.charAt(0) || "?"}</span>
+    <span className="instructor-name small">
+      {ci.first_name} {ci.last_name}
+    </span>
+    <span className="instructor-email-tooltip">{ci.email}</span>
+    <button
+      className="icon-btn danger"
+      title="Remove instructor"
+      onClick={() => handleRemoveInstructor(ci.id)}
+      style={{ marginLeft: 2, fontSize: 10, padding: 2 }}
+    >
+      ×
+    </button>
+  </li>
+))}
+                      </ul>
                     )}
-                    <ul className="instructor-list">
-                      {course.instructors.map((instructor) => (
-                        <li key={instructor.instructorId} className="instructor-item">
-                          <div className="instructor-info">
-                            <span className="avatar">{instructor.name.charAt(0)}</span>
-                            <div>
-                              <span className="instructor-name">{instructor.name}</span>
-                              <p className="instructor-details">
-                                {instructor.email} • Assigned to: {getAssignedModulesText(instructor)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="instructor-actions">
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={instructor.isActive}
-                                onChange={() => toggleInstructorStatus(instructor.instructorId)}
-                                className="checkbox"
-                              />
-                              Active
-                            </label>
-                            <button
-                              className="icon-btn"
-                              type="button"
-                              onClick={() => {
-                                setCurrentResource({
-                                  instructorId: instructor.instructorId,
-                                  name: instructor.name,
-                                  email: instructor.email,
-                                  isActive: instructor.isActive,
-                                  assignedModules: instructor.assignedModules
-                                });
-                                setInstructorDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="icon" />
-                            </button>
-                            <button
-                              className="icon-btn danger"
-                              type="button"
-                              onClick={() => handleRemoveInstructor(instructor.instructorId)}
-                            >
-                              <Delete className="icon" />
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 )}
 
@@ -1504,12 +1377,11 @@ const tabLabels = [
             {course && (id || course.id) && (
               <InstructorAssignmentDialog
                 open={instructorDialogOpen}
-                onClose={() => setInstructorDialogOpen(false)}
-                modules={course.modules || []}
-                currentAssignment={currentResource}
-                onAssign={handleInstructorAssignment}
-                isMobile={window.innerWidth <= 768}
+                onClose={handleCloseInstructorDialog}
+                modules={course.modules}
                 courseId={course.id}
+                course={course}
+                onAssign={handleInstructorAssignment} // <-- fix here
               />
             )}
           </section>

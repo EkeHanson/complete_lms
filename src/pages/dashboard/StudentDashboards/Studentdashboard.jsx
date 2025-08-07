@@ -92,19 +92,19 @@ const fetchDashboardData = async (userId) => {
   try {
     const enrollmentsResponse = await coursesAPI.getAllMyEnrollments();
     
-    // console.log("enrollmentsResponse")
-    // console.log(enrollmentsResponse)
-    // console.log("enrollmentsResponse")
+    console.log("enrollmentsResponse")
+    console.log(enrollmentsResponse.data)
+    console.log("enrollmentsResponse")
 
     enrolledCourses = (enrollmentsResponse.data || []).map((enrollment) => ({
       id: enrollment.id || 0,
       course: {
         id: enrollment.course?.id || 0,
-        title: enrollment.course?.title || 'Untitled Course',
-        description: enrollment.course?.description || 'No description available',
-        thumbnail: enrollment.course?.thumbnail || 'https://source.unsplash.com/random/300x200?course',
-        category: enrollment.course?.category?.name || 'Uncategorized',
-        resources: (enrollment.course?.resources || []).map((r) => ({
+        title: enrollment?.title || 'Untitled Course',
+        description: enrollment?.description || 'No description available',
+        thumbnail: enrollment?.thumbnail || 'https://source.unsplash.com/random/300x200?course',
+        category: enrollment?.category?.name || 'Uncategorized',
+        resources: (enrollment?.resources || []).map((r) => ({
           id: r.id || 0,
           title: r.title || 'Untitled Resource',
           type: r.resource_type || 'Unknown',
@@ -112,7 +112,7 @@ const fetchDashboardData = async (userId) => {
           order: r.order || 0,
           file: r.file || null,
         })),
-        modules: (enrollment.course?.modules || []).map((m) => ({
+        modules: (enrollment?.modules || []).map((m) => ({
           id: m.id || 0,
           title: m.title || 'Untitled Module',
           order: m.order || 0,
@@ -127,7 +127,7 @@ const fetchDashboardData = async (userId) => {
             content_file: l.content_file || null,
           })),
         })),
-        instructors: (enrollment.course?.instructors || []).map((i) => ({
+        instructors: (enrollment?.instructors || []).map((i) => ({
           id: i.id || 0,
           name: i.name || 'Unknown Instructor',
           bio: i.bio || 'No bio available',
@@ -137,8 +137,8 @@ const fetchDashboardData = async (userId) => {
       enrolled_at: enrollment.enrolled_at || new Date().toISOString(),
       completed_at: enrollment.completed_at || null,
       assignmentsDue: enrollment.assignments_due || 0,
-      price: enrollment.course?.price || 0,
-      rating: enrollment.course?.rating || 0,
+      price: enrollment?.price || 0,
+      rating: enrollment?.rating || 0,
       bookmarked: enrollment.bookmarked || false,
     }));
   } catch (error) {
@@ -380,6 +380,7 @@ const StudentDashboard = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCourseList, setShowCourseList] = useState(false);
 
   const unreadCount = Array.isArray(dashboardData?.messages) ? dashboardData.messages.filter((msg) => !msg.read).length : 0;
 
@@ -544,22 +545,24 @@ const StudentDashboard = () => {
       );
     }
 
+    if (showCourseList) {
+      return (
+        <StudentCourseList
+          courses={dashboardData.enrolledCourses || []}
+          onBack={() => setShowCourseList(false)}
+        />
+      );
+    }
+
     switch (activeSection) {
       case 'overview':
         return (
           <StudentOverview
-            student={dashboardData.student || null}
-            metrics={dashboardData.metrics || {
-              enrolledCourses: 0,
-              completedCourses: 0,
-              assignmentsDue: 0,
-              averageGrade: 0,
-              learningHours: 0,
-              strongestModule: 'Unknown',
-              weakestModule: 'Unknown',
-            }}
-            activities={dashboardData.activities || []}
-            analytics={dashboardData.analytics || { timeSpent: { total: '0h', weekly: '0h' }, strengths: [], weaknesses: [] }}
+            student={dashboardData.student}
+            metrics={dashboardData.metrics}
+            activities={dashboardData.activities}
+            analytics={dashboardData.analytics}
+            onEnrolledCoursesClick={() => setShowCourseList(true)}
           />
         );
       case 'courses':
@@ -592,7 +595,7 @@ const StudentDashboard = () => {
                     const modules = course.course?.modules || [];
                     const lessons = modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
                     const resources = course.course?.resources?.length || 0;
-                    const instructors = course.course?.instructors?.map(i => i.name).join(', ') || 'No instructor';
+                    const instructors = course.course?.instructors?.map(i => i.name).join(', ') || '';
 
                     // Add a handler to open the course and track progress
                     const handleOpenCourse = async () => {

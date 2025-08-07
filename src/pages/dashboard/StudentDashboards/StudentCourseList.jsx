@@ -11,6 +11,7 @@ import {
   CheckCircleOutline, ArrowBack, Menu as MenuIcon
 } from '@mui/icons-material';
 import { Tooltip, Typography } from '@mui/material';
+import YouTube from 'react-youtube';
 
 // Memoized Course Card Component
 const CourseCard = memo(({ course, bookmarked, onBookmark, onOpen, onFeedback }) => {
@@ -36,7 +37,7 @@ const CourseCard = memo(({ course, bookmarked, onBookmark, onOpen, onFeedback })
       <div className="course-card-content">
         <h3 className="course-title">{course.title}</h3>
         <p className="course-instructor">
-          {course.instructors.length > 0 ? `By ${course.instructors[0].name}` : 'No instructor'}
+          {course.instructors.length > 0 ? `By ${course.instructors[0].name}` : ''}
         </p>
         <div className="course-progress">
           <div className="progress-bar">
@@ -88,7 +89,7 @@ const EmptyState = () => (
 );
 
 // Media Player Component
-const MediaPlayer = ({ open, onClose, media }) => {
+const MediaPlayer = ({ open, onClose, media, onEnded }) => {
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(80);
@@ -217,6 +218,7 @@ const MediaPlayer = ({ open, onClose, media }) => {
               onEnded={() => {
                 setPlaying(false);
                 setCompleted(true);
+                onEnded && onEnded(); // Call onEnded prop if provided
               }}
               onClick={handlePlayPause}
               muted={muted}
@@ -450,13 +452,14 @@ const DocumentViewer = ({ open, onClose, document }) => {
   );
 };
 
-const CourseDialog = ({ open, onClose, course, onFeedback }) => {
+const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedback, onCourseProgressUpdate }) => {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [expandedModules, setExpandedModules] = useState({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Sidebar open by default
-  const [activeTab, setActiveTab] = useState(0); // For tabbed navigation (Modules, Feedback)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [courseProgress, setCourseProgress] = useState(course.progress || 0);
+  const userId = course.user || course.user_id;
 
   const toggleModule = (moduleId) => {
     setExpandedModules(prev => ({
@@ -557,6 +560,43 @@ const CourseDialog = ({ open, onClose, course, onFeedback }) => {
     return Math.round((completedLessons / module.lessons.length) * 100);
   };
 
+  // Call this when a lesson is completed
+  const handleLessonComplete = async (lesson) => {
+    try {
+      await coursesAPI.completeLesson({ user: userId, lesson: lesson.id });
+      const progressRes = await coursesAPI.getCourseProgress({ user: userId, course: course.courseId });
+      const newProgress = progressRes.data.progress;
+      setCourseProgress(newProgress);
+
+      // Update course object and notify parent
+      let newStatus = course.status;
+      let completedAt = course.completed_at;
+      let startedAt = course.started_at;
+      if (newProgress === 100) {
+        newStatus = 'completed';
+        completedAt = new Date().toISOString();
+      } else if (newProgress > 0 && !course.started_at) {
+        newStatus = 'in_progress';
+        startedAt = new Date().toISOString();
+      }
+      onCourseProgressUpdate(course.courseId, newProgress, newStatus, startedAt, completedAt);
+    } catch (error) {
+      console.error('Error completing lesson or fetching progress:', error);
+    }
+  };
+
+  // For document lessons, mark as completed when iframe loads
+  useEffect(() => {
+    if (selectedLesson && ['pdf', 'ppt', 'doc'].includes(selectedLesson.detectedType)) {
+      handleLessonComplete(selectedLesson);
+    }
+    // For links, you may want to mark as completed when opened
+    if (selectedLesson && selectedLesson.detectedType === 'link') {
+      handleLessonComplete(selectedLesson);
+    }
+    // eslint-disable-next-line
+  }, [selectedLesson]);
+
   return (
     <>
       {open && (
@@ -594,16 +634,14 @@ const CourseDialog = ({ open, onClose, course, onFeedback }) => {
                           />
                         )}
                         {/* Inline YouTube embed for YouTube lessons */}
-                        {(selectedLesson.detectedType === 'youtube' && selectedMedia && selectedMedia.type === 'youtube') && (
-                          <div className="responsive-iframe-container">
-                            <iframe
-                              className="media-iframe"
-                              src={`https://www.youtube.com/embed/${selectedMedia.url.split('v=')[1]?.split('&')[0] || selectedMedia.url.split('/').pop()}`}
-                              title={selectedMedia.title}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
-                          </div>
+                        {selectedLesson?.detectedType === 'youtube' && selectedMedia && selectedMedia.type === 'youtube' && (
+                          <YouTubePlayer
+                            videoId={
+                              selectedMedia.url.split('v=')[1]?.split('&')[0] ||
+                              selectedMedia.url.split('/').pop()
+                            }
+                            onComplete={() => handleLessonComplete(selectedLesson)}
+                          />
                         )}
                         {/* Non-YouTube videos still use modal */}
                         {(selectedLesson.detectedType === 'video' && selectedMedia && selectedMedia.type !== 'youtube') && (
@@ -611,6 +649,7 @@ const CourseDialog = ({ open, onClose, course, onFeedback }) => {
                             open={!!selectedMedia}
                             onClose={() => setSelectedMedia(null)}
                             media={selectedMedia}
+                            onEnded={() => handleLessonComplete(selectedLesson)}
                           />
                         )}
                         {/* Inline PDF display */}
@@ -827,11 +866,7 @@ const formatTime = (seconds) => {
 };
 
 const StudentCourseList = ({ courses, onFeedback }) => {
-
-  console.log("courses")
-  console.log(courses)
-  console.log("courses")
-  
+  // ...existing state...
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -843,6 +878,23 @@ const StudentCourseList = ({ courses, onFeedback }) => {
     sort: 'title',
     view: 'all'
   });
+
+  // Handler to update course progress/status live
+  const handleCourseProgressUpdate = (courseId, newProgress, newStatus, startedAt, completedAt) => {
+    setFilteredCourses(prev =>
+      prev.map(course =>
+        course.courseId === courseId
+          ? {
+              ...course,
+              progress: newProgress,
+              status: newStatus,
+              started_at: startedAt,
+              completed_at: completedAt
+            }
+          : course
+      )
+    );
+  };
 
   // Debug: Log component initialization
   console.log('StudentCourseList: Initializing component');
@@ -1069,6 +1121,7 @@ const StudentCourseList = ({ courses, onFeedback }) => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onFeedback={onFeedback}
+          onCourseProgressUpdate={handleCourseProgressUpdate} // <-- Pass this prop
         />
       )}
     </div>
@@ -1098,5 +1151,67 @@ function StudentDashboardDarkModeToggle() {
     </button>
   );
 }
+
+const YouTubePlayer = ({ videoId, onComplete }) => {
+  const [playedSeconds, setPlayedSeconds] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const timerRef = React.useRef();
+
+  // Called when YouTube player is ready, gets duration
+  const onReady = (event) => {
+    setDuration(event.target.getDuration());
+  };
+
+  // Start timer when video plays
+  const onPlay = () => {
+    setIsPlaying(true);
+    if (!timerRef.current) {
+      timerRef.current = setInterval(() => {
+        setPlayedSeconds(prev => prev + 1);
+      }, 1000);
+    }
+  };
+
+  // Pause timer when video pauses
+  const onPause = () => {
+    setIsPlaying(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    if (playedSeconds >= duration && duration > 0) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      onComplete && onComplete();
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [playedSeconds, duration, onComplete]);
+
+  return (
+    <div>
+      <YouTube
+        videoId={videoId}
+        onReady={onReady}
+        onPlay={onPlay}
+        onPause={onPause}
+      />
+      <div style={{ marginTop: 8, fontSize: '0.95rem', color: '#888' }}>
+        Progress: {Math.min(playedSeconds, duration)} / {duration} seconds
+      </div>
+    </div>
+  );
+};
 
 export default StudentCourseList;

@@ -583,7 +583,8 @@ export const coursesAPI = {
   updateInstructorAssignment: (courseId, instructorId, data) => api.put(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteInstructorAssignment: (courseId, instructorId) => api.delete(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, {
+  deleteInstructorAssignment: (courseId, instructorId) =>
+  api.delete(`/api/courses/courses/${courseId}/instructors/${instructorId}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
 
@@ -674,6 +675,8 @@ export const coursesAPI = {
   // Maps to: CourseProgressViewSet.update_progress (PATCH /api/courses/progress/update/)
 
 };
+
+
 
 // Payment API
 
