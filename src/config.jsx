@@ -650,6 +650,17 @@ export const coursesAPI = {
     }),
 
 
+      submitAssignment: (formData) =>
+        api.post('/api/courses/assignment-submissions/', formData, {
+          headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'multipart/form-data',
+          },
+        }),
+      getAssignmentSubmissions: (params = {}) =>
+      api.get('/api/courses/assignment-submissions/', { params }),
+
+
     getFeedback: (params = {}) => api.get('/api/courses/feedback/', { params }),
     createFeedback: (data) => api.post('/api/courses/feedback/', data, {
       headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },

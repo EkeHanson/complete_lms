@@ -1,43 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { Paper, Typography, Tabs, Tab, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Grid, LinearProgress } from '@mui/material';
-import { Download } from '@mui/icons-material';
+import { CircularProgress, Paper, Typography, Tabs, Tab, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, IconButton, Collapse, Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { Download, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { format } from 'date-fns';
-// Import your API utility
 import { coursesAPI } from '../../../config';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
-const StudentAssignments = () => {
+const StudentAssignments = ({ courses }) => {
   const [assignments, setAssignments] = useState([]);
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [expandedId, setExpandedId] = useState(null);
+  const [submitDialog, setSubmitDialog] = useState({ open: false, assignment: null });
+  const [submissionText, setSubmissionText] = useState('');
+  const [submissionFile, setSubmissionFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    // Fetch all enrolled courses, then fetch assignments for each
-    const fetchAssignmentsForEnrolledCourses = async () => {
+    const fetchAllAssignmentsAndSubmissions = async () => {
+      setLoading(true);
       try {
-        const coursesRes = await coursesAPI.getAllMyEnrollments();
-        const enrolledCourses = coursesRes.data || [];
-        let allAssignments = [];
-        for (const course of enrolledCourses) {
-          const assignmentsRes = await coursesAPI.getAssignments({ course: course.id });
-          const courseAssignments = assignmentsRes.data.results || assignmentsRes.data;
-          // Attach course name for display
-          courseAssignments.forEach(a => a.course_name = course.title);
-          allAssignments = allAssignments.concat(courseAssignments);
+        const allAssignments = [];
+        for (const course of courses) {
+          const courseId = course.course?.id || course.id;
+          if (!courseId) continue;
+          const res = await coursesAPI.getAssignments({ course: courseId });
+          const results = res.data;
+          results.forEach(a => {
+            a.course_name = course.course?.title || course.title;
+          });
+          allAssignments.push(...results);
         }
         setAssignments(allAssignments);
+
+        // Fetch all submissions for the current user
+        const submissionsRes = await coursesAPI.getAssignmentSubmissions();
+        setSubmissions(submissionsRes.data); // adjust if paginated
+
+        console.log(submissionsRes.data)
       } catch (err) {
         setAssignments([]);
+        setSubmissions([]);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchAssignmentsForEnrolledCourses();
-  }, []);
+    fetchAllAssignmentsAndSubmissions();
+  }, [courses]);
 
-  const filteredAssignments = assignments.filter(assignment => {
-    if (tabValue === 0) return assignment.status === 'not-started' || assignment.status === 'in-progress';
-    if (tabValue === 1) return assignment.status === 'submitted';
-    if (tabValue === 2) return assignment.grade !== null;
-    return true;
-  });
+  const filteredAssignments = assignments.filter(() => tabValue === 0);
+
+  // Submit assignment handler
+  const handleSubmitAssignment = async () => {
+    if (!submitDialog.assignment) return;
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const formData = new FormData();
+      formData.append('assignment', submitDialog.assignment.id);
+      formData.append('response_text', submissionText);
+      if (submissionFile) formData.append('response_file', submissionFile);
+
+      await coursesAPI.submitAssignment(formData);
+
+      setSubmitDialog({ open: false, assignment: null });
+      setSubmissionText('');
+      setSubmissionFile(null);
+      setErrorMsg('');
+      // Optionally, refresh assignments or show a success message
+    } catch (err) {
+      // Extract error message from response
+      let msg = 'Submission failed. Please try again.';
+      if (err.response && err.response.data && err.response.data.detail) {
+        msg = err.response.data.detail;
+      } else if (err.response && err.response.data) {
+        msg = JSON.stringify(err.response.data);
+      }
+      setErrorMsg(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getSubmissionForAssignment = (assignmentId) =>
+    submissions.find(sub => sub.assignment === assignmentId);
 
   return (
     <Paper elevation={3} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -47,99 +95,163 @@ const StudentAssignments = () => {
         <Tab label="Submitted" />
         <Tab label="Graded" />
       </Tabs>
-
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Title</TableCell>
-            <TableCell>Course</TableCell>
-            <TableCell>Due Date</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Grade</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredAssignments.map(assignment => (
-            <TableRow key={assignment.id} hover>
-              <TableCell>{assignment.title}</TableCell>
-              <TableCell>{assignment.course_name || assignment.course}</TableCell>
-              <TableCell>{format(new Date(assignment.due_date), 'MMM dd, yyyy')}</TableCell>
-              <TableCell>
-                <Chip
-                  label={assignment.status === 'submitted' ? 'Submitted' : assignment.status === 'in-progress' ? 'In Progress' : 'Not Started'}
-                  color={assignment.status === 'submitted' ? 'success' : assignment.status === 'in-progress' ? 'warning' : 'default'}
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>{assignment.grade ? `${assignment.grade}%` : '-'}</TableCell>
-              <TableCell>
-                <Button size="small" onClick={() => setSelectedAssignment(assignment)}>
-                  {assignment.status === 'submitted' ? 'View Feedback' : 'Start'}
-                </Button>
-              </TableCell>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 24 }}><CircularProgress /></div>
+      ) : (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell />
+              <TableCell>Title</TableCell>
+              <TableCell>Course</TableCell>
+              <TableCell>Module</TableCell>
+              <TableCell>Created By</TableCell>
+              <TableCell>Due Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Grade</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {selectedAssignment && (
-        <Dialog open={!!selectedAssignment} onClose={() => setSelectedAssignment(null)} fullWidth maxWidth="sm">
-          <DialogTitle>{selectedAssignment.title}</DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2">Course</Typography>
-                <Typography>{selectedAssignment.course_name || selectedAssignment.course}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2">Due Date</Typography>
-                <Typography>{format(new Date(selectedAssignment.due_date), 'MMMM dd, yyyy h:mm a')}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2">Status</Typography>
-                <Chip
-                  label={selectedAssignment.status === 'submitted' ? 'Submitted' : selectedAssignment.status === 'in-progress' ? 'In Progress' : 'Not Started'}
-                  color={selectedAssignment.status === 'submitted' ? 'success' : selectedAssignment.status === 'in-progress' ? 'warning' : 'default'}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              {selectedAssignment.grade && (
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2">Grade & Feedback</Typography>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Box display="flex" alignItems="center" mb={1}>
-                      <Typography variant="h6" sx={{ mr: 2 }}>{selectedAssignment.grade}%</Typography>
-                      <LinearProgress variant="determinate" value={selectedAssignment.grade} sx={{ flexGrow: 1, height: 8 }} />
-                    </Box>
-                    <Typography>{selectedAssignment.feedback || 'No additional feedback provided.'}</Typography>
-                  </Paper>
-                </Grid>
-              )}
-              <Grid item xs={12}>
-                <Button variant="contained" fullWidth startIcon={<Download />}>
-                  Download Instructions
-                </Button>
-              </Grid>
-              {selectedAssignment.status === 'submitted' && (
-                <Grid item xs={12}>
-                  <Button variant="outlined" fullWidth startIcon={<Download />}>
-                    Download Submission
-                  </Button>
-                </Grid>
-              )}
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSelectedAssignment(null)}>Close</Button>
-            {selectedAssignment.status !== 'submitted' && (
-              <Button variant="contained" href={`/assignment/${selectedAssignment.id}`}>
-                {selectedAssignment.status === 'in-progress' ? 'Continue' : 'Start'} Assignment
-              </Button>
+          </TableHead>
+          <TableBody>
+            {filteredAssignments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center">No assignments found</TableCell>
+              </TableRow>
+            ) : (
+              filteredAssignments.map(assignment => (
+                <React.Fragment key={assignment.id}>
+                  <TableRow hover>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() => setExpandedId(expandedId === assignment.id ? null : assignment.id)}
+                        aria-label={expandedId === assignment.id ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedId === assignment.id ? <ExpandLess /> : <ExpandMore />}
+                      </IconButton>
+                    </TableCell>
+                    <TableCell>{assignment.title}</TableCell>
+                    <TableCell>{assignment.course_name || ''}</TableCell>
+                    <TableCell>{assignment.module_name || ''}</TableCell>
+                    <TableCell>{assignment.created_by_name || ''}</TableCell>
+                    <TableCell>
+                      {assignment.due_date
+                        ? format(new Date(assignment.due_date), 'MMM dd, yyyy')
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const submission = getSubmissionForAssignment(assignment.id);
+                        if (submission) {
+                          return (
+                            <Chip
+                              label={submission.is_graded ? 'Graded' : 'Submitted'}
+                              color={submission.is_graded ? 'success' : 'info'}
+                              size="small"
+                            />
+                          );
+                        }
+                        return <Chip label="Due" color="warning" size="small" />;
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const submission = getSubmissionForAssignment(assignment.id);
+                        return submission && submission.grade != null ? `${submission.grade}%` : '-';
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {assignment.instructions_file ? (
+                        <Button
+                          size="small"
+                          startIcon={<Download />}
+                          href={assignment.instructions_file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Download Instructions
+                        </Button>
+                      ) : (
+                        <span style={{ color: '#888', fontSize: '0.9em' }}>No file</span>
+                      )}
+                      <Button
+                        size="small"
+                        variant="contained"
+                        sx={{ ml: 1 }}
+                        onClick={() => setSubmitDialog({ open: true, assignment })}
+                      >
+                        Submit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
+                      <Collapse in={expandedId === assignment.id} timeout="auto" unmountOnExit>
+                        <Box sx={{ p: 2, background: '#f9f9f9' }}>
+                          <Typography variant="subtitle1" gutterBottom>Description</Typography>
+                          <div dangerouslySetInnerHTML={{ __html: assignment.description }} />
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              ))
             )}
-          </DialogActions>
-        </Dialog>
+          </TableBody>
+        </Table>
       )}
+
+      {/* Assignment Submission Dialog */}
+      <Dialog open={submitDialog.open} onClose={() => { setSubmitDialog({ open: false, assignment: null }); setErrorMsg(''); }} maxWidth="sm" fullWidth>
+        <DialogTitle>Submit Assignment</DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            {submitDialog.assignment?.title}
+          </Typography>
+          {errorMsg && (
+            <Typography color="error" sx={{ mb: 2 }}>
+              {errorMsg}
+            </Typography>
+          )}
+          <ReactQuill
+            value={submissionText}
+            onChange={setSubmissionText}
+            theme="snow"
+            style={{ height: 200, marginBottom: 16 }}
+          />
+          <label htmlFor="assignment-file-upload">
+            <input
+              id="assignment-file-upload"
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.png"
+              style={{ display: 'none' }}
+              onChange={e => setSubmissionFile(e.target.files[0])}
+            />
+            <Button
+              variant="outlined"
+              component="span"
+              sx={{ mb: 2 }}
+            >
+              Choose File
+            </Button>
+            {submissionFile && (
+              <Typography variant="body2" sx={{ ml: 2, display: 'inline' }}>
+                {submissionFile.name}
+              </Typography>
+            )}
+          </label>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setSubmitDialog({ open: false, assignment: null }); setErrorMsg(''); }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmitAssignment}
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : 'Submit'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
