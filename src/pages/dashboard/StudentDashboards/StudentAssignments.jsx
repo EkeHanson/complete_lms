@@ -1,11 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Paper, Typography, Tabs, Tab, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Grid, LinearProgress } from '@mui/material';
 import { Download } from '@mui/icons-material';
 import { format } from 'date-fns';
+// Import your API utility
+import { coursesAPI } from '../../../config';
 
-const StudentAssignments = ({ assignments }) => {
+const StudentAssignments = () => {
+  const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [tabValue, setTabValue] = useState(0);
+
+  useEffect(() => {
+    // Fetch all enrolled courses, then fetch assignments for each
+    const fetchAssignmentsForEnrolledCourses = async () => {
+      try {
+        const coursesRes = await coursesAPI.getAllMyEnrollments();
+        const enrolledCourses = coursesRes.data || [];
+        let allAssignments = [];
+        for (const course of enrolledCourses) {
+          const assignmentsRes = await coursesAPI.getAssignments({ course: course.id });
+          const courseAssignments = assignmentsRes.data.results || assignmentsRes.data;
+          // Attach course name for display
+          courseAssignments.forEach(a => a.course_name = course.title);
+          allAssignments = allAssignments.concat(courseAssignments);
+        }
+        setAssignments(allAssignments);
+      } catch (err) {
+        setAssignments([]);
+      }
+    };
+    fetchAssignmentsForEnrolledCourses();
+  }, []);
 
   const filteredAssignments = assignments.filter(assignment => {
     if (tabValue === 0) return assignment.status === 'not-started' || assignment.status === 'in-progress';
@@ -38,8 +63,8 @@ const StudentAssignments = ({ assignments }) => {
           {filteredAssignments.map(assignment => (
             <TableRow key={assignment.id} hover>
               <TableCell>{assignment.title}</TableCell>
-              <TableCell>{assignment.course}</TableCell>
-              <TableCell>{format(new Date(assignment.dueDate), 'MMM dd, yyyy')}</TableCell>
+              <TableCell>{assignment.course_name || assignment.course}</TableCell>
+              <TableCell>{format(new Date(assignment.due_date), 'MMM dd, yyyy')}</TableCell>
               <TableCell>
                 <Chip
                   label={assignment.status === 'submitted' ? 'Submitted' : assignment.status === 'in-progress' ? 'In Progress' : 'Not Started'}
@@ -65,11 +90,11 @@ const StudentAssignments = ({ assignments }) => {
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">Course</Typography>
-                <Typography>{selectedAssignment.course}</Typography>
+                <Typography>{selectedAssignment.course_name || selectedAssignment.course}</Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">Due Date</Typography>
-                <Typography>{format(new Date(selectedAssignment.dueDate), 'MMMM dd, yyyy h:mm a')}</Typography>
+                <Typography>{format(new Date(selectedAssignment.due_date), 'MMMM dd, yyyy h:mm a')}</Typography>
               </Grid>
               <Grid item xs={12}>
                 <Typography variant="subtitle2">Status</Typography>

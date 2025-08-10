@@ -659,7 +659,7 @@ const StudentDashboard = () => {
           </>
         );
       case 'assignments':
-        return <StudentAssignments assignments={dashboardData.assignments || []} />;
+        return <StudentAssignments courses={enrolledCourses}  />;
       case 'messages':
         return <StudentMessages messages={dashboardData.messages || []} />;
       case 'schedule':
