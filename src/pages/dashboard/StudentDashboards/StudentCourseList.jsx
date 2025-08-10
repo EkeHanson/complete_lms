@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { throttle } from 'lodash';
-import { API_BASE_URL } from '../../../config';
+import { API_BASE_URL, coursesAPI } from '../../../config';
+import { useAuth } from '../../../contexts/AuthContext';
+
 import './StudentCourseList.css';
 
 import {
@@ -8,11 +10,14 @@ import {
   PictureAsPdf, Description, InsertDriveFile, FilterList, Sort, Star,
   StarBorder, PlayArrow, Pause, VolumeUp, VolumeOff, Fullscreen,
   FullscreenExit, ExpandMore, ExpandLess, Link, Close, HourglassEmpty, CheckCircle,
-  CheckCircleOutline, ArrowBack, Menu as MenuIcon
+  CheckCircleOutline, ArrowBack, ArrowForward, Menu as MenuIcon
 } from '@mui/icons-material';
 import { Tooltip, Typography } from '@mui/material';
 import YouTube from 'react-youtube';
+import { Document, Page, pdfjs } from 'react-pdf';
 
+// With this:
+pdfjs.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL || ''}/js/pdf.worker.min.js`;
 // Memoized Course Card Component
 const CourseCard = memo(({ course, bookmarked, onBookmark, onOpen, onFeedback }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -209,20 +214,68 @@ const MediaPlayer = ({ open, onClose, media, onEnded }) => {
               />
             </div>
           ) : media.type === 'video' ? (
-            <video
-              ref={videoRef}
-              src={media.url}
-              className="media-video"
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={() => {
-                setPlaying(false);
-                setCompleted(true);
-                onEnded && onEnded(); // Call onEnded prop if provided
-              }}
-              onClick={handlePlayPause}
-              muted={muted}
-            />
+            <>
+              <video
+                ref={videoRef}
+                src={media.url}
+                className="media-video"
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => {
+                  setPlaying(false);
+                  setCompleted(true);
+                  onEnded && onEnded();
+                }}
+                onClick={handlePlayPause}
+                muted={muted}
+              />
+              {/* Controls BELOW the video */}
+              <div className="media-controls">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={progress}
+                  onChange={handleProgressChange}
+                  className="progress-slider"
+                />
+                <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="controls-left" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button className="icon-button" onClick={handlePlayPause}>
+                      {playing ? <Pause /> : <PlayArrow />}
+                    </button>
+                    <button className="icon-button" onClick={() => setMuted(!muted)}>
+                      {muted ? <VolumeOff /> : <VolumeUp />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={muted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                      className="volume-slider"
+                    />
+                    <span className="time-display">
+                      {formatTime((progress / 100) * duration)} / {formatTime(duration)}
+                    </span>
+                  </div>
+                  <div className="controls-right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <select
+                      value={playbackRate}
+                      onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
+                      className="playback-rate"
+                    >
+                      {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
+                        <option key={rate} value={rate}>{rate}x</option>
+                      ))}
+                    </select>
+                    <button className="icon-button" onClick={handleFullscreen}>
+                      {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
             <iframe
               src={media.url}
@@ -230,53 +283,6 @@ const MediaPlayer = ({ open, onClose, media, onEnded }) => {
               title={media.title}
               allowFullScreen
             />
-          )}
-          {media.type === 'video' && (
-            <div className="media-controls">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={progress}
-                onChange={handleProgressChange}
-                className="progress-slider"
-              />
-              <div className="controls-bar">
-                <div className="controls-left">
-                  <button className="icon-button" onClick={handlePlayPause}>
-                    {playing ? <Pause /> : <PlayArrow />}
-                  </button>
-                  <button className="icon-button" onClick={() => setMuted(!muted)}>
-                    {muted ? <VolumeOff /> : <VolumeUp />}
-                  </button>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={muted ? 0 : volume}
-                    onChange={handleVolumeChange}
-                    className="volume-slider"
-                  />
-                  <span className="time-display">
-                    {formatTime((progress / 100) * duration)} / {formatTime(duration)}
-                  </span>
-                </div>
-                <div className="controls-right">
-                  <select
-                    value={playbackRate}
-                    onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
-                    className="playback-rate"
-                  >
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
-                      <option key={rate} value={rate}>{rate}x</option>
-                    ))}
-                  </select>
-                  <button className="icon-button" onClick={handleFullscreen}>
-                    {fullscreen ? <FullscreenExit /> : <Fullscreen />}
-                  </button>
-                </div>
-              </div>
-            </div>
           )}
           {completed && (
             <div className="completion-overlay">
@@ -313,10 +319,12 @@ const MediaPlayer = ({ open, onClose, media, onEnded }) => {
 };
 
 // Document Viewer Component
-const DocumentViewer = ({ open, onClose, document }) => {
+const DocumentViewer = ({ open, onClose, document, onLessonComplete }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fileUrl, setFileUrl] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [numPages, setNumPages] = useState(null);
 
   useEffect(() => {
     if (!open || !document || !document.url || !document.type) {
@@ -355,6 +363,17 @@ const DocumentViewer = ({ open, onClose, document }) => {
       }
     };
   }, [open, document, fileUrl]);
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+  };
+
+  const onPageChange = async (page) => {
+    setCurrentPage(page);
+    if (page === numPages && typeof onLessonComplete === 'function') {
+      await onLessonComplete();
+    }
+  };
 
   const renderViewer = () => {
     if (!document || !document.url || !document.type) {
@@ -398,11 +417,30 @@ const DocumentViewer = ({ open, onClose, document }) => {
 
     if (document.type === 'pdf' || ['doc', 'docx', 'ppt', 'pptx'].includes(document.type)) {
       return (
-        <iframe
-          src={fileUrl}
-          className="document-iframe"
-          title={document.title || 'Document'}
-        />
+        <>
+          <Document
+            file={fileUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+          >
+            <Page pageNumber={currentPage} />
+          </Document>
+          <div className="pdf-controls">
+            <button
+              className="action-button"
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+            >
+              Previous
+            </button>
+            <button
+              className="action-button"
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage >= numPages}
+            >
+              Next
+            </button>
+          </div>
+        </>
       );
     }
 
@@ -587,11 +625,14 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
 
   // For document lessons, mark as completed when iframe loads
   useEffect(() => {
-    if (selectedLesson && ['pdf', 'ppt', 'doc'].includes(selectedLesson.detectedType)) {
-      handleLessonComplete(selectedLesson);
-    }
-    // For links, you may want to mark as completed when opened
-    if (selectedLesson && selectedLesson.detectedType === 'link') {
+    if (
+      selectedLesson &&
+      !selectedLesson.is_completed &&
+      (
+        ['pdf', 'ppt', 'doc', 'link'].includes(selectedLesson.detectedType) ||
+        (!selectedLesson.detectedType || selectedLesson.detectedType === 'unknown')
+      )
+    ) {
       handleLessonComplete(selectedLesson);
     }
     // eslint-disable-next-line
@@ -655,11 +696,28 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
                         {/* Inline PDF display */}
                         {(selectedLesson.detectedType === 'pdf' && (selectedLesson.content_url || selectedLesson.content_file)) && (
                           <div className="lesson-document">
-                            <iframe
-                              src={selectedLesson.content_url || selectedLesson.content_file}
-                              className="lesson-document"
-                              title={selectedLesson.title || 'Lesson PDF'}
-                            />
+                            <Document
+                              file={selectedLesson.content_url || selectedLesson.content_file}
+                              onLoadSuccess={onDocumentLoadSuccess}
+                            >
+                              <Page pageNumber={currentPage} />
+                            </Document>
+                            <div className="pdf-controls">
+                              <button
+                                className="action-button"
+                                onClick={() => onPageChange(currentPage - 1)}
+                                disabled={currentPage <= 1}
+                              >
+                                Previous
+                              </button>
+                              <button
+                                className="action-button"
+                                onClick={() => onPageChange(currentPage + 1)}
+                                disabled={currentPage >= numPages}
+                              >
+                                Next
+                              </button>
+                            </div>
                           </div>
                         )}
                         {/* Inline PowerPoint display */}
@@ -690,6 +748,7 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
                               open={!!selectedDocument}
                               onClose={() => setSelectedDocument(null)}
                               document={selectedDocument}
+                              onLessonComplete={() => handleLessonComplete(selectedLesson)}
                             />
                           )}
                         {/* External link lesson type */}
@@ -735,6 +794,63 @@ const CourseDialog = ({ open, onClose, course, activeTab, setActiveTab, onFeedba
                       </>
                     ) : (
                       <Typography>Select a lesson from the sidebar to begin.</Typography>
+                    )}
+                    {selectedLesson && (
+                      <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '16px',
+    marginTop: 32
+  }}>
+    <button
+      className="action-button nav-button"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        borderRadius: 24,
+        padding: '8px 20px',
+        background: getPrevLesson(selectedLesson, course) ? '#1976d2' : '#e0e0e0',
+        color: getPrevLesson(selectedLesson, course) ? '#fff' : '#888',
+        cursor: getPrevLesson(selectedLesson, course) ? 'pointer' : 'not-allowed',
+        fontWeight: 500,
+        fontSize: '1rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+      }}
+      disabled={!getPrevLesson(selectedLesson, course)}
+      onClick={() => {
+        const prev = getPrevLesson(selectedLesson, course);
+        if (prev) handleLessonSelect(prev);
+      }}
+    >
+      <ArrowBack />
+      Previous
+    </button>
+    <button
+      className="action-button nav-button"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        borderRadius: 24,
+        padding: '8px 20px',
+        background: getNextLesson(selectedLesson, course) ? '#1976d2' : '#e0e0e0',
+        color: getNextLesson(selectedLesson, course) ? '#fff' : '#888',
+        cursor: getNextLesson(selectedLesson, course) ? 'pointer' : 'not-allowed',
+        fontWeight: 500,
+        fontSize: '1rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+      }}
+      disabled={!getNextLesson(selectedLesson, course)}
+      onClick={() => {
+        const next = getNextLesson(selectedLesson, course);
+        if (next) handleLessonSelect(next);
+      }}
+    >
+      Next
+      <ArrowForward />
+    </button>
+  </div>
                     )}
                   </div>
                 )}
@@ -866,12 +982,14 @@ const formatTime = (seconds) => {
 };
 
 const StudentCourseList = ({ courses, onFeedback }) => {
-  // ...existing state...
+  // console.log(courses, 'StudentCourseList: Received courses prop');
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [openCourseDialog, setOpenCourseDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const { user } = useAuth(); // Get the logged-in user
+
   const [filters, setFilters] = useState({
     status: 'all',
     search: '',
@@ -897,7 +1015,7 @@ const StudentCourseList = ({ courses, onFeedback }) => {
   };
 
   // Debug: Log component initialization
-  console.log('StudentCourseList: Initializing component');
+  //console.log('StudentCourseList: Initializing component');
 
   const handleClose = useCallback(() => {
     console.log('StudentCourseList: Closing CourseDialog');
@@ -906,8 +1024,8 @@ const StudentCourseList = ({ courses, onFeedback }) => {
     setActiveTab(0);
   }, []);
 
+
   useEffect(() => {
-    console.log('StudentCourseList: useEffect for courses');
     setBookmarks(courses.map(course => course.bookmarked || false));
     const transformedCourses = courses.map(course => {
       if (!course?.course) {
@@ -916,7 +1034,7 @@ const StudentCourseList = ({ courses, onFeedback }) => {
       }
       return {
         ...course,
-        courseId: course.course.id,
+        courseId: course.id,
         title: course.course.title || 'Untitled Course',
         thumbnail: course.course.thumbnail.includes('http')
           ? course.course.thumbnail
@@ -931,14 +1049,16 @@ const StudentCourseList = ({ courses, onFeedback }) => {
           }))
         })),
         instructors: course.course.instructors || [],
-        status: course.completed_at ? 'completed' : course.progress > 0 ? 'in_progress' : 'not_started'
+        progress: course.progress || 0, // <-- Use backend progress
+        status: course.completed_at ? 'completed' : (course.progress > 0 ? 'in_progress' : 'not_started'),
+        enrolled_at: course.enrolled_at,
+        completed_at: course.completed_at
       };
     }).filter(course => course !== null);
     setFilteredCourses(transformedCourses);
   }, [courses]);
-
   useEffect(() => {
-    console.log('StudentCourseList: useEffect for filters/bookmarks');
+   // console.log('StudentCourseList: useEffect for filters/bookmarks');
     let result = [...courses].map(course => {
       if (!course?.course) {
         console.warn('StudentCourseList: Invalid course data:', course);
@@ -946,7 +1066,7 @@ const StudentCourseList = ({ courses, onFeedback }) => {
       }
       return {
         ...course,
-        courseId: course.course.id,
+        courseId: course.id,
         title: course.course.title || 'Untitled Course',
         thumbnail: course.course.thumbnail.includes('http')
           ? course.course.thumbnail
@@ -1013,18 +1133,48 @@ const StudentCourseList = ({ courses, onFeedback }) => {
     []
   );
 
-  const handleOpenCourse = useCallback(course => {
-    console.log('StudentCourseList: Opening course', course.title);
+
+
+  const handleOpenCourse = useCallback(async (course) => {
+    // Use the logged-in user's ID
+    const userId = user?.id;
+    const courseId = course.courseId;
+
+    if (course.status === 'not_started' && userId && courseId) {
+      try {
+        await coursesAPI.createCourseProgress({
+          user: userId,
+          course: courseId,
+        });
+        // Optionally fetch updated progress
+        const progressRes = await coursesAPI.getCourseProgress({
+          user: userId,
+          course: courseId,
+        });
+        const newProgress = progressRes.data.progress;
+        setFilteredCourses(prev =>
+          prev.map(c =>
+            c.courseId === courseId
+              ? { ...c, status: 'in_progress', progress: newProgress }
+              : c
+          )
+        );
+      } catch (error) {
+        console.error('Error creating course progress:', error);
+      }
+    }
     setSelectedCourse(course);
     setActiveTab(0);
     setOpenCourseDialog(true);
-  }, []);
+  }, [user]);
+  
+ 
 
   const stats = {
-    total: courses.length,
-    inProgress: courses.filter(c => c.status === 'in_progress').length,
-    completed: courses.filter(c => c.status === 'completed').length,
-    notStarted: courses.filter(c => c.status === 'not_started').length
+    total: filteredCourses.length,
+    inProgress: filteredCourses.filter(c => c.status === 'in_progress').length,
+    completed: filteredCourses.filter(c => c.status === 'completed').length,
+    notStarted: filteredCourses.filter(c => c.status === 'not_started').length
   };
 
   return (
@@ -1213,5 +1363,45 @@ const YouTubePlayer = ({ videoId, onComplete }) => {
     </div>
   );
 };
+
+function getNextLesson(currentLesson, course) {
+  for (const module of course?.course?.modules || []) {
+    const idx = module.lessons.findIndex(l => l.id === currentLesson.id);
+    if (idx !== -1) {
+      // If not last lesson in module, return next
+      if (idx < module.lessons.length - 1) {
+        return module.lessons[idx + 1];
+      } else {
+        // If last lesson, check next module
+        const moduleIdx = course.course.modules.findIndex(m => m.id === module.id);
+        if (moduleIdx < course.course.modules.length - 1) {
+          const nextModule = course.course.modules[moduleIdx + 1];
+          return nextModule.lessons[0] || null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function getPrevLesson(currentLesson, course) {
+  for (const module of course?.course?.modules || []) {
+    const idx = module.lessons.findIndex(l => l.id === currentLesson.id);
+    if (idx !== -1) {
+      // If not first lesson in module, return previous
+      if (idx > 0) {
+        return module.lessons[idx - 1];
+      } else {
+        // If first lesson, check previous module
+        const moduleIdx = course.modules.findIndex(m => m.id === module.id);
+        if (moduleIdx > 0) {
+          const prevModule = course.modules[moduleIdx - 1];
+          return prevModule.lessons[prevModule.lessons.length - 1] || null;
+        }
+      }
+    }
+  }
+  return null;
+}
 
 export default StudentCourseList;

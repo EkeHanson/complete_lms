@@ -441,6 +441,7 @@ export const coursesAPI = {
   deleteCourse: (id) => api.delete(`/api/courses/courses/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+  
   getMostPopularCourses: () => api.get('/api/courses/courses/most_popular/'),
   getLeastPopularCourses: () => api.get('/api/courses/courses/least_popular/'),
   getModules: (courseId, params = {}) => api.get(`/api/courses/courses/${courseId}/modules/`, { params }),
@@ -521,6 +522,53 @@ export const coursesAPI = {
   deleteEnrollment: (id) => api.delete(`/api/courses/enrollments/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
+
+
+  // Fetch course progress for a user and course
+  getCourseProgress: ({ user, course }) =>
+    api.get('/api/courses/enrollments/for/user/progress/', {
+      params: { user, course },
+    }),
+
+  // Create course progress record for a user and course
+  createCourseProgress: ({ user, course }) =>
+    api.post(
+      '/api/courses/enrollments/for/user/progress/',
+      { user, course },
+      {
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'Content-Type': 'application/json',
+        },
+      }
+    ),
+
+  // Mark a lesson as completed for a user
+  completeLesson: ({ user, lesson }) =>
+    api.post(
+      '/api/courses/enrollments/for/user/lesson-completion/',
+      { user, lesson },
+      {
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'Content-Type': 'application/json',
+        },
+      }
+    ),
+
+  // Update/recalculate course progress for a user and course
+  updateCourseProgress: ({ user, course }) =>
+    api.patch(
+      '/api/courses/enrollments/for/user/progress/update/',
+      { user, course },
+      {
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'Content-Type': 'application/json',
+        },
+      }
+    ),
+  
   getRatings: (courseId = null) => {
     const url = courseId ? `/api/courses/ratings/course/${courseId}/` : '/api/courses/ratings/';
     return api.get(url);
@@ -625,55 +673,7 @@ export const coursesAPI = {
     getGrades: (params = {}) => api.get('/api/courses/grades/', { params }),
     getAnalytics: (params = {}) => api.get('/api/courses/analytics/', { params }),
 
-  // Fetch course progress for a user and course
-  getCourseProgress: ({ user, course }) =>
-    api.get('/api/courses/progress/', {
-      params: { user, course },
-    }),
-  // Maps to: CourseProgressViewSet (GET /api/courses/progress/)
-
-  // Create course progress record for a user and course
-  createCourseProgress: ({ user, course }) =>
-    api.post(
-      '/api/courses/progress/',
-      { user, course },
-      {
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json',
-        },
-      }
-    ),
-  // Maps to: CourseProgressViewSet (POST /api/courses/progress/)
-
-  // Mark a lesson as completed for a user
-  completeLesson: ({ user, lesson }) =>
-    api.post(
-      '/api/courses/lesson-completion/',
-      { user, lesson },
-      {
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json',
-        },
-      }
-    ),
-  // Maps to: LessonCompletionViewSet (POST /api/courses/lesson-completion/)
-
-  // Update/recalculate course progress for a user and course
-  updateCourseProgress: ({ user, course }) =>
-    api.patch(
-      '/api/courses/progress/update/',
-      { user, course },
-      {
-        headers: {
-          'X-CSRFToken': getCSRFToken(),
-          'Content-Type': 'application/json',
-        },
-      }
-    ),
-  // Maps to: CourseProgressViewSet.update_progress (PATCH /api/courses/progress/update/)
-
+  
 };
 
 

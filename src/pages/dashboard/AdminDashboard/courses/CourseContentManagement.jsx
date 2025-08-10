@@ -8,16 +8,18 @@ import {
 import { CircularProgress } from '@mui/material'; // Import CircularProgress from @mui/material
 import { useNavigate } from 'react-router-dom';
 import { coursesAPI } from '../../../../config';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
-const CourseContentManagement = () => {
+const CourseContentManagement = ({ courses }) => { // <-- Accept courses as prop
 
-  // console.log("Here")
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [courses, setCourses] = useState([]);
+  // Remove local courses state
+  // const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(courses?.[0]?.id || null); // Use prop for initial value
   const [modules, setModules] = useState([]);
   const [selectedModuleId, setSelectedModuleId] = useState(null);
 
@@ -35,7 +37,7 @@ const CourseContentManagement = () => {
 
   // State for Quizzes/Assignments
   const [assessments, setAssessments] = useState([]);
-  const [assessmentDialog, setAssessmentDialog] = useState({ open: false, mode: 'create', data: {} });
+  const [assessmentDialog, setAssessmentDialog] = useState({ open: false, mode: 'create', data: {}, error: '' });
   const [assessmentPagination, setAssessmentPagination] = useState({ count: 0, currentPage: 1, rowsPerPage: 10 });
 
   // State for Grading Rubrics
@@ -52,22 +54,6 @@ const CourseContentManagement = () => {
   const [faqs, setFaqs] = useState([]);
   const [faqDialog, setFaqDialog] = useState({ open: false, mode: 'create', data: {} });
   const [faqPagination, setFaqPagination] = useState({ count: 0, currentPage: 1, rowsPerPage: 10 });
-
-  // Fetch courses for dropdowns
-  const fetchCourses = async () => {
-    setLoading(true);
-    try {
-      const response = await coursesAPI.getCourses({ page_size: 100 });
-      setCourses(response.data.results || []);
-      if (response.data.results?.length > 0) {
-        setSelectedCourseId(response.data.results[0].id);
-      }
-    } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to fetch courses', severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Fetch modules for the selected course
   const fetchModules = async () => {
@@ -121,12 +107,14 @@ const CourseContentManagement = () => {
     setLoading(true);
     setAssessmentError(null);
     try {
-      const response = await coursesAPI.getLessons(selectedCourseId, selectedModuleId, {
+      const response = await coursesAPI.getAssignments({
+        course: selectedCourseId,
+        module: selectedModuleId,
         page: assessmentPagination.currentPage,
-        page_size: assessmentPagination.rowsPerPage,
-        lesson_type: 'quiz,assignment'
+        page_size: assessmentPagination.rowsPerPage
       });
-      setAssessments(response.data.results || []);
+      //console.log(response.data);
+      setAssessments(response.data || []);
       setAssessmentPagination(prev => ({ ...prev, count: response.data.count || 0 }));
     } catch (err) {
       setAssessmentError('Failed to fetch assessments');
@@ -233,24 +221,52 @@ const CourseContentManagement = () => {
     const { mode, data } = assessmentDialog;
     try {
       const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => formData.append(key, value));
+      Object.entries(data).forEach(([key, value]) => {
+        // Only append instructions_file if it's a File
+        if (key === 'instructions_file') {
+          if (value instanceof File) {
+            formData.append('instructions_file', value);
+          }
+        } else {
+          formData.append(key, value);
+        }
+      });
+      formData.set('course', data.course_id);
+      if (data.module_id && data.module_id !== "all") formData.set('module', data.module_id);
+
+      // Ensure due_date is included
+      if (data.due_date) formData.set('due_date', data.due_date);
+
       if (mode === 'create') {
-        await coursesAPI.createLesson(data.course_id, data.module_id, formData);
+        await coursesAPI.createAssignment(formData);
         setSnackbar({ open: true, message: 'Assessment created', severity: 'success' });
+        setAssessmentDialog({ open: false, mode: 'create', data: {}, error: '' });
       } else {
-        await coursesAPI.updateLesson(data.course_id, data.module_id, data.id, formData);
+        await coursesAPI.updateAssignment(data.id, formData);
         setSnackbar({ open: true, message: 'Assessment updated', severity: 'success' });
+        setAssessmentDialog({ open: false, mode: 'create', data: {}, error: '' });
       }
       fetchAssessments();
-      setAssessmentDialog({ open: false, mode: 'create', data: {} });
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to save assessment', severity: 'error' });
+      // Try to extract error details from backend response
+      let errorMsg = 'Failed to save assessment';
+      if (err?.response?.data) {
+        if (typeof err.response.data === 'object') {
+          errorMsg = Object.entries(err.response.data)
+            .map(([field, errors]) => `${field}: ${errors.map(e => e?.string || e).join(', ')}`)
+            .join('\n');
+        } else {
+          errorMsg = err.response.data;
+        }
+      }
+      setAssessmentDialog(prev => ({ ...prev, error: errorMsg }));
+      setSnackbar({ open: true, message: errorMsg, severity: 'error' });
     }
   };
 
   const handleAssessmentDelete = async (assessment) => {
     try {
-      await coursesAPI.deleteLesson(assessment.course_id, assessment.module_id, assessment.id);
+      await coursesAPI.deleteAssignment(assessment.id);
       fetchAssessments();
       setSnackbar({ open: true, message: 'Assessment deleted', severity: 'success' });
     } catch (err) {
@@ -473,9 +489,12 @@ const CourseContentManagement = () => {
             onChange={(e) => setSelectedModuleId(e.target.value || null)}
           >
             <option value="">Select Module</option>
-            {modules.map(module => (
-              <option key={module.id} value={module.id}>{module.title}</option>
-            ))}
+            <option value="all">All Modules</option>
+            {courses
+              .find(course => course.id === Number(selectedCourseId))
+              ?.modules?.map(module => (
+                <option key={module.id} value={module.id}>{module.title}</option>
+              ))}
           </select>
           <button
             className="action-btn primary"
@@ -515,12 +534,32 @@ const CourseContentManagement = () => {
                       {assessment.lesson_type}
                     </span>
                   </td>
-                  <td>{assessment.module?.course?.title || 'N/A'}</td>
-                  <td>{assessment.module?.title || 'N/A'}</td>
+                  <td>{assessment.course_name || 'N/A'}</td>
+                  <td>{assessment.module_name || 'N/A'}</td>
                   <td>
                     <button
                       className="action-btn"
-                      onClick={() => setAssessmentDialog({ open: true, mode: 'edit', data: assessment })}
+                      onClick={() => {
+                        // Format due_date for date input
+                        let formattedDueDate = assessment.due_date
+                          ? new Date(assessment.due_date).toISOString().slice(0, 10)
+                          : '';
+                        setAssessmentDialog({
+                          open: true,
+                          mode: 'edit',
+                          data: {
+                            id: assessment.id,
+                            title: assessment.title,
+                            lesson_type: assessment.lesson_type,
+                            course_id: assessment.course,
+                            module_id: assessment.module,
+                            description: assessment.description,
+                            due_date: formattedDueDate,
+                            instructions_file: null // File cannot be prepopulated
+                          },
+                          error: ''
+                        });
+                      }}
                     >
                       <EditIcon className="icon" />
                     </button>
@@ -861,7 +900,6 @@ const CourseContentManagement = () => {
   );
 
   useEffect(() => {
-    fetchCourses();
     fetchModules();
     setQuestionBankError(null);
     setAssessmentError(null);
@@ -879,7 +917,8 @@ const CourseContentManagement = () => {
     assessmentPagination.currentPage, assessmentPagination.rowsPerPage,
     rubricPagination.currentPage, rubricPagination.rowsPerPage,
     submissionPagination.currentPage, submissionPagination.rowsPerPage,
-    faqPagination.currentPage, faqPagination.rowsPerPage
+    faqPagination.currentPage, faqPagination.rowsPerPage,
+    courses // Add courses as dependency
   ]);
 
   useEffect(() => {
@@ -998,13 +1037,13 @@ const CourseContentManagement = () => {
         </div>
       </div>
       <div className={`modal ${assessmentDialog.open ? 'open' : ''}`}>
-        <div className="modal-overlay" onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}></div>
+        <div className="modal-overlay" onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {}, error: '' })}></div>
         <div className="modal-content">
           <div className="modal-header">
             <h3>{assessmentDialog.mode === 'create' ? 'Create Assessment' : 'Edit Assessment'}</h3>
             <button
               className="close-btn"
-              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}
+              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {}, error: '' })}
             >
               <CloseIcon className="icon" />
             </button>
@@ -1036,23 +1075,55 @@ const CourseContentManagement = () => {
                 <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>
-            <label className="label">Module ID</label>
+            <label className="label">Module</label>
+            <select
+              className="select"
+              value={assessmentDialog.data.module_id || ''}
+              onChange={e => setAssessmentDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, module_id: e.target.value }
+              }))}
+            >
+              <option value="">Select Module</option>
+              <option value="all">All Modules</option>
+              {courses
+                .find(course => course.id === Number(assessmentDialog.data.course_id))
+                ?.modules?.map(module => (
+                  <option key={module.id} value={module.id}>{module.title}</option>
+                ))}
+            </select>
+            <label className="label">Description</label>
+            <ReactQuill
+              theme="snow"
+              value={assessmentDialog.data.description || ''}
+              onChange={value =>
+                setAssessmentDialog(prev => ({
+                  ...prev,
+                  data: { ...prev.data, description: value }
+                }))
+              }
+            />
+            <label className="label">Due Date</label>
             <input
               className="input"
-              value={assessmentDialog.data.module_id || ''}
-              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, module_id: e.target.value } }))}
+              type="date"
+              value={assessmentDialog.data.due_date || ''}
+              onChange={e => setAssessmentDialog(prev => ({
+                ...prev,
+                data: { ...prev.data, due_date: e.target.value }
+              }))}
             />
-            <label className="label">Description</label>
-            <textarea
-              className="textarea"
-              value={assessmentDialog.data.description || ''}
-              onChange={e => setAssessmentDialog(prev => ({ ...prev, data: { ...prev.data, description: e.target.value } }))}
-            />
+            {/* Show error message */}
+            {assessmentDialog.error && (
+              <div className="error" style={{ color: 'red', marginTop: '10px', whiteSpace: 'pre-line' }}>
+                {assessmentDialog.error}
+              </div>
+            )}
           </div>
           <div className="modal-footer">
             <button
               className="action-btn"
-              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {} })}
+              onClick={() => setAssessmentDialog({ open: false, mode: 'create', data: {}, error: '' })}
             >
               Cancel
             </button>

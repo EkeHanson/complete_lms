@@ -18,6 +18,7 @@ const CourseManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => {
     const fetchCourseStats = async () => {
@@ -36,6 +37,8 @@ const CourseManagement = () => {
           })),
           coursesAPI.getCategories()
         ]);
+
+        setCourses(coursesRes.data.results || []); // <-- Store courses here
 
         const totalCourses = coursesRes.data.count || 0;
 
@@ -302,7 +305,7 @@ const CourseManagement = () => {
           </div>
           <div className="Tab-Content">
             {activeTab === 0 && renderOverview()}
-            {activeTab === 1 && <CourseContentManagement />}
+            {activeTab === 1 && <CourseContentManagement courses={courses} />} {/* Pass courses here */}
           </div>
         </div>
       </div>
