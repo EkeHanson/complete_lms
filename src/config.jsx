@@ -5,7 +5,7 @@ const isLocalhost = window?.location?.hostname === 'localhost';
 
 export const API_BASE_URL = isLocalhost
   ? 'http://127.0.0.1:9090'
-  : 'https://complete-lms-api-fvas.onrender.com';
+  : 'https://complete-lms-api-em3w.onrender.com';
 
 export const CMVP_SITE_URL = isLocalhost
   ? 'http://localhost:3000'
@@ -88,7 +88,6 @@ const getCSRFToken = () => {
     ?.split('=')[1];
   return cookieValue || '';
 };
-
 
 // In config.jsx, update the request interceptor
 api.interceptors.request.use(
@@ -319,41 +318,45 @@ export const activityAPI = {
 
 // Messaging API
 export const messagingAPI = {
-  getMessages: (params = {}) => api.get('/messaging/api/messages/', { params }),
-  getMessage: (id) => api.get(`/messaging/api/messages/${id}/`),
-  createMessage: (data) => api.post('/messaging/api/messages/', data, {
+  getMessages: (params = {}) => api.get('/api/messaging/messages/', { params }),
+  getMessage: (id) => api.get(`/api/messaging/messages/${id}/`),
+  createMessage: (data) => api.post('/api/messaging/messages/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  updateMessage: (id, data) => api.patch(`/messaging/api/messages/${id}/`, data, {
+  updateMessage: (id, data) => api.patch(`/api/messaging/messages/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteMessage: (id) => api.delete(`/messaging/api/messages/${id}/`, {
+  deleteMessage: (id) => api.delete(`/api/messaging/messages/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  markAsRead: (id) => api.patch(`/messaging/api/messages/${id}/mark_as_read/`, {}, {
+
+  deleteForUser: (id) => api.patch(`/api/messaging/messages/${id}/delete_for_user/`, {}, {
+  headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+}),
+  markAsRead: (id) => api.patch(`/api/messaging/messages/${id}/mark_as_read/`, {}, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  forwardMessage: (id, data) => api.post(`/messaging/api/messages/${id}/forward/`, data, {
+  forwardMessage: (id, data) => api.post(`/api/messaging/messages/${id}/forward/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  replyToMessage: (id, data) => api.post(`/messaging/api/messages/${id}/reply/`, data, {
+  replyToMessage: (id, data) => api.post(`/api/messaging/messages/${id}/reply/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  getMessageTypes: () => api.get('/messaging/api/message-types/'),
-  createMessageType: (data) => api.post('/messaging/api/message-types/', data, {
+  getMessageTypes: () => api.get('/api/messaging/message-types/'),
+  createMessageType: (data) => api.post('/api/messaging/message-types/', data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  updateMessageType: (id, data) => api.patch(`/messaging/api/message-types/${id}/`, data, {
+  updateMessageType: (id, data) => api.patch(`/api/messaging/message-types/${id}/`, data, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  deleteMessageType: (id) => api.delete(`/messaging/api/message-types/${id}/`, {
+  deleteMessageType: (id) => api.delete(`/api/messaging/message-types/${id}/`, {
     headers: { 'X-CSRFToken': getCSRFToken() },
   }),
-  setDefaultMessageType: (id) => api.post(`/messaging/api/message-types/${id}/set_default/`, {}, {
+  setDefaultMessageType: (id) => api.post(`/api/messaging/message-types/${id}/set_default/`, {}, {
     headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
   }),
-  getTotalMessages: () => api.get('/messaging/api/messages/stats/'),
-  getUnreadCount: () => api.get('/messaging/api/messages/unread_count/'),
+  getTotalMessages: () => api.get('/api/messaging/messages/stats/'),
+  getUnreadCount: () => api.get('/api/messaging/messages/unread_count/'),
   uploadAttachment: (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -690,7 +693,6 @@ export const coursesAPI = {
 
 
 // Payment API
-
 
 export const paymentAPI = {
   getPaymentConfig: () => api.get('/api/payments/site-currency'),

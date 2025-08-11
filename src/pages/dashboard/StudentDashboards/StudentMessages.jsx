@@ -13,7 +13,8 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useSnackbar } from 'notistack';
-import { messagingAPI } from '../../../config';
+import { messagingAPI, userAPI } from '../../../config';
+import { Check, Close as CloseIcon } from '@mui/icons-material';
 
 const StudentMessages = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -26,6 +27,11 @@ const StudentMessages = () => {
   const [replyMode, setReplyMode] = useState(false);
   const [forwardMode, setForwardMode] = useState(false);
   const [expandedMessage, setExpandedMessage] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Fetch messages for the current user
   const fetchMessages = useCallback(async () => {
@@ -38,7 +44,7 @@ const StudentMessages = () => {
         }),
         messagingAPI.getUnreadCount()
       ]);
-      setMessages(messagesRes.data.results || []);
+      setMessages(messagesRes.data || []);
       setUnreadCount(unreadRes.data.count || 0);
       setError(null);
     } catch (err) {
@@ -72,23 +78,100 @@ const StudentMessages = () => {
     }
   };
 
+  // Fetch users for autocomplete
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await userAPI.getUsers({ page_size: 50 });
+        setUsers(res.data.results || []);
+      } catch (error) {
+        enqueueSnackbar('Failed to load users', { variant: 'error' });
+      }
+    };
+    fetchUsers();
+  }, [enqueueSnackbar]);
+
+  // User search handler
+  const handleUserSearch = (event) => {
+    setUserSearchQuery(event.target.value);
+    // Optionally, implement search API call here
+  };
+
+  // User autocomplete UI
+  const renderUserAutocomplete = () => (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2">Recipients</Typography>
+      <TextField
+        fullWidth
+        placeholder="Search users"
+        value={userSearchQuery}
+        onChange={handleUserSearch}
+        sx={{ mb: 1 }}
+      />
+      <Box sx={{ maxHeight: 150, overflowY: 'auto', mb: 1 }}>
+        {users
+          .filter(user =>
+            user.first_name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+            user.last_name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+          )
+          .map(user => (
+            <Box
+              key={user.id}
+              sx={{
+                px: 1, py: 0.5, cursor: 'pointer',
+                bgcolor: selectedUsers.some(u => u.id === user.id) ? '#e3f2fd' : 'transparent',
+                display: 'flex', alignItems: 'center'
+              }}
+              onClick={() => {
+                if (selectedUsers.some(u => u.id === user.id)) {
+                  setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
+                } else {
+                  setSelectedUsers([...selectedUsers, user]);
+                }
+              }}
+            >
+              <Typography sx={{ flexGrow: 1 }}>
+                {user.first_name} {user.last_name} ({user.email})
+              </Typography>
+              {selectedUsers.some(u => u.id === user.id) && <Check color="primary" />}
+            </Box>
+          ))}
+      </Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+        {selectedUsers.map(user => (
+          <Chip
+            key={user.id}
+            label={`${user.first_name} ${user.last_name}`}
+            onDelete={() => setSelectedUsers(selectedUsers.filter(u => u.id !== user.id))}
+            deleteIcon={<CloseIcon />}
+            size="small"
+          />
+        ))}
+      </Box>
+    </Box>
+  );
+
   // Handle opening dialog for reply/forward/compose
   const handleOpenDialog = (message = null, reply = false, forward = false) => {
     if (message) {
       if (reply) {
         setCurrentMessage({
           subject: `Re: ${message.subject}`,
-          content: `\n\n---------- Original Message ----------\nFrom: ${message.sender.first_name} ${message.sender.last_name}\nDate: ${format(new Date(message.sent_at), 'MMM d, yyyy - h:mm a')}\nSubject: ${message.subject}\n\n${message.content}`,
+          content: `\n\n---------- Original Message ----------\nFrom: ${message.sender}\nDate: ${format(new Date(message.sent_at), 'MMM d, yyyy - h:mm a')}\nSubject: ${message.subject}\n\n${message.content}`,
           parent_message: message.id
         });
+        // Automatically select sender as recipient
+        setSelectedUsers([{ email: message.sender }]);
         setReplyMode(true);
       } else if (forward) {
         setCurrentMessage({
           subject: `Fwd: ${message.subject}`,
-          content: `\n\n---------- Forwarded Message ----------\nFrom: ${message.sender.first_name} ${message.sender.last_name}\nDate: ${format(new Date(message.sent_at), 'MMM d, yyyy - h:mm a')}\nSubject: ${message.subject}\n\n${message.content}`,
+          content: `\n\n---------- Forwarded Message ----------\nFrom: ${message.sender}\nDate: ${format(new Date(message.sent_at), 'MMM d, yyyy - h:mm a')}\nSubject: ${message.subject}\n\n${message.content}`,
           parent_message: message.id,
           is_forward: true
         });
+        setSelectedUsers([]);
         setForwardMode(true);
       }
     } else {
@@ -97,6 +180,7 @@ const StudentMessages = () => {
         content: '',
         attachments: []
       });
+      setSelectedUsers([]);
     }
     setOpenDialog(true);
   };
@@ -110,34 +194,55 @@ const StudentMessages = () => {
 
   // Send message handler
   const handleSendMessage = async () => {
+    setSending(true);
     try {
       const formData = new FormData();
       formData.append('subject', currentMessage.subject);
       formData.append('content', currentMessage.content);
       formData.append('status', 'sent');
-      
       if (currentMessage.parent_message) {
         formData.append('parent_message', currentMessage.parent_message);
       }
-      
       if (currentMessage.is_forward) {
         formData.append('is_forward', 'true');
       }
-      
+      selectedUsers.forEach(user => {
+        if (user.id) {
+          formData.append('recipient_users', user.id);
+        } else if (user.email) {
+          formData.append('recipient_emails', user.email);
+        }
+      });
       await messagingAPI.createMessage(formData);
-      
       enqueueSnackbar(
         replyMode ? 'Reply sent successfully!' : 
         forwardMode ? 'Message forwarded successfully!' : 
         'Message sent successfully!',
         { variant: 'success' }
       );
-      
       fetchMessages();
       handleCloseDialog();
     } catch (error) {
       enqueueSnackbar('Error sending message', { variant: 'error' });
       console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Delete message for user
+  const handleDeleteForUser = async (messageId) => {
+    setDeletingId(messageId);
+    try {
+      await messagingAPI.deleteForUser(messageId);
+      enqueueSnackbar('Message deleted from your dashboard.', { variant: 'success' });
+      // Remove the message from the UI without refreshing
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    } catch (error) {
+      enqueueSnackbar('Failed to delete message.', { variant: 'error' });
+      console.error('Delete error:', error);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -212,12 +317,13 @@ const StudentMessages = () => {
               <ListItem
                 sx={{
                   borderLeft: msg.important ? '3px solid red' : 'none',
-                  bgcolor: !msg.is_read ? '#e3f2fd' : 'inherit',
+                  bgcolor: !msg.is_read ? '#fffde7' : '#f5f5f5', // Yellow for unread, light gray for read
                   mb: 1,
                   borderRadius: 1,
                   cursor: 'pointer',
+                  boxShadow: !msg.is_read ? '0 2px 8px rgba(255, 193, 7, 0.15)' : 'none', // subtle shadow for unread
                   '&:hover': {
-                    backgroundColor: '#f5f5f5'
+                    backgroundColor: !msg.is_read ? '#fff9c4' : '#eeeeee'
                   }
                 }}
                 onClick={() => handleMessageClick(msg.id)}
@@ -226,7 +332,7 @@ const StudentMessages = () => {
                   {msg.is_read ? (
                     <MarkEmailRead color="action" />
                   ) : (
-                    <MarkEmailUnread color="primary" />
+                    <MarkEmailUnread color="warning" />
                   )}
                 </ListItemIcon>
                 <ListItemText
@@ -234,10 +340,16 @@ const StudentMessages = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Typography 
                         variant="subtitle1" 
-                        sx={{ fontWeight: msg.is_read ? 'normal' : 'bold', flexGrow: 1 }}
+                        sx={{ fontWeight: !msg.is_read ? 'bold' : 'normal', flexGrow: 1 }}
                       >
                         {msg.subject}
                       </Typography>
+                      {!msg.is_read && (
+                        <Chip label="Unread" size="small" color="warning" sx={{ ml: 1 }} />
+                      )}
+                      {msg.is_read && (
+                        <Chip label="Read" size="small" color="success" sx={{ ml: 1 }} />
+                      )}
                       <Chip 
                         label={msg.message_type_display}
                         size="small"
@@ -281,6 +393,25 @@ const StudentMessages = () => {
                       <Forward fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  <Tooltip title="Delete for me">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDeleteForUser(msg.id);
+                        }}
+                        color="error"
+                        disabled={deletingId === msg.id}
+                      >
+                        {deletingId === msg.id ? (
+                          <CircularProgress size={20} color="error" />
+                        ) : (
+                          <CloseIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
               </ListItem>
               
@@ -323,8 +454,8 @@ const StudentMessages = () => {
                       <Chip 
                         key={i} 
                         label={recipient.recipient ? 
-                          `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                          recipient.recipient_group.name}
+                          `${recipient.recipient} ${recipient.recipient}` : 
+                          recipient.recipient_group}
                         size="small"
                       />
                     ))}
@@ -337,13 +468,23 @@ const StudentMessages = () => {
       </Paper>
 
       {/* Message Dialog */}
-      <Dialog 
-        open={openDialog} 
-        onClose={handleCloseDialog} 
-        maxWidth="md" 
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="xs" // or "sm" for slightly larger
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            mx: 1,
+            my: { xs: 2, sm: 6 },
+            p: 0,
+            position: 'relative',
+            width: { xs: '95vw', sm: '400px' }
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
           {replyMode ? 'Reply to Message' : forwardMode ? 'Forward Message' : 'Compose New Message'}
           <IconButton
             aria-label="close"
@@ -358,7 +499,7 @@ const StudentMessages = () => {
             <Close />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ px: 2, pt: 2 }}>
           <TextField
             autoFocus
             margin="dense"
@@ -368,28 +509,34 @@ const StudentMessages = () => {
             onChange={(e) => setCurrentMessage({...currentMessage, subject: e.target.value})}
             sx={{ mb: 2 }}
           />
-          
+          {renderUserAutocomplete()}
           <TextField
             margin="dense"
             label="Message Content"
             fullWidth
             multiline
-            rows={8}
+            rows={6}
             value={currentMessage?.content || ''}
             onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
             sx={{ mb: 2 }}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
           <Button onClick={handleCloseDialog}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSendMessage} 
-            variant="contained" 
+          <Button
+            onClick={handleSendMessage}
+            variant="contained"
             startIcon={<Send />}
-            disabled={!currentMessage?.subject || !currentMessage?.content}
+            disabled={
+              sending ||
+              !currentMessage?.subject ||
+              !currentMessage?.content ||
+              selectedUsers.length === 0
+            }
           >
+            {sending ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
             {replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message'}
           </Button>
         </DialogActions>

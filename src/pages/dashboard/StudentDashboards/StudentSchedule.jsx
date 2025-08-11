@@ -175,7 +175,7 @@ const StudentSchedule = () => {
       };
 
       const response = await scheduleAPI.getSchedules(params);
-      console.log('Fetched schedules:', response.data);
+      //console.log('Fetched schedules:', response.data);
       setSchedules(response.data || []);
       setPagination({
         count: response.data.count || 0,

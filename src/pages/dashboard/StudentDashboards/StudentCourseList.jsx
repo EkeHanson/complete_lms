@@ -328,7 +328,7 @@ const DocumentViewer = ({ open, onClose, document, onLessonComplete }) => {
 
   useEffect(() => {
     if (!open || !document || !document.url || !document.type) {
-      console.log('DocumentViewer: Invalid document prop', document);
+      //console.log('DocumentViewer: Invalid document prop', document);
       setError('Invalid document data');
       setLoading(false);
       return;
@@ -1018,7 +1018,7 @@ const StudentCourseList = ({ courses, onFeedback }) => {
   //console.log('StudentCourseList: Initializing component');
 
   const handleClose = useCallback(() => {
-    console.log('StudentCourseList: Closing CourseDialog');
+    //console.log('StudentCourseList: Closing CourseDialog');
     setOpenCourseDialog(false);
     setSelectedCourse(null);
     setActiveTab(0);

@@ -11,7 +11,7 @@ import {
   Search as SearchIcon, FilterList as FilterIcon, Refresh as RefreshIcon,
   Close as CloseIcon, Check as CheckIcon
 } from '@mui/icons-material';
-import { TablePagination } from '@mui/material';
+import { TablePagination, Chip } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -59,6 +59,8 @@ const Messaging = () => {
     dateTo: null,
     readStatus: 'all'
   });
+  const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const { lastMessage, sendMessage } = useWebSocket(
     `ws://${window.location.host}/ws/messages/`
@@ -94,11 +96,11 @@ const Messaging = () => {
     try {
       setMessageTypesLoading(true);
       const response = await messagingAPI.getMessageTypes();
-      console.log("fetchMessageTypes full response:", response);
+      //console.log("fetchMessageTypes full response:", response);
       if (response.status === 200) {
         const types = Array.isArray(response.data.results) ? response.data.results : 
                      Array.isArray(response.data) ? response.data : [];
-        console.log("Parsed messageTypes:", types);
+        //console.log("Parsed messageTypes:", types);
         setMessageTypes(types);
       } else {
         console.error("Unexpected response status:", response.status);
@@ -118,7 +120,7 @@ const Messaging = () => {
   }, []);
 
   useEffect(() => {
-    console.log("messageTypes updated:", messageTypes);
+    //console.log("messageTypes updated:", messageTypes);
   }, [messageTypes, messageTypesLoading]); // Removed currentMessage from dependencies
 
   const fetchData = async () => {
@@ -139,7 +141,9 @@ const Messaging = () => {
         groupsAPI.getGroups(),
         messagingAPI.getUnreadCount(),
       ]);
-      setMessages(messagesRes.data.results || []);
+      setMessages(messagesRes.data || []);
+
+      //console.log("Messages fetched:", messagesRes.data);
       setGroups(groupsRes.data.results || []);
       setUnreadCount(unreadRes.data.count || 0);
       setPagination({
@@ -207,15 +211,11 @@ const Messaging = () => {
         setCurrentMessage({
           ...defaultMessage,
           subject: `Re: ${message.subject}`,
-          content: `\n\n---------- Original Message ----------\nFrom: ${message.sender.first_name} ${message.sender.last_name}\nDate: ${formatDate(message.sent_at)}\nSubject: ${message.subject}\n\n${message.content}`,
+          content: `\n\n---------- Original Message ----------\nFrom: ${message.sender}\nDate: ${formatDate(message.sent_at)}\nSubject: ${message.subject}\n\n${message.content}`,
           parent_message: message.id
         });
-        setSelectedUsers([{ 
-          id: message.sender.id, 
-          email: message.sender.email,
-          first_name: message.sender.first_name,
-          last_name: message.sender.last_name
-        }]);
+        const senderUser = users.find(u => u.email === message.sender);
+        setSelectedUsers(senderUser ? [senderUser] : [{ email: message.sender }]);
         setReplyMode(true);
       } else if (forward) {
         setCurrentMessage({
@@ -229,7 +229,7 @@ const Messaging = () => {
       } else {
         setCurrentMessage({
           ...message,
-          message_type: messageTypes.find(t => t.value === message.message_type)?.id || message.message_type
+          message_type: messageTypes.find(t => t.id === message.message_type || t.value === message.message_type)?.id || message.message_type
         });
         setSelectedUsers(message.recipients.filter(r => r.recipient).map(r => ({
           id: r.recipient.id,
@@ -264,46 +264,23 @@ const Messaging = () => {
 
 
 const handleSendMessage = async () => {
+  setSending(true);
   try {
-    const formData = new FormData();
-    formData.append('subject', currentMessage.subject);
-    formData.append('content', currentMessage.content);
-    formData.append('message_type', currentMessage.message_type);
-    formData.append('status', 'sent');
-    
-    if (currentMessage.parent_message) {
-      formData.append('parent_message', currentMessage.parent_message);
-    }
-    if (currentMessage.is_forward) {
-      formData.append('is_forward', 'true');
-    }
-    
-    console.log("selectedUsers", selectedUsers);
-    console.log("selectedGroups", selectedGroups);
-
-    // Validate at least one recipient
-    if (selectedUsers.length === 0 && selectedGroups.length === 0) {
-      throw new Error('Please select at least one recipient.');
-    }
-    
-    // Append each user ID individually to create a list
-    selectedUsers.forEach(user => {
-      formData.append('recipient_users', user.id);
-    });
-    
-    // Append each group ID individually to create a list
-    selectedGroups.forEach(group => {
-      formData.append('recipient_groups', group.id);
-    });
-   
-    attachments.forEach(attachment => {
-      if (attachment.file) {
-        formData.append('attachments', attachment.file);
-      }
-    });
+    const payload = {
+      subject: currentMessage.subject,
+      content: currentMessage.content,
+      message_type: currentMessage.message_type,
+      status: 'sent',
+      parent_message: currentMessage.parent_message || null,
+      is_forward: !!currentMessage.is_forward,
+      recipient_users: selectedUsers.map(u => u.id),
+      recipient_groups: selectedGroups.map(g => g.id),
+      // If you have attachments, handle them separately
+    };
     const response = currentMessage.id 
-      ? await messagingAPI.updateMessage(currentMessage.id, formData)
-      : await messagingAPI.createMessage(formData);
+      ? await messagingAPI.updateMessage(currentMessage.id, payload)
+      : await messagingAPI.createMessage(payload);
+
     enqueueSnackbar(
       replyMode ? 'Reply sent successfully!' : 
       forwardMode ? 'Message forwarded successfully!' : 
@@ -318,6 +295,8 @@ const handleSendMessage = async () => {
       { variant: 'error' }
     );
     console.error('Error sending message:', error.response?.data || error.message);
+  } finally {
+    setSending(false);
   }
 };
 
@@ -346,14 +325,17 @@ const handleSendMessage = async () => {
     }
   };
 
-  const handleDeleteMessage = async (id) => {
+  const handleDeleteForUser = async (messageId) => {
+    setDeletingId(messageId);
     try {
-      await messagingAPI.deleteMessage(id);
-      enqueueSnackbar('Message deleted successfully!', { variant: 'success' });
-      fetchData();
+      await messagingAPI.deleteForUser(messageId);
+      enqueueSnackbar('Message deleted from your dashboard.', { variant: 'success' });
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
     } catch (error) {
-      enqueueSnackbar('Error deleting message', { variant: 'error' });
-      console.error('Error deleting message:', error);
+      enqueueSnackbar('Failed to delete message.', { variant: 'error' });
+      console.error('Delete error:', error);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -468,6 +450,11 @@ const handleSendMessage = async () => {
             <div className="msg-card-title">
               {message.is_read ? <ReadIcon /> : <UnreadIcon />}
               <span className={message.is_read ? '' : 'unread'}>{message.subject}</span>
+              {message.is_read && (
+                <span style={{ marginLeft: 8 }}>
+                  <Chip label="Read" size="small" color="success" />
+                </span>
+              )}
             </div>
             <button
               className="msg-expand-btn"
@@ -501,8 +488,8 @@ const handleSendMessage = async () => {
                 {message.recipients.map((recipient, i) => (
                   <span key={i} className="msg-chip">
                     {recipient.recipient ? 
-                      `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                      recipient.recipient_group.name}
+                      `${recipient.recipient}` : 
+                      recipient.recipient_group}
                     {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
                   </span>
                 ))}
@@ -535,9 +522,14 @@ const handleSendMessage = async () => {
               )}
               <button
                 className="msg-btn msg-btn-delete"
-                onClick={() => handleDeleteMessage(message.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteForUser(message.id);
+                }}
+                disabled={deletingId === message.id}
+                title="Delete for me"
               >
-                <DeleteIcon /> Delete
+                {deletingId === message.id ? <div className="msg-spinner-small"></div> : <DeleteIcon />}
               </button>
             </div>
           </div>
@@ -572,6 +564,11 @@ const handleSendMessage = async () => {
                 </td>
                 <td>
                   <span className={message.is_read ? '' : 'unread'}>{message.subject}</span>
+                  {message.is_read && (
+                    <span style={{ marginLeft: 8 }}>
+                      <Chip label="Read" size="small" color="success" />
+                    </span>
+                  )}
                 </td>
                 <td>
                   <span
@@ -582,7 +579,7 @@ const handleSendMessage = async () => {
                   </span>
                 </td>
                 <td>
-                  <span>{message.sender.email}</span>
+                  <span>{message.sender}</span>
                 </td>
                 <td>
                   <span>{formatDate(message.sent_at)}</span>
@@ -591,9 +588,9 @@ const handleSendMessage = async () => {
                   <div className="msg-chip-container">
                     {message.recipients.slice(0, 2).map((recipient, i) => (
                       <span key={i} className="msg-chip">
-                        {recipient.recipient ? 
-                          `${recipient.recipient.first_name} ${recipient.recipient.last_name}` : 
-                          recipient.recipient_group.name}
+                        {recipient.recipient 
+                          ? recipient.recipient 
+                          : recipient.recipient_group}
                         {recipient.recipient_group ? <GroupIcon /> : <PersonIcon />}
                       </span>
                     ))}
@@ -640,11 +637,12 @@ const handleSendMessage = async () => {
                       className="msg-btn msg-btn-delete"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteMessage(message.id);
+                        handleDeleteForUser(message.id);
                       }}
-                      title="Delete"
+                      disabled={deletingId === message.id}
+                      title="Delete for me"
                     >
-                      <DeleteIcon />
+                      {deletingId === message.id ? <div className="msg-spinner-small"></div> : <DeleteIcon />}
                     </button>
                   </div>
                 </td>
@@ -728,6 +726,18 @@ const handleSendMessage = async () => {
       </div>
     </div>
   );
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const response = await groupsAPI.getGroups();
+        setGroups(response.data.results || response.data); // Adjust based on API response shape
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch groups', { variant: 'error' });
+      }
+    };
+    fetchGroups();
+  }, []);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -1013,6 +1023,7 @@ const handleSendMessage = async () => {
                 className="msg-btn msg-btn-confirm"
                 onClick={handleSendMessage}
                 disabled={
+                  sending ||
                   !currentMessage?.subject || 
                   !currentMessage?.content || 
                   !currentMessage?.message_type ||
@@ -1020,16 +1031,17 @@ const handleSendMessage = async () => {
                   isUploading
                 }
               >
-                <SendIcon /> {replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message'}
+                <SendIcon /> {sending ? <div className="msg-spinner-small" style={{ display: 'inline-block', verticalAlign: 'middle' }}></div> : (replyMode ? 'Send Reply' : forwardMode ? 'Forward' : 'Send Message')}
               </button>
             </div>
           </div>
         </div>
-
         <MessageTypeManager
           open={messageTypeDialogOpen}
           onClose={() => setMessageTypeDialogOpen(false)}
           onUpdate={fetchMessageTypes}
+          messageTypes={messageTypes}
+          loading={messageTypesLoading}
         />
       </div>
     </LocalizationProvider>

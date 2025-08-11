@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
   Check as CheckIcon, Close as CloseIcon
@@ -7,34 +7,11 @@ import { useSnackbar } from 'notistack';
 import { messagingAPI } from '../../../config';
 import './MessageTypeManager.css';
 
-const MessageTypeManager = ({ open, onClose, onUpdate }) => {
+const MessageTypeManager = ({ open, onClose, onUpdate, messageTypes, loading }) => {
   const { enqueueSnackbar } = useSnackbar();
-  const [messageTypes, setMessageTypes] = useState([]);
   const [currentType, setCurrentType] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [valueError, setValueError] = useState(''); // New state for validation error
-
-  const fetchMessageTypes = async () => {
-    setLoading(true);
-    try {
-      const response = await messagingAPI.getMessageTypes();
-      console.log('API Response:', response.data);
-      setMessageTypes(Array.isArray(response.data.results) ? response.data.results : []);
-    } catch (error) {
-      console.error('Failed to load message types:', error);
-      enqueueSnackbar('Failed to load message types', { variant: 'error' });
-      setMessageTypes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open) {
-      fetchMessageTypes();
-    }
-  }, [open]);
+  const [valueError, setValueError] = useState('');
 
   // Validate value: only lowercase letters, numbers, and underscores
   const validateValue = (value) => {
@@ -77,7 +54,6 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
       }
       setCurrentType(null);
       setEditMode(false);
-      fetchMessageTypes();
       onUpdate();
     } catch (error) {
       const errorMsg = error.response?.data?.value?.[0] || error.response?.data?.detail || 'Operation failed';
@@ -89,7 +65,6 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
     try {
       await messagingAPI.deleteMessageType(id);
       enqueueSnackbar('Message type deleted successfully', { variant: 'success' });
-      fetchMessageTypes();
       onUpdate();
     } catch (error) {
       enqueueSnackbar('Failed to delete message type', { variant: 'error' });
@@ -100,7 +75,6 @@ const MessageTypeManager = ({ open, onClose, onUpdate }) => {
     try {
       await messagingAPI.setDefaultMessageType(id);
       enqueueSnackbar('Default message type set', { variant: 'success' });
-      fetchMessageTypes();
       onUpdate();
     } catch (error) {
       enqueueSnackbar('Failed to set default', { variant: 'error' });
