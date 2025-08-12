@@ -370,6 +370,20 @@ export const messagingAPI = {
   }),
 };
 
+
+
+export const chatAPI = {
+  getSessions: (tenantId) =>
+    api.get(`/api/ai_chat/chat-sessions/`, { params: { tenant_id: tenantId } }),
+  getSession: (sessionId, tenantId) =>
+    api.get(`/api/ai_chat/chat-sessions/${sessionId}/`, { params: { tenant_id: tenantId } }),
+  createSession: (tenantId) =>
+    api.post(`/api/ai_chat/chat-sessions/`, { tenant_id: tenantId }),
+  deleteSession: (sessionId) =>
+    api.delete(`/api/ai_chat/chat-sessions/${sessionId}/`),
+};
+
+
 // Schedule API
 export const scheduleAPI = {
   getSchedules: (params) => api.get('/api/schedule/schedules/all', { params }),
@@ -944,6 +958,7 @@ export default {
   groupsAPI,
   activityAPI,
   messagingAPI,
+  chatAPI,
   scheduleAPI,
   advertAPI,
   coursesAPI,
