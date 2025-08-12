@@ -1,0 +1,141 @@
+.support-container {
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 8px;
+}
+
+@media (min-width: 600px) {
+  .support-container {
+    padding: 16px;
+  }
+}
+@media (min-width: 900px) {
+  .support-container {
+    padding: 24px;
+  }
+}
+
+.support-paper {
+  padding: 8px;
+  border-radius: 16px;
+}
+@media (min-width: 600px) {
+  .support-paper {
+    padding: 16px;
+  }
+}
+@media (min-width: 900px) {
+  .support-paper {
+    padding: 24px;
+  }
+}
+
+.support-dialog-paper {
+  border-radius: 24px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+  padding: 0;
+  width: 100vw;
+  max-width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+@media (min-width: 600px) {
+  .support-dialog-paper {
+    width: 90vw;
+  }
+}
+@media (min-width: 900px) {
+  .support-dialog-paper {
+    width: 500px;
+  }
+}
+
+.support-dialog-title {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: #202123;
+  color: #fff;
+  padding: 16px;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  position: relative;
+}
+
+.support-dialog-content {
+  padding: 16px;
+  flex-grow: 1;
+  background: #f5f5f5;
+  overflow-y: auto;
+}
+.support-dialog-content::-webkit-scrollbar {
+  width: 8px;
+}
+.support-dialog-content::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 4px;
+}
+.support-dialog-content::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+}
+
+.support-list-item-user {
+  justify-content: flex-end;
+}
+.support-list-item-ai,
+.support-list-item-system {
+  justify-content: flex-start;
+}
+
+.support-message-box {
+  max-width: 75%;
+  padding: 12px;
+  border-radius: 32px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #000;
+}
+.support-message-box-user {
+  background: #007bff;
+  color: #fff;
+}
+.support-message-box-system {
+  background: #ff4444;
+  color: #fff;
+}
+
+.support-dialog-actions {
+  padding: 16px;
+  background: #fff;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+}
+
+.support-input-box {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  background: #f5f5f5;
+  border-radius: 40px;
+  padding: 8px;
+}
+
+.support-textfield .MuiOutlinedInput-root {
+  background: #fff;
+  border-radius: 40px;
+  border-color: #ddd;
+}
+.support-textfield .MuiOutlinedInput-root:hover fieldset {
+  border-color: #aaa;
+}
+.support-textfield .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #007bff;
+}

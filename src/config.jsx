@@ -6,6 +6,7 @@ const isLocalhost = window?.location?.hostname === 'localhost';
 export const API_BASE_URL = isLocalhost
   ? 'http://127.0.0.1:9090'
   : 'https://complete-lms-api-em3w.onrender.com';
+  
 
 export const CMVP_SITE_URL = isLocalhost
   ? 'http://localhost:3000'

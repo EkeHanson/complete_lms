@@ -1,18 +1,4 @@
-// Mark a schedule as read
-  const handleMarkAsRead = async (scheduleId) => {
-    try {
-      await scheduleAPI.markAsRead(scheduleId);
-      enqueueSnackbar('Marked as read!', { variant: 'success' });
-      fetchData();
-    } catch (error) {
-      enqueueSnackbar('Error marking as read', { variant: 'error' });
-    }
-  };
 
-  // Download an attachment
-  const handleDownloadAttachment = (scheduleId) => {
-    window.open(`/api/schedule/schedules/${scheduleId}/download_attachment/`, '_blank');
-  };
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Typography, Button, Paper, Table, TableBody, TableCell, 
