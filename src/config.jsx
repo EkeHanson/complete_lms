@@ -685,24 +685,31 @@ export const coursesAPI = {
     }),
 
 
-    getCart: (params = {}) => api.get('/api/courses/cart/', { params }),
-    addToCart: (data) => api.post('/api/courses/cart/', data, {
-      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-    }),
-    removeFromCart: (id) => api.delete(`/api/courses/cart/${id}/`, {
-      headers: { 'X-CSRFToken': getCSRFToken() },
-    }),
-    getWishlist: (params = {}) => api.get('/api/courses/wishlist/', { params }),
-    addToWishlist: (data) => api.post('/api/courses/wishlist/', data, {
-      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
-    }),
-    removeFromWishlist: (id) => api.delete(`/api/courses/wishlist/${id}/`, {
-      headers: { 'X-CSRFToken': getCSRFToken() },
-    }),
-    getGrades: (params = {}) => api.get('/api/courses/grades/', { params }),
-    getAnalytics: (params = {}) => api.get('/api/courses/analytics/', { params }),
 
-  
+
+  // Corrected Cart endpoints
+  getCart: (params = {}) => api.get('/api/carts/cart/', { params }),
+  addToCart: (data) => api.post('/api/carts/cart/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  removeFromCart: (id) => api.delete(`/api/carts/cart/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() },
+  }),
+
+  // Corrected Wishlist endpoints
+  getWishlist: (params = {}) => api.get('/api/carts/wishlist/', { params }),
+  addToWishlist: (data) => api.post('/api/carts/wishlist/', data, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+  }),
+  removeFromWishlist: (id) => api.delete(`/api/carts/wishlist/${id}/`, {
+    headers: { 'X-CSRFToken': getCSRFToken() },
+  }),
+
+  // Grades and Analytics (these are likely correct if your backend matches)
+  getGrades: (params = {}) => api.get('/api/courses/grades/', { params }),
+  getAnalytics: (params = {}) => api.get('/api/courses/analytics/', { params }),
+
+
 };
 
 

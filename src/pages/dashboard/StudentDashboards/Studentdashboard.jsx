@@ -381,6 +381,10 @@ const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCourseList, setShowCourseList] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [student, setStudent] = useState(null);
 
   const unreadCount = Array.isArray(dashboardData?.messages) ? dashboardData.messages.filter((msg) => !msg.read).length : 0;
 
@@ -440,6 +444,19 @@ const StudentDashboard = () => {
     };
     loadData();
   }, [user, authLoading]);
+
+  // Fetch cart and wishlist once on mount
+  useEffect(() => {
+    coursesAPI.getCart().then(res => {
+      const data = res.data?.results || res.data || [];
+      setCart(Array.isArray(data) ? data : []);
+    });
+    coursesAPI.getWishlist().then(res => {
+      const data = res.data?.results || res.data || [];
+      setWishlist(Array.isArray(data) ? data : []);
+    });
+    // Fetch paymentHistory and student as needed
+  }, []);
 
   const handleFeedbackClick = (target, type) => {
     setFeedbackTarget(target || { title: 'Learning Management System' });

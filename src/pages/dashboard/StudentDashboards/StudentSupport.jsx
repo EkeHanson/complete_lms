@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Paper, Typography, Button, List, ListItem, Box, TextField, IconButton, CircularProgress, Snackbar, Alert
+  Paper, Typography, Button, List, ListItem, Box, TextField, IconButton, CircularProgress, Snackbar, Alert,
+  Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import './StudentSupport.css';
 import { API_BASE_URL, chatAPI } from '../../../config';
 
@@ -72,6 +74,7 @@ const StudentSupport = () => {
   const [courseDetails, setCourseDetails] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [expandedSessionId, setExpandedSessionId] = useState(null);
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -352,56 +355,73 @@ const StudentSupport = () => {
           <Typography variant="subtitle1" gutterBottom>
             Your Chat Sessions
           </Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            Select a session to continue or start a new chat.
-          </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleNewSession}
-            className="support-new-chat-button"
-            sx={{ mb: 1 }}
-            disabled={!sessionReady || connecting}
-          >
-            New Chat
-          </Button>
-          
-          {loadingSessions ? (
-            <Box display="flex" justifyContent="center">
-              <CircularProgress size={24} />
-            </Box>
-          ) : sessions.length === 0 ? (
+          {sessions.length === 0 ? (
             <Typography variant="body2" color="textSecondary">
               No chat sessions found
             </Typography>
           ) : (
-            <List>
-              {sessions.map(session => (
-                <ListItem
-                  key={session.id}
-                  selected={selectedSession?.id === session.id}
-                  button
-                  onClick={() => handleSelectSession(session)}
-                  className="support-session-item"
-                  disabled={!sessionReady || connecting}
-                  secondaryAction={
-                    <IconButton 
-                      edge="end" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(session.id);
-                      }}
-                      disabled={connecting}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  }
-                >
+            sessions.map(session => (
+              <Accordion
+                key={session.id}
+                expanded={expandedSessionId === session.id}
+                onChange={() => setExpandedSessionId(expandedSessionId === session.id ? null : session.id)}
+                sx={{ mb: 1 }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="body2" noWrap>
                     {session.title || 'Untitled'} • {new Date(session.created_at).toLocaleDateString()}
                   </Typography>
-                </ListItem>
-              ))}
-            </List>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <List>
+                    {(session.id === selectedSession?.id ? messages : session.messages || []).map((msg, idx) => (
+                      <ListItem
+                        key={idx}
+                        className={
+                          msg.sender === 'user'
+                            ? 'support-list-item-user'
+                            : msg.sender === 'system'
+                            ? 'support-list-item-system'
+                            : 'support-list-item-ai'
+                        }
+                        style={{
+                          justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                          display: 'flex'
+                        }}
+                      >
+                        <Box
+                          className={`support-message-box ${msg.sender}`}
+                          sx={{
+                            background: msg.sender === 'ai'
+                              ? '#e3f2fd'
+                              : msg.sender === 'user'
+                                ? '#f5f5f5'
+                                : '#fff3e0',
+                            color: msg.sender === 'ai'
+                              ? '#1976d2'
+                              : msg.sender === 'user'
+                                ? '#333'
+                                : '#f57c00',
+                            borderRadius: msg.sender === 'ai'
+                              ? '16px 0 16px 16px'
+                              : msg.sender === 'user'
+                                ? '0 16px 16px 16px'
+                                : '16px',
+                            maxWidth: '70%',
+                            textAlign: msg.sender === 'user' ? 'right' : 'left',
+                            alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                            marginLeft: msg.sender === 'user' ? 'auto' : 0,
+                            marginRight: msg.sender === 'ai' ? 'auto' : 0,
+                          }}
+                        >
+                          <Typography variant="body2">{msg.text}</Typography>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                </AccordionDetails>
+              </Accordion>
+            ))
           )}
         </Box>
         
