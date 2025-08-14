@@ -823,7 +823,10 @@ const StudentDashboard = () => {
                   edge="end"
                   onClick={handleProfileOpen}
                 >
-                  <Avatar src={dashboardData?.student?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg'} sx={{ width: 32, height: 32 }} />
+                  <Avatar
+                    src={dashboardData?.student?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg'}
+                    sx={{ width: 32, height: 32 }}
+                  />
                 </IconButton>
               </Box>
               <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
