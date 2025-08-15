@@ -627,6 +627,31 @@
     cursor: not-allowed;
 }
 
+/* Add this for responsive payment sections */
+.ad-sections-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+.ad-section {
+  min-width: 300px;
+  flex: 1 1 350px;
+  box-sizing: border-box;
+}
+.ad-table-responsive {
+  overflow-x: auto;
+}
+@media (max-width: 900px) {
+  .ad-sections-responsive {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .ad-section {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 @media (max-width: 480px) {
     .ad-container {
         padding: 10px;

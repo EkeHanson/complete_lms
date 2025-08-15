@@ -18,6 +18,7 @@ import { isSuperAdmin, userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAP
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { format, parseISO } from 'date-fns';
 import './AdminDashboard.css';
 
 dayjs.extend(relativeTime);
@@ -154,6 +155,9 @@ const AdminDashboard = () => {
   const [paymentGateways, setPaymentGateways] = useState([]);
   const [gatewayLoading, setGatewayLoading] = useState(false);
   const [gatewayError, setGatewayError] = useState('');
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState(null);
   const paymentMethodsSectionRef = useRef(null);
   const usersSectionRef = useRef(null);
   const coursesSectionRef = useRef(null);
@@ -294,6 +298,20 @@ const AdminDashboard = () => {
       }
     };
     fetchGateways();
+  }, []);
+
+  // Fetch schedules for dashboard (like in ScheduleManagement)
+  useEffect(() => {
+    setScheduleLoading(true);
+    scheduleAPI.getSchedules()
+      .then(res => {
+        setSchedules(res.data?.results || res.data || []);
+        setScheduleLoading(false);
+      })
+      .catch(err => {
+        setScheduleError(err.response?.data?.message || err.message || 'Failed to fetch schedules');
+        setScheduleLoading(false);
+      });
   }, []);
 
   const handleUserPageChange = (event, newPage) => {
@@ -639,7 +657,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Merged Messages Card */}
+        {/* Single Messages Card */}
         <div
           className="ad-card ad-card-clickable"
           style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
@@ -660,7 +678,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Merged Schedules Card */}
+        {/* Single Schedules Card */}
         <div
           className="ad-card ad-card-clickable"
           style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
@@ -673,11 +691,17 @@ const AdminDashboard = () => {
               <ScheduleIcon />
             </div>
           </div>
-          <h3>{totalSchedules}</h3>
+          <h3>
+            {scheduleLoading ? <span className="ad-spinner" /> : schedules.length}
+          </h3>
           <div className="ad-card-footer">
-            <span>{upcomingSchedules.length} upcoming</span>
+            <span>
+              {schedules.filter(s => new Date(s.start_time) > new Date()).length} upcoming
+            </span>
             <span className="ad-divider"></span>
-            <span>{recentActivities.filter(a => a.action_type === 'schedule').length} recent</span>
+            <span>
+              {schedules.filter(s => new Date(s.end_time) < new Date()).length} past
+            </span>
           </div>
         </div>
 
@@ -740,36 +764,6 @@ const AdminDashboard = () => {
             <span>{advertStats?.advertStats || 0} clicks</span>
             <span className="ad-divider"></span>
             <span>{(advertStats?.average_ctr || 0).toFixed(2)}% CTR</span>
-          </div>
-        </div>
-
-        <div className="ad-card">
-          <div className="ad-card-header">
-            <span>Messages</span>
-            <div className="ad-avatar">
-              <MessagesIcon />
-            </div>
-          </div>
-          <h3>{totalMessages}</h3>
-          <div className="ad-card-footer">
-            <span>{unreadMessages} unread</span>
-            <span className="ad-divider"></span>
-            <span>{recentActivities.filter(a => a.action_type === 'message').length} recent</span>
-          </div>
-        </div>
-
-        <div className="ad-card">
-          <div className="ad-card-header">
-            <span>Schedules</span>
-            <div className="ad-avatar">
-              <ScheduleIcon />
-            </div>
-          </div>
-          <h3>{totalSchedules}</h3>
-          <div className="ad-card-footer">
-            <span>{upcomingSchedules.length} upcoming</span>
-            <span className="ad-divider"></span>
-            <span>{recentActivities.filter(a => a.action_type === 'schedule').length} recent</span>
           </div>
         </div>
 
@@ -1170,9 +1164,10 @@ const AdminDashboard = () => {
 
         {activeTab === 2 && (
           <div className="ad-tab-content">
-            <div className="ad-grid">
+            {/* Make payment sections responsive */}
+            <div className="ad-sections-responsive">
               {/* Payment Methods Section */}
-              <div className="ad-section" ref={paymentMethodsSectionRef}>
+              <div className="ad-section" ref={paymentMethodsSectionRef} style={{ minWidth: 0, flex: 1 }}>
                 <h3>Payment Methods</h3>
                 {gatewayLoading ? (
                   <div className="ad-spinner" />
@@ -1181,71 +1176,75 @@ const AdminDashboard = () => {
                 ) : activeGateways.length === 0 ? (
                   <span className="ad-no-data">No active payment methods configured.</span>
                 ) : (
-                  <table className="ad-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Mode</th>
-                        <th>Config Keys</th>
-                        <th>Updated</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeGateways.map(gw => (
-                        <tr key={gw.id}>
-                          <td>{gw.name}</td>
-                          <td>{gw.description}</td>
-                          <td>
-                            {gw.is_test_mode ? (
-                              <span style={{ color: '#6366f1', fontWeight: 500 }}>Test</span>
-                            ) : (
-                              <span style={{ color: '#22c55e', fontWeight: 500 }}>Live</span>
-                            )}
-                          </td>
-                          <td>
-                            {gw.config
-                              ? Object.keys(gw.config).join(', ')
-                              : '—'}
-                          </td>
-                          <td>
-                            {gw.updated_at
-                              ? new Date(gw.updated_at).toLocaleString()
-                              : ''}
-                          </td>
+                  <div className="ad-table-responsive">
+                    <table className="ad-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Description</th>
+                          <th>Mode</th>
+                          <th>Config Keys</th>
+                          <th>Updated</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {activeGateways.map(gw => (
+                          <tr key={gw.id}>
+                            <td>{gw.name}</td>
+                            <td>{gw.description}</td>
+                            <td>
+                              {gw.is_test_mode ? (
+                                <span style={{ color: '#6366f1', fontWeight: 500 }}>Test</span>
+                              ) : (
+                                <span style={{ color: '#22c55e', fontWeight: 500 }}>Live</span>
+                              )}
+                            </td>
+                            <td>
+                              {gw.config
+                                ? Object.keys(gw.config).join(', ')
+                                : '—'}
+                            </td>
+                            <td>
+                              {gw.updated_at
+                                ? new Date(gw.updated_at).toLocaleString()
+                                : ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
-              <div className="ad-section">
+              <div className="ad-section" style={{ minWidth: 0, flex: 1 }}>
                 <h3>Recent Transactions</h3>
                 {paymentData?.recent_transactions?.length > 0 ? (
-                  <table className="ad-table">
-                    <thead>
-                      <tr>
-                        <th><span>Date</span></th>
-                        <th><span>User</span></th>
-                        <th><span>Amount</span></th>
-                        <th><span>Status</span></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paymentData.recent_transactions.map((tx) => (
-                        <tr key={tx.id}>
-                          <td>{new Date(tx.created_at).toLocaleDateString()}</td>
-                          <td>{tx.user_email}</td>
-                          <td>${tx.amount.toFixed(2)}</td>
-                          <td>
-                            <span className={`ad-chip ad-chip-${tx.status === 'completed' ? 'success' : tx.status === 'failed' ? 'error' : 'default'}`}>
-                              {tx.status}
-                            </span>
-                          </td>
+                  <div className="ad-table-responsive">
+                    <table className="ad-table">
+                      <thead>
+                        <tr>
+                          <th><span>Date</span></th>
+                          <th><span>User</span></th>
+                          <th><span>Amount</span></th>
+                          <th><span>Status</span></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {paymentData.recent_transactions.map((tx) => (
+                          <tr key={tx.id}>
+                            <td>{new Date(tx.created_at).toLocaleDateString()}</td>
+                            <td>{tx.user_email}</td>
+                            <td>${tx.amount.toFixed(2)}</td>
+                            <td>
+                              <span className={`ad-chip ad-chip-${tx.status === 'completed' ? 'success' : tx.status === 'failed' ? 'error' : 'default'}`}>
+                                {tx.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <span className="ad-no-data">No recent transactions</span>
                 )}
@@ -1372,16 +1371,43 @@ const AdminDashboard = () => {
                       <th><span>Title</span></th>
                       <th><span>Start Time</span></th>
                       <th><span>End Time</span></th>
-                      <th><span>Description</span></th>
+                      <th><span>Location</span></th>
+                      <th><span>Participants</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {upcomingSchedules.map((schedule) => (
                       <tr key={schedule.id}>
                         <td>{schedule.title}</td>
-                        <td>{new Date(schedule.start_time).toLocaleString()}</td>
-                        <td>{new Date(schedule.end_time).toLocaleString()}</td>
-                        <td>{schedule.description.substring(0, 50)}...</td>
+                        <td>{format(parseISO(schedule.start_time), 'MMM d, yyyy - h:mm a')}</td>
+                        <td>{format(parseISO(schedule.end_time), 'MMM d, yyyy - h:mm a')}</td>
+                        <td>
+                          {schedule.location ? (
+                            <a href={schedule.location} target="_blank" rel="noopener noreferrer">
+                              {schedule.location.length > 30
+                                ? schedule.location.slice(0, 30) + '...'
+                                : schedule.location}
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="ad-chip-container">
+                            {(schedule.participants || []).slice(0, 2).map((p, i) => (
+                              <span key={i} className="ad-chip">
+                                {p.user
+                                  ? `${p.user.first_name} ${p.user.last_name}`
+                                  : p.group?.name || ''}
+                              </span>
+                            ))}
+                            {(schedule.participants || []).length > 2 && (
+                              <span className="ad-chip">
+                                +{schedule.participants.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
