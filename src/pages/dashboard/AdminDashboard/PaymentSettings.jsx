@@ -17,6 +17,9 @@ function PaymentSettings() {
       try {
         const res = await paymentAPI.getAllGateways();
         setGateways(res.data);
+
+      
+
       } catch (err) {
         setError('Failed to fetch payment gateways.');
       } finally {
@@ -107,6 +110,8 @@ function PaymentSettings() {
       setGatewayLoading(false);
     }
   };
+
+  // console.log(gateways);
 
   return (
     <div className="ps-container">

@@ -126,10 +126,11 @@ function Admin() {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    navigate('/login');
-  };
+const handleLogout = () => {
+  localStorage.clear();      // Clears all localStorage data
+  sessionStorage.clear();    // (Optional) Clears all sessionStorage data
+  navigate('/login');
+};
 
   const menuItems = [
     { path: '/admin', name: 'Dashboard', icon: <DashboardIcon /> },

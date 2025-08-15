@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Refresh as RefreshIcon, People as UsersIcon, School as CoursesIcon,
   CreditCard as PaymentsIcon, Assessment as AnalyticsIcon,
@@ -13,16 +13,7 @@ import {
   Visibility as VisibilityIcon, Search as SearchIcon, FilterList as FilterIcon,
   Add as AddIcon
 } from '@mui/icons-material';
-import { 
-  Box, Typography, Button, Paper, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, Dialog, DialogTitle, 
-  DialogContent, DialogActions, TextField, MenuItem, Snackbar, 
-  Tooltip, Link, Chip, Autocomplete, Checkbox, FormControlLabel, 
-  FormGroup, Divider, useMediaQuery, IconButton, Stack, 
-  Collapse, Card, CardContent, CardActions, List, ListItem, 
-  ListItemText, ListItemAvatar, Avatar, TablePagination, Grid,
-  LinearProgress, CircularProgress, Badge,
-} from '@mui/material';
+import { TablePagination} from '@mui/material';
 import { isSuperAdmin, userAPI, coursesAPI, paymentAPI, messagingAPI, scheduleAPI, groupsAPI, advertAPI } from '../../../config';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -160,59 +151,38 @@ const AdminDashboard = () => {
   const [groupStats, setGroupStats] = useState(null);
   const [certificateStats, setCertificateStats] = useState(null);
   const [advertStats, setAdvertStats] = useState(null);
+  const [paymentGateways, setPaymentGateways] = useState([]);
+  const [gatewayLoading, setGatewayLoading] = useState(false);
+  const [gatewayError, setGatewayError] = useState('');
+  const paymentMethodsSectionRef = useRef(null);
+  const usersSectionRef = useRef(null);
+  const coursesSectionRef = useRef(null);
+  const messagesSectionRef = useRef(null);   // Add this ref
+  const schedulesSectionRef = useRef(null);  // Add this ref
+  const groupsSectionRef = useRef(null);     // Add this ref
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [
-        userStats,
-        courseStats,
-        recentUsersRes,
-        popularCoursesRes,
-        activitiesRes,
-        messagesRes,
-        schedulesRes,
-        paymentsRes,
-        groupsRes,
-        certificatesRes,
-        advertsRes,
-        totalMessagesRes,
-        totalSchedulesRes,
-        faqStatsRes
-      ] = await Promise.all([
-        userAPI.getUserStats(),
-        coursesAPI.getCourses(),
+      // Only fetch users and courses (remove stats, certificates, adverts, faqs, etc.)
+      await Promise.all([
         fetchUsers(1, usersPerPage, userFilters),
-        fetchCourses(1, coursesPerPage, courseFilters),
-        userAPI.getUserActivities({ limit: 10 }),
-        messagingAPI.getUnreadCount(),
-        scheduleAPI.getUpcomingSchedules(),
-        paymentAPI.getPaymentConfig(),
-        groupsAPI.getGroups({ limit: 10 }),
-        coursesAPI.getCertificates(),
-        advertAPI.getAdverts(),
-        messagingAPI.getTotalMessages(),
-        scheduleAPI.getTotalSchedules(),
-        coursesAPI.getFAQStats()
+        fetchCourses(1, coursesPerPage, courseFilters)
       ]);
-
-      setStats({
-        users: userStats.data,
-        courses: courseStats.data
-      });
-      setRecentActivities(activitiesRes.data.results);
-      setUnreadMessages(messagesRes.data.count);
-      setTotalMessages(totalMessagesRes.data.total_messages);
-      setUpcomingSchedules(schedulesRes.data);
-      setTotalSchedules(totalSchedulesRes.data.total_schedule);
-      setPaymentData(paymentsRes.data);
-      setGroupStats(groupsRes.data);
-      setCertificateStats(certificatesRes.data);
-      setAdvertStats(advertsRes.data);
-      setFAQStats(faqStatsRes.data);
+      // Optionally, set dummy data for removed stats if needed for UI
+      setStats(null);
+      setRecentActivities([]);
+      setUnreadMessages(0);
+      setTotalMessages(0);
+      setUpcomingSchedules([]);
+      setTotalSchedules(0);
+      setPaymentData(null);
+      setGroupStats(null);
+      setCertificateStats(null);
+      setAdvertStats(null);
+      setFAQStats(null);
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
@@ -279,6 +249,52 @@ const AdminDashboard = () => {
       setCourseLoading(false);
     }
   };
+
+  const fetchMessages = async () => {
+    try {
+      // You can add filters/pagination as needed
+      const [messagesRes, unreadRes] = await Promise.all([
+        messagingAPI.getMessages({ page: 1, page_size: 10 }),
+        messagingAPI.getUnreadCount()
+      ]);
+      setTotalMessages(messagesRes.data.count || 0);
+      setUnreadMessages(unreadRes.data.count || 0);
+    } catch (err) {
+      setTotalMessages(0);
+      setUnreadMessages(0);
+    }
+  };
+
+  const fetchSchedules = async () => {
+    try {
+      const schedulesRes = await scheduleAPI.getSchedules();
+      setTotalSchedules(schedulesRes.data.count || schedulesRes.data.length || 0);
+      setUpcomingSchedules(
+        (schedulesRes.data.results || schedulesRes.data || []).filter(
+          s => new Date(s.start_time) > new Date()
+        )
+      );
+    } catch (err) {
+      setTotalSchedules(0);
+      setUpcomingSchedules([]);
+    }
+  };
+
+  // Fetch payment gateways for dashboard summary and tab
+  useEffect(() => {
+    const fetchGateways = async () => {
+      setGatewayLoading(true);
+      try {
+        const res = await paymentAPI.getAllGateways();
+        setPaymentGateways(res.data);
+      } catch (err) {
+        setGatewayError('Failed to fetch payment gateways.');
+      } finally {
+        setGatewayLoading(false);
+      }
+    };
+    fetchGateways();
+  }, []);
 
   const handleUserPageChange = (event, newPage) => {
     fetchUsers(newPage + 1, usersPerPage, userFilters);
@@ -433,10 +449,72 @@ const AdminDashboard = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
+  // Card click handler: scroll to Payment Methods section in Payments tab
+  const handlePaymentCardClick = () => {
+    setActiveTab(2);
+    setTimeout(() => {
+      if (paymentMethodsSectionRef.current) {
+        paymentMethodsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Card click handler: scroll to Users section/table
+  const handleUsersCardClick = () => {
+    setActiveTab(0);
+    setTimeout(() => {
+      if (usersSectionRef.current) {
+        usersSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Card click handler: scroll to Courses section/table
+  const handleCoursesCardClick = () => {
+    setActiveTab(1);
+    setTimeout(() => {
+      if (coursesSectionRef.current) {
+        coursesSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Card click handler: scroll to Messages section
+  const handleMessagesCardClick = () => {
+    setActiveTab(4);
+    setTimeout(() => {
+      if (messagesSectionRef.current) {
+        messagesSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Card click handler: scroll to Schedules section
+  const handleSchedulesCardClick = () => {
+    setActiveTab(5);
+    setTimeout(() => {
+      if (schedulesSectionRef.current) {
+        schedulesSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Card click handler: scroll to Groups section
+  const handleGroupsCardClick = () => {
+    setActiveTab(0); // Assuming groups table is in Users tab, change if needed
+    setTimeout(() => {
+      if (groupsSectionRef.current) {
+        groupsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
   useEffect(() => {
     fetchDashboardData();
     fetchUsers(1, usersPerPage, userFilters);
     fetchCourses(1, coursesPerPage, courseFilters);
+    fetchMessages();   // <-- add this
+    fetchSchedules();  // <-- add this
   }, []);
 
   if (loading && !stats) {
@@ -459,6 +537,9 @@ const AdminDashboard = () => {
       </div>
     );
   }
+
+  // Helper: get active gateways
+  const activeGateways = paymentGateways.filter(g => g.is_active);
 
   return (
     <div className="ad-container">
@@ -491,33 +572,112 @@ const AdminDashboard = () => {
       {loading && <div className="ad-progress-bar"></div>}
 
       <div className="ad-grid">
-        <div className="ad-card">
+        {/* Users Card */}
+        <div
+          className="ad-card ad-card-clickable"
+          style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+          onClick={handleUsersCardClick}
+          title="View all users"
+        >
           <div className="ad-card-header">
             <span>Total Users</span>
             <div className="ad-avatar">
               <UsersIcon />
             </div>
           </div>
-          <h3>{stats?.users?.total_users || 0}</h3>
+          <h3>{userPagination.count || 0}</h3>
           <div className="ad-card-footer">
-            <span>{stats?.users?.active_users || 0} active</span>
+            <span>
+              {users.filter(u => u.status === 'active').length} active
+            </span>
             <span className="ad-divider"></span>
-            <span>{stats?.users?.new_users_today || 0} new today</span>
+            <span>— new today</span>
           </div>
         </div>
 
-        <div className="ad-card">
+        {/* Courses Card */}
+        <div
+          className="ad-card ad-card-clickable"
+          style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+          onClick={handleCoursesCardClick}
+          title="View all courses"
+        >
           <div className="ad-card-header">
             <span>Total Courses</span>
             <div className="ad-avatar">
               <CoursesIcon />
             </div>
           </div>
-          <h3>{stats?.courses?.count || 0}</h3>
+          <h3>{coursePagination.count || 0}</h3>
           <div className="ad-card-footer">
-            <span>{stats?.courses?.active_courses || 0} active</span>
+            <span>
+              {courses.filter(c => c.status === 'Published').length} published
+            </span>
             <span className="ad-divider"></span>
-            <span>{stats?.courses?.total_all_enrollments || 0} enrollments</span>
+            <span>{courses.reduce((acc, c) => acc + (c.enrollment_count || 0), 0)} enrollments</span>
+          </div>
+        </div>
+
+        {/* Groups Card */}
+        <div
+          className="ad-card ad-card-clickable"
+          style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+          onClick={handleGroupsCardClick}
+          title="View all groups"
+        >
+          <div className="ad-card-header">
+            <span>Total Groups</span>
+            <div className="ad-avatar">
+              <GroupsIcon />
+            </div>
+          </div>
+          <h3>{groupStats?.count || 0}</h3>
+          <div className="ad-card-footer">
+            <span>{groupStats?.results?.reduce((acc, group) => acc + (group.member_count || 0), 0) || 0} members</span>
+            <span className="ad-divider"></span>
+            <span>{groupStats?.results?.filter(g => g.is_active).length || 0} active</span>
+          </div>
+        </div>
+
+        {/* Merged Messages Card */}
+        <div
+          className="ad-card ad-card-clickable"
+          style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+          onClick={handleMessagesCardClick}
+          title="View all messages"
+        >
+          <div className="ad-card-header">
+            <span>Messages</span>
+            <div className="ad-avatar">
+              <MessagesIcon />
+            </div>
+          </div>
+          <h3>{totalMessages}</h3>
+          <div className="ad-card-footer">
+            <span>{unreadMessages} unread</span>
+            <span className="ad-divider"></span>
+            <span>{recentActivities.filter(a => a.action_type === 'message').length} recent</span>
+          </div>
+        </div>
+
+        {/* Merged Schedules Card */}
+        <div
+          className="ad-card ad-card-clickable"
+          style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+          onClick={handleSchedulesCardClick}
+          title="View all schedules"
+        >
+          <div className="ad-card-header">
+            <span>Schedules</span>
+            <div className="ad-avatar">
+              <ScheduleIcon />
+            </div>
+          </div>
+          <h3>{totalSchedules}</h3>
+          <div className="ad-card-footer">
+            <span>{upcomingSchedules.length} upcoming</span>
+            <span className="ad-divider"></span>
+            <span>{recentActivities.filter(a => a.action_type === 'schedule').length} recent</span>
           </div>
         </div>
 
@@ -657,6 +817,33 @@ const AdminDashboard = () => {
             <span>{faqStats?.inactive_faqs || 0} inactive</span>
           </div>
         </div>
+
+        {/* Payment Gateway Summary Card (visible to super admin) */}
+        {isSuperAdmin() && (
+          <div
+            className="ad-card ad-card-clickable"
+            style={{ border: '2px solid #6366f1', cursor: 'pointer' }}
+            onClick={handlePaymentCardClick}
+            title="View configured payment methods"
+          >
+            <div className="ad-card-header">
+              <span>Payment Methods</span>
+              <div className="ad-avatar">
+                <PaymentsIcon />
+              </div>
+            </div>
+            <h3>{gatewayLoading ? <span className="ad-spinner" /> : activeGateways.length}</h3>
+            <div className="ad-card-footer">
+              <span>
+                {activeGateways.length === 1
+                  ? '1 active method'
+                  : `${activeGateways.length} active methods`}
+              </span>
+              <span className="ad-divider"></span>
+              <span>Click to view details</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="ad-tabs-container">
@@ -843,11 +1030,14 @@ const AdminDashboard = () => {
                 onRowsPerPageChange={handleUsersPerPageChange}
               />
             </div>
+            <div ref={groupsSectionRef}>
+              {/* Groups Table Section (if you have a groups table, place it here) */}
+            </div>
           </div>
         )}
 
         {activeTab === 1 && (
-          <div className="ad-tab-content">
+          <div className="ad-tab-content" ref={coursesSectionRef}>
             <div className="ad-filter-container">
               <div className="ad-filter-grid">
                 <div className="ad-search-input">
@@ -981,25 +1171,52 @@ const AdminDashboard = () => {
         {activeTab === 2 && (
           <div className="ad-tab-content">
             <div className="ad-grid">
-              <div className="ad-section">
+              {/* Payment Methods Section */}
+              <div className="ad-section" ref={paymentMethodsSectionRef}>
                 <h3>Payment Methods</h3>
-                {paymentData?.active_payment_methods?.length > 0 ? (
-                  <div className="ad-list">
-                    {paymentData.active_payment_methods.map((method) => (
-                      <div key={method.name} className="ad-list-item">
-                        <div className="ad-avatar">{method.name[0]}</div>
-                        <div className="ad-list-item-content">
-                          <span>{method.name}</span>
-                          <span className="ad-text-secondary">{method.transaction_count} transactions • ${method.total_amount?.toLocaleString()}</span>
-                        </div>
-                        <span className={`ad-chip ad-chip-${method.is_live ? 'success' : 'default'}`}>
-                          {method.is_live ? 'Live' : 'Test'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                {gatewayLoading ? (
+                  <div className="ad-spinner" />
+                ) : gatewayError ? (
+                  <span className="ad-no-data">{gatewayError}</span>
+                ) : activeGateways.length === 0 ? (
+                  <span className="ad-no-data">No active payment methods configured.</span>
                 ) : (
-                  <span className="ad-no-data">No payment methods configured</span>
+                  <table className="ad-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Mode</th>
+                        <th>Config Keys</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeGateways.map(gw => (
+                        <tr key={gw.id}>
+                          <td>{gw.name}</td>
+                          <td>{gw.description}</td>
+                          <td>
+                            {gw.is_test_mode ? (
+                              <span style={{ color: '#6366f1', fontWeight: 500 }}>Test</span>
+                            ) : (
+                              <span style={{ color: '#22c55e', fontWeight: 500 }}>Live</span>
+                            )}
+                          </td>
+                          <td>
+                            {gw.config
+                              ? Object.keys(gw.config).join(', ')
+                              : '—'}
+                          </td>
+                          <td>
+                            {gw.updated_at
+                              ? new Date(gw.updated_at).toLocaleString()
+                              : ''}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
               <div className="ad-section">
@@ -1083,7 +1300,7 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 4 && (
-          <div className="ad-tab-content">
+          <div className="ad-tab-content" ref={messagesSectionRef}>
             <h2>Messages Overview</h2>
             <div className="ad-grid">
               <div className="ad-card">
@@ -1130,7 +1347,7 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 5 && (
-          <div className="ad-tab-content">
+          <div className="ad-tab-content" ref={schedulesSectionRef}>
             <h2>Schedules Overview</h2>
             <div className="ad-grid">
               <div className="ad-card">
