@@ -545,7 +545,7 @@ const ContentUsageDashboard = () => {
               </div>
             </div>
           </div>
-
+{/* 
           <div className="cud-sidebar">
             <h3>Recent User Activity</h3>
             <div className="cud-activity-list">
@@ -561,7 +561,7 @@ const ContentUsageDashboard = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </LocalizationProvider>

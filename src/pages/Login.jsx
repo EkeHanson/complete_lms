@@ -1,25 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Link,
-  Paper,
-  IconButton,
-  InputAdornment,
-  CircularProgress,
-  useTheme,
-  useMediaQuery,
-  Alert,
-  AlertTitle,
-} from '@mui/material';
-import {
-  Email as EmailIcon,
-  Lock as PasswordIcon,
-  Visibility as ShowPasswordIcon,
-  VisibilityOff as HidePasswordIcon,
+  Box, Container, Typography, TextField,  Button, Link, Paper,
+  IconButton,InputAdornment,  CircularProgress,useTheme,
+  useMediaQuery,Alert,  AlertTitle,} from '@mui/material';
+import {  Email as EmailIcon,  Lock as PasswordIcon,
+  Visibility as ShowPasswordIcon,  VisibilityOff as HidePasswordIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -65,9 +50,9 @@ const Login = () => {
 
   useEffect(() => {
     if (user && !authLoading) {
-      console.log('User authenticated:', user);
+      //console.log('User authenticated:', user);
       const route = getDashboardRoute();
-      console.log('Navigating to:', route);
+      //console.log('Navigating to:', route);
       if (route === '/login') {
         setErrors((prev) => ({
           ...prev,
@@ -136,9 +121,9 @@ const Login = () => {
     setRemainingAttempts(null); // Reset remaining attempts on new submission
     try {
       const response = await login(formData);
-      console.log('Login response:', response.data);
+      //console.log('Login response:', response.data);
       const validateResponse = await authAPI.verifyToken();
-      console.log('Token validation response:', validateResponse.data);
+     // console.log('Token validation response:', validateResponse.data);
     } catch (error) {
       console.error('Login error details:', {
         message: error.message,

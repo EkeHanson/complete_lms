@@ -198,7 +198,7 @@ const Messaging = () => {
 
   const handleOpenDialog = (message = null, reply = false, forward = false) => {
     if (messageTypesLoading) return; // Prevent opening until messageTypes are loaded
-    console.log("Opening dialog, messageTypes:", messageTypes);
+   // console.log("Opening dialog, messageTypes:", messageTypes);
     const defaultMessage = { 
       subject: '', 
       message_type: messageTypes.length > 0 ? messageTypes[0].id : null, 

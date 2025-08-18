@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       return '/login';
     }
     const role = user.role?.toLowerCase();
-    console.log('User role in getDashboardRoute:', role);
+   // console.log('User role in getDashboardRoute:', role);
     switch (role) {
       case 'admin':
       case 'super_admin':
@@ -154,7 +154,7 @@ export const AuthProvider = ({ children }) => {
       case 'eqa_auditor':
         return '/iqa';
       default:
-        console.warn('Unknown role:', role);
+       // console.warn('Unknown role:', role);
         return '/dashboard';
     }
   };

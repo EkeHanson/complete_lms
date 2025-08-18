@@ -951,6 +951,44 @@ export const instructorAPI = {
   // ...add other instructor API methods here as needed...
 };
 
+// SCORM API
+export const scormAPI = {
+  // Upload a SCORM package for a course
+  uploadPackage: (courseId, formData) =>
+    api.post(`/api/courses/courses/${courseId}/scorm/upload/`, formData, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+    }),
+
+  // Launch SCORM player for a course
+  launch: (courseId) =>
+    api.get(`/api/courses/courses/${courseId}/scorm/launch/`),
+
+  // Get SCORM player iframe or player data
+  getPlayer: (courseId) =>
+    api.get(`/api/courses/courses/${courseId}/scorm/player/`),
+
+  // Track SCORM progress for a course
+  track: (courseId, data) =>
+    api.post(`/api/courses/courses/${courseId}/scorm/track/`, data, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'application/json' },
+    }),
+  
+      // Add this to your scormAPI:
+  uploadNewPackage: (formData) =>
+    api.post(`/api/courses/scorm/upload/`, formData, {
+      headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+    }),
+    createCourse: (formData) =>
+  api.post('/api/courses/scorm/create/', formData, {
+    headers: { 'X-CSRFToken': getCSRFToken(), 'Content-Type': 'multipart/form-data' },
+  }),
+
+    exportPackage: (courseId) =>
+    api.get(`/api/courses/courses/${courseId}/scorm/export/`, {
+      responseType: 'blob', // Important for file downloads
+    }),
+    
+};
 
 export default {
   API_BASE_URL,

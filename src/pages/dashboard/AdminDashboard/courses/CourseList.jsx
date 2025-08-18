@@ -4,7 +4,7 @@ import Warning from '@mui/icons-material/Warning';
 import {
   Edit, Visibility, Search, FilterList, Refresh,
   PersonAdd, GroupAdd, UploadFile, Person, Groups, Description,
-  CheckBoxOutlineBlank, CheckBox, Delete
+  CheckBoxOutlineBlank, CheckBox, Delete, CloudUpload
 } from '@mui/icons-material';
 import CheckCircle from '@mui/icons-material/CheckCircle';
 import { Tooltip } from '@mui/material';
@@ -12,36 +12,29 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { coursesAPI, userAPI } from '../../../../config';
+import { coursesAPI, userAPI, scormAPI } from '../../../../config';
+import OpenInNew from '@mui/icons-material/OpenInNew';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
+import Dialog from '@mui/material/Dialog';
+import { resolveMediaUrl } from './utils/media';
+import { API_BASE_URL } from '../../../../config';
+import SCORMPlayer from './SCORMPlayer';
+import CircularProgress from '@mui/material/CircularProgress';
 
-// const NotificationModal = ({ messages, onClose }) => {
-//   return (
-//     <div className="notification-modal" role="dialog" onClick={onClose}>
-//       <div className="modal-overlay" onClick={(e) => e.stopPropagation()}></div>
-//       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-//         <div className="modal-header">
-//           <h3>Notifications</h3>
-//           <button className="close-btn" onClick={onClose} aria-label="Close">
-//             <Warning className="icon" />
-//           </button>
-//         </div>
-//         <div className="modal-body">
-//           {messages.map((msg, index) => (
-//             <div key={index} className={`notification ${msg.type}`}>
-//               {msg.type === 'error' ? <Warning className="icon" /> : <CheckCircle className="icon" />}
-//               {msg.text}
-//             </div>
-//           ))}
-//         </div>
-//         <div className="modal-actions">
-//           <button className="action-btn primary" onClick={onClose}>
-//             Close
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
+// Helper to normalize URLs for iframe usage
+const normalizeUrl = (url) => {
+  if (!url) return '';
+  // If already absolute, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // If relative to /media, prepend API base
+  if (url.startsWith('/media/')) {
+    // Import API_BASE_URL if not already imported
+    // import { API_BASE_URL } from '../../../../config';
+    return `${API_BASE_URL}${url}`;
+  }
+  return url;
+};
+
 
 const CourseList = () => {
   const navigate = useNavigate();
@@ -77,6 +70,38 @@ const CourseList = () => {
   const [fileData, setFileData] = useState([]);
   const [fileError, setFileError] = useState(null);
   const [searchUserTerm, setSearchUserTerm] = useState('');
+
+  const [scormDialogOpen, setScormDialogOpen] = useState(false);
+  const [scormFile, setScormFile] = useState(null);
+  const [scormUploading, setScormUploading] = useState(false);
+  const [scormUploadError, setScormUploadError] = useState(null);
+
+  const [newScormDialogOpen, setNewScormDialogOpen] = useState(false);
+  const [newScormFile, setNewScormFile] = useState(null);
+  const [newScormUploading, setNewScormUploading] = useState(false);
+  const [exportingScormId, setExportingScormId] = useState(null);
+  const [newScormUploadError, setNewScormUploadError] = useState(null);
+  const [newScormCategory, setNewScormCategory] = useState('');
+  const [newScormPrice, setNewScormPrice] = useState('');
+  const [newScormTitle, setNewScormTitle] = useState('');
+  const [newScormDescription, setNewScormDescription] = useState('');
+
+  const [scormDetailsDialogOpen, setScormDetailsDialogOpen] = useState(false);
+  const [scormDetails, setScormDetails] = useState(null);
+  const [scormDetailsLoading, setScormDetailsLoading] = useState(false);
+  const [scormDetailsError, setScormDetailsError] = useState(null);
+
+  const [scormPlayerCourseId, setScormPlayerCourseId] = useState(null);
+
+  // Add this ref for the SCORM player container
+  const scormPlayerRef = useRef(null);
+
+  // Scroll to the SCORM player when it is shown
+  useEffect(() => {
+    if (scormPlayerCourseId && scormPlayerRef.current) {
+      scormPlayerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [scormPlayerCourseId]);
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
@@ -481,6 +506,140 @@ const handleBulkEnrollSubmit = async () => {
     setNotificationMessages([]);
   };
 
+  // Handle SCORM file selection
+  const handleScormFileChange = (e) => {
+    setScormFile(e.target.files[0]);
+    setScormUploadError(null);
+  };
+
+  // Handle SCORM upload
+  const handleScormUpload = async () => {
+    if (!scormFile) {
+      setScormUploadError('Please select a SCORM .zip file');
+      return;
+    }
+    setScormUploading(true);
+    setScormUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('scorm_package', scormFile);
+      // Optionally: formData.append('course_id', selectedCourseId); // for attaching to existing
+      const response = await coursesAPI.uploadScorm(formData); // Implement this API call
+      showNotification('success', 'SCORM package uploaded and processed');
+      setScormDialogOpen(false);
+      setScormFile(null);
+      // Refresh course list
+      const params = { page: 1, page_size: 1000 };
+      const responseCourses = await coursesAPI.getCourses(params);
+      setAllCourses(responseCourses.data.results || []);
+      setTotalCourses(responseCourses.data.count || 0);
+    } catch (err) {
+      setScormUploadError(err.response?.data?.message || err.message || 'Failed to upload SCORM');
+      showNotification('error', err.response?.data?.message || err.message || 'Failed to upload SCORM');
+    } finally {
+      setScormUploading(false);
+    }
+  };
+
+  // Handle new SCORM upload
+  const handleNewScormFileChange = (e) => {
+    setNewScormFile(e.target.files[0]);
+    setNewScormUploadError(null);
+  };
+
+  // Handle new SCORM upload
+  const handleNewScormUpload = async () => {
+    if (!newScormFile) {
+      setNewScormUploadError('Please select a SCORM .zip file');
+      return;
+    }
+    setNewScormUploading(true);
+    setNewScormUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('scorm_package', newScormFile);
+      if (newScormCategory) formData.append('category', newScormCategory);
+      if (newScormPrice) formData.append('price', newScormPrice);
+      if (newScormTitle) formData.append('title', newScormTitle);
+      if (newScormDescription) formData.append('description', newScormDescription);
+
+      // POST to /api/courses/scorm/create/
+      await scormAPI.createCourse(formData); // You must implement this API call in your scormAPI
+
+      showNotification('success', 'New SCORM course created and processed');
+      setNewScormDialogOpen(false);
+      setNewScormFile(null);
+      setNewScormCategory('');
+      setNewScormPrice('');
+      setNewScormTitle('');
+      setNewScormDescription('');
+      // Refresh course list
+      const params = { page: 1, page_size: 1000 };
+      const responseCourses = await coursesAPI.getCourses(params);
+      setAllCourses(responseCourses.data.results || []);
+      setTotalCourses(responseCourses.data.count || 0);
+    } catch (err) {
+      let customMessage = 'Failed to upload SCORM';
+      // Check for duplicate error from backend
+      if (
+        err.response?.data?.detail &&
+        err.response.data.detail.toLowerCase().includes('already exists')
+      ) {
+        customMessage = 'A course with this title or slug already exists. Please use a different title or check for duplicates.';
+      } else if (err.response?.data?.detail) {
+        customMessage = err.response.data.detail;
+      } else if (err.message) {
+        customMessage = err.message;
+      }
+      setNewScormUploadError(customMessage);
+      showNotification('error', customMessage);
+    } finally {
+      setNewScormUploading(false);
+    }
+  };
+
+  const handleViewScormDetails = async (courseId) => {
+    setScormDetailsDialogOpen(true);
+    setScormDetails(null);
+    setScormDetailsError(null);
+    setScormDetailsLoading(true);
+    try {
+      const response = await coursesAPI.getCourse(courseId);
+      setScormDetails(response.data);
+    } catch (err) {
+      setScormDetailsError(err.response?.data?.detail || err.message || 'Failed to fetch details');
+    } finally {
+      setScormDetailsLoading(false);
+    }
+  };
+
+  const handleLaunchScormPlayer = (courseId) => {
+    setScormPlayerCourseId(courseId);
+  };
+
+  // Collect unique categories for dropdown
+  const uniqueCategories = Array.from(new Set(allCourses.map(c => c.category?.name).filter(Boolean)));
+
+  // Update handleExportScorm to use the loader
+  const handleExportScorm = async (courseId, courseTitle) => {
+    setExportingScormId(courseId);
+    try {
+      const response = await scormAPI.exportPackage(courseId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${courseTitle || 'course'}_scorm.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showNotification('success', 'SCORM package exported successfully');
+    } catch (err) {
+      showNotification('error', err.response?.data?.message || err.message || 'Failed to export SCORM package');
+    } finally {
+      setExportingScormId(null);
+    }
+  };
+
   return (
     <div className="CourseList">
       {/* {isNotificationOpen && (
@@ -516,6 +675,9 @@ const handleBulkEnrollSubmit = async () => {
             </button>
             <button className="filter-btn" onClick={resetFilters}>
               <Refresh className="icon" /> Reset
+            </button>
+            <button className="filter-btn" onClick={() => setNewScormDialogOpen(true)}>
+              <CloudUpload className="icon" /> Upload New SCORM Course
             </button>
           </div>
         </div>
@@ -677,11 +839,47 @@ const handleBulkEnrollSubmit = async () => {
                           <Visibility className="icon" />
                         </button>
                       </Tooltip>
+                      {/* Add this block for SCORM courses */}
+                      {course.course_type === 'scorm' && (
+                        <>
+                          <Tooltip title="View SCORM Details" placement="top">
+                            <button
+                              onClick={() => handleViewScormDetails(course.id)}
+                              aria-label={`View SCORM details for ${course.title}`}
+                            >
+                              <InfoOutlined className="icon" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip title="Launch SCORM Player" placement="top">
+                            <button
+                              onClick={() => handleLaunchScormPlayer(course.id)}
+                              aria-label={`Launch SCORM player for ${course.title}`}
+                            >
+                              <OpenInNew className="icon" />
+                            </button>
+                          </Tooltip>
+                        </>
+                      )}
                       <Tooltip title="Delete course" placement="top">
                         <button onClick={() => handleDelete(course.id)} aria-label={`Delete ${course.title}`}>
                           <Delete className="icon" style={{ color: '#b91c1c' }} />
                         </button>
                       </Tooltip>
+                      {course.course_type !== 'scorm' && (
+                        <Tooltip title="Export as SCORM Package" placement="top">
+                          <button
+                            onClick={() => handleExportScorm(course.id, course.title)}
+                            aria-label={`Export ${course.title} as SCORM`}
+                            disabled={exportingScormId === course.id}
+                          >
+                            {exportingScormId === course.id ? (
+                              <CircularProgress size={24} />
+                            ) : (
+                              <CloudUpload className="icon" />
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -945,6 +1143,123 @@ const handleBulkEnrollSubmit = async () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {scormDialogOpen && (
+        <div className="scorm-upload-dialog" role="dialog" onClick={e => e.target === e.currentTarget && setScormDialogOpen(false)}>
+          <div className="dialog-content" onClick={e => e.stopPropagation()}>
+            <h3><CloudUpload className="icon" /> Upload SCORM Package</h3>
+            <input
+              type="file"
+              accept=".zip"
+              onChange={handleScormFileChange}
+              disabled={scormUploading}
+            />
+            {scormUploadError && <div className="error-message">{scormUploadError}</div>}
+            <div className="dialog-actions">
+              <button className="action-btn" onClick={() => setScormDialogOpen(false)}>Cancel</button>
+              <button
+                className="action-btn primary"
+                onClick={handleScormUpload}
+                disabled={scormUploading || !scormFile}
+              >
+                {scormUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {newScormDialogOpen && (
+        <div className="scorm-upload-dialog" role="dialog" onClick={e => e.target === e.currentTarget && setNewScormDialogOpen(false)}>
+          <div className="dialog-content" onClick={e => e.stopPropagation()}>
+            <h3><CloudUpload className="icon" /> Upload New SCORM Course</h3>
+            <input
+              type="file"
+              accept=".zip"
+              onChange={handleNewScormFileChange}
+              disabled={newScormUploading}
+            />
+            <input
+              type="text"
+              placeholder="Course Title (optional, will use SCORM title if blank)"
+              value={newScormTitle}
+              onChange={e => setNewScormTitle(e.target.value)}
+              disabled={newScormUploading}
+              style={{ marginTop: 8, width: '100%' }}
+            />
+            <textarea
+              placeholder="Course Description (optional)"
+              value={newScormDescription}
+              onChange={e => setNewScormDescription(e.target.value)}
+              disabled={newScormUploading}
+              style={{ marginTop: 8, width: '100%' }}
+            />
+            <select
+              value={newScormCategory}
+              onChange={e => setNewScormCategory(e.target.value)}
+              disabled={newScormUploading}
+              style={{ marginTop: 8, width: '100%' }}
+            >
+              <option value="">Select Category (optional)</option>
+              {uniqueCategories.map(categoryName => (
+                <option key={categoryName} value={categoryName}>{categoryName}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              placeholder="Price (optional)"
+              value={newScormPrice}
+              onChange={e => setNewScormPrice(e.target.value)}
+              disabled={newScormUploading}
+              style={{ marginTop: 8, width: '100%' }}
+            />
+            {newScormUploadError && <div className="error-message">{newScormUploadError}</div>}
+            <div className="dialog-actions">
+              <button className="action-btn" onClick={() => setNewScormDialogOpen(false)}>Cancel</button>
+              <button
+                className="action-btn primary"
+                onClick={handleNewScormUpload}
+                disabled={newScormUploading || !newScormFile}
+              >
+                {newScormUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {scormDetailsDialogOpen && (
+        <div className="scorm-details-dialog" role="dialog" onClick={e => e.target === e.currentTarget && setScormDetailsDialogOpen(false)}>
+          <div className="dialog-content" onClick={e => e.stopPropagation()}>
+            <h3><InfoOutlined className="icon" /> SCORM Course Details</h3>
+            {scormDetailsLoading ? (
+              <div>Loading...</div>
+            ) : scormDetailsError ? (
+              <div className="error-message">{scormDetailsError}</div>
+            ) : scormDetails ? (
+              <div>
+                <div><strong>Title:</strong> {scormDetails.title}</div>
+                <div><strong>Description:</strong> {scormDetails.description || 'No description'}</div>
+                <div><strong>SCORM Launch File:</strong> {scormDetails.scorm_launch_path || 'N/A'}</div>
+                <div><strong>Status:</strong> {scormDetails.status}</div>
+                {/* Add more fields as needed */}
+              </div>
+            ) : null}
+            <div className="dialog-actions">
+              <button className="action-btn" onClick={() => setScormDetailsDialogOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {scormPlayerCourseId && (
+        <div ref={scormPlayerRef}>
+          <button
+            className="action-btn"
+            style={{ marginBottom: 16 }}
+            onClick={() => setScormPlayerCourseId(null)}
+          >
+            Back to Course List
+          </button>
+          <SCORMPlayer courseId={scormPlayerCourseId} />
         </div>
       )}
     </div>

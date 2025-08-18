@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './CourseView.css';
 import {
   ArrowBack, Edit, People, Schedule, MonetizationOn, Assessment,
-  VideoLibrary, Quiz, Assignment, PictureAsPdf, Description, Image, Link, Slideshow, YouTube, InsertDriveFile
+  VideoLibrary, Quiz, Assignment, PictureAsPdf, Description, Image, Link, Slideshow, YouTube, InsertDriveFile, CloudUpload
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { coursesAPI } from '../../../../config';
 import { Document, Page } from 'react-pdf';
 import { pdfjs } from 'react-pdf';
 import { convertFromRaw } from 'draft-js';
 import draftToHtml from 'draftjs-to-html';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { API_BASE_URL, userAPI, coursesAPI, scormAPI } from '../../../../config';
+import SCORMPlayer from './SCORMPlayer';
 
 // PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -81,6 +82,33 @@ const WordViewer = ({ url, title }) => (
   </div>
 );
 
+// Helper to resolve thumbnail URL
+const resolveThumbnailUrl = (thumbnail) => {
+  if (!thumbnail) return '/no-image.png';
+  if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) {
+    return thumbnail;
+  }
+  if (thumbnail.startsWith('/media/')) {
+    // Change this to your actual backend base URL
+    const BASE_URL = API_BASE_URL;
+    return `${BASE_URL}${thumbnail}`;
+  }
+  return thumbnail;
+};
+
+// Helper to resolve any media URL (local /media, S3, Supabase, etc.)
+const resolveMediaUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  if (url.startsWith('/media/')) {
+    const BASE_URL = API_BASE_URL;
+    return `${BASE_URL}${url}`;
+  }
+  return url;
+};
+
 const CourseView = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -89,6 +117,12 @@ const CourseView = () => {
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedLesson, setExpandedLesson] = useState(null);
+  const [scormFile, setScormFile] = useState(null);
+  const [scormUploading, setScormUploading] = useState(false);
+  const [scormUploadMsg, setScormUploadMsg] = useState('');
+  const [learners, setLearners] = useState([]);
+  const [selectedLearnerId, setSelectedLearnerId] = useState(null);
+  const fileInputRef = useRef();
 
   const parseArrayField = (field) => {
     if (!field) return [];
@@ -176,6 +210,16 @@ const CourseView = () => {
 
     fetchCourseData();
   }, [id]);
+
+  // Fetch learners for SCORM preview
+  useEffect(() => {
+    userAPI.getUsers({ role: 'learners', page_size: 100 }).then(res => {
+      setLearners(res.data.results || []);
+      if (res.data.results && res.data.results.length > 0) {
+        setSelectedLearnerId(res.data.results[0].id);
+      }
+    });
+  }, []);
 
   const handleBack = () => {
     navigate('/admin/courses');
@@ -269,6 +313,32 @@ const CourseView = () => {
     }
   };
 
+  // SCORM upload handler
+  const handleScormFileChange = (e) => {
+    setScormFile(e.target.files[0]);
+    setScormUploadMsg('');
+  };
+
+  const handleScormUpload = async () => {
+    if (!scormFile) {
+      setScormUploadMsg('Please select a SCORM .zip file.');
+      return;
+    }
+    setScormUploading(true);
+    setScormUploadMsg('');
+    const formData = new FormData();
+    formData.append('package', scormFile);
+    try {
+      await scormAPI.uploadPackage(course.id, formData);
+      setScormUploadMsg('SCORM package uploaded successfully!');
+      setScormFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      setScormUploadMsg('Upload failed. Please try again.');
+    }
+    setScormUploading(false);
+  };
+
   if (loading) {
     return (
       <div className="cv-drastic-loading">
@@ -294,7 +364,7 @@ const CourseView = () => {
         </button>
         <div className="cv-sidebar-section">
           <img
-            src={course.thumbnail || '/no-image.png'}
+            src={resolveThumbnailUrl(course.thumbnail)}
             alt={course.title}
             className="cv-course-thumb"
           />
@@ -309,6 +379,7 @@ const CourseView = () => {
           <button className={activeSection === 'modules' ? 'active' : ''} onClick={() => setActiveSection('modules')}>Modules</button>
           <button className={activeSection === 'resources' ? 'active' : ''} onClick={() => setActiveSection('resources')}>Resources</button>
           <button className={activeSection === 'meta' ? 'active' : ''} onClick={() => setActiveSection('meta')}>Meta</button>
+          <button className={activeSection === 'scorm' ? 'active' : ''} onClick={() => setActiveSection('scorm')}>SCORM</button>
         </nav>
       </aside>
 
@@ -371,34 +442,34 @@ const CourseView = () => {
 
                                   {/* YouTube */}
                                   {lessonType === 'youtube' && (
-                                    <YouTubePlayer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                    <YouTubePlayer url={resolveMediaUrl(lesson.content_url || lesson.content_file)} title={lesson.title} />
                                   )}
 
                                   {/* Video */}
                                   {lessonType === 'video' && (
-                                    <VideoPlayer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                    <VideoPlayer url={resolveMediaUrl(lesson.content_url || lesson.content_file)} title={lesson.title} />
                                   )}
 
                                   {/* PDF */}
                                   {lessonType === 'pdf' && (
-                                    <PDFViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                    <PDFViewer url={resolveMediaUrl(lesson.content_url || lesson.content_file)} title={lesson.title} />
                                   )}
 
                                   {/* PowerPoint */}
                                   {lessonType === 'powerpoint' && (
-                                    <PPTViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                    <PPTViewer url={resolveMediaUrl(lesson.content_url || lesson.content_file)} title={lesson.title} />
                                   )}
 
                                   {/* Word */}
                                   {lessonType === 'word' && (
-                                    <WordViewer url={lesson.content_url || lesson.content_file} title={lesson.title} />
+                                    <WordViewer url={resolveMediaUrl(lesson.content_url || lesson.content_file)} title={lesson.title} />
                                   )}
 
                                   {/* Image */}
                                   {lessonType === 'image' && (
                                     <div className="media-container">
                                       <img
-                                        src={lesson.content_url || lesson.content_file}
+                                        src={resolveMediaUrl(lesson.content_url || lesson.content_file)}
                                         alt={lesson.title}
                                         className="media"
                                         style={{ maxWidth: '100%', borderRadius: 10 }}
@@ -410,7 +481,7 @@ const CourseView = () => {
                                   {lessonType === 'link' && (
                                     <div className="media-container">
                                       <a
-                                        href={lesson.content_url || lesson.content_file}
+                                        href={resolveMediaUrl(lesson.content_url || lesson.content_file)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="action-btn primary"
@@ -424,7 +495,7 @@ const CourseView = () => {
                                   {lessonType === 'default' && (lesson.content_url || lesson.content_file) && (
                                     <div className="media-container">
                                       <a
-                                        href={lesson.content_url || lesson.content_file}
+                                        href={resolveMediaUrl(lesson.content_url || lesson.content_file)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="action-btn primary"
@@ -457,7 +528,7 @@ const CourseView = () => {
             <ul className="cv-resource-list">
               {course.resources && course.resources.length > 0 ? (
                 course.resources.map(resource => {
-                  const resourceUrl = resource.url || resource.file;
+                  const resourceUrl = resolveMediaUrl(resource.url || resource.file);
                   const resourceType = resource.resource_type === 'file' && resourceUrl.match(/\.(ppt|pptx)$/i) ? 'powerpoint' :
                     resource.resource_type === 'link' && resourceUrl.match(/youtube\.com|youtu\.be/) ? 'youtube' :
                     resource.resource_type;
@@ -531,6 +602,53 @@ const CourseView = () => {
                 <strong>{new Date(course.updated_at).toLocaleDateString()}</strong>
               </div>
             </div>
+          </section>
+        )}
+
+        {activeSection === 'scorm' && (
+          <section className="cv-section">
+            <h3>SCORM Course Player</h3>
+            <div className="cv-card" style={{ marginBottom: 24 }}>
+              <label style={{ fontWeight: 500, marginBottom: 8, display: 'block' }}>
+                Upload SCORM Package (.zip)
+              </label>
+              <input
+                type="file"
+                accept=".zip"
+                onChange={handleScormFileChange}
+                ref={fileInputRef}
+                style={{ marginBottom: 8 }}
+                disabled={scormUploading}
+              />
+              <button
+                className="action-btn primary"
+                onClick={handleScormUpload}
+                disabled={scormUploading}
+                style={{ marginLeft: 8 }}
+              >
+                Upload
+              </button>
+              {scormUploadMsg && (
+                <div style={{ marginTop: 8, color: scormUploadMsg.includes('success') ? 'green' : 'red' }}>
+                  {scormUploadMsg}
+                </div>
+              )}
+            </div>
+            <div style={{ margin: '16px 0' }}>
+              <label style={{ fontWeight: 500, marginRight: 8 }}>Select Learner for Preview:</label>
+              <select
+                value={selectedLearnerId || ''}
+                onChange={e => setSelectedLearnerId(e.target.value)}
+                style={{ minWidth: 200 }}
+              >
+                {learners.map(user => (
+                  <option key={user.id} value={user.id}>{user.email}</option>
+                ))}
+              </select>
+            </div>
+            {course.id && (
+              <SCORMPlayer courseId={course.id} userId={selectedLearnerId} />
+            )}
           </section>
         )}
       </main>

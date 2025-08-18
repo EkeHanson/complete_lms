@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, TextField, InputAdornment, TablePagination,
-  Paper, Select, MenuItem, FormControl, InputLabel,
-  IconButton, CircularProgress, Alert, Stack
+  Paper, IconButton, CircularProgress, Alert, Stack
 } from '@mui/material';
 import {
-  Search as SearchIcon,
-  FilterList as FilterIcon
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { userAPI } from '../../../config';
@@ -23,8 +21,6 @@ const ActivityFeed = () => {
   const [allActivities, setAllActivities] = useState([]);
   const [displayedActivities, setDisplayedActivities] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
-  const [activityFilter, setActivityFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,7 +44,7 @@ const ActivityFeed = () => {
     fetchActivities();
   }, []);
 
-  // Apply filters whenever filter criteria or pagination changes
+  // Apply search filter and pagination
   useEffect(() => {
     if (allActivities.length === 0) return;
 
@@ -63,59 +59,15 @@ const ActivityFeed = () => {
       );
     }
 
-    // Apply activity type filter
-    if (activityFilter !== 'all') {
-      filtered = filtered.filter(activity =>
-        activity.activity_type === activityFilter
-      );
-    }
-
-    // Apply date filter
-    if (dateFilter !== 'all') {
-      const today = dayjs();
-      let startDate;
-
-      switch (dateFilter) {
-        case 'today':
-          startDate = today.startOf('day');
-          break;
-        case 'week':
-          startDate = today.subtract(7, 'day');
-          break;
-        case 'month':
-          startDate = today.subtract(30, 'day');
-          break;
-        default:
-          startDate = null;
-      }
-
-      if (startDate) {
-        filtered = filtered.filter(activity => {
-          const activityDate = dayjs(activity.timestamp);
-          return activityDate.isAfter(startDate) && activityDate.isBefore(today);
-        });
-      }
-    }
-
     // Apply pagination
     const startIndex = page * rowsPerPage;
     const paginatedActivities = filtered.slice(startIndex, startIndex + rowsPerPage);
 
     setDisplayedActivities(paginatedActivities);
-  }, [allActivities, searchTerm, dateFilter, activityFilter, page, rowsPerPage]);
+  }, [allActivities, searchTerm, page, rowsPerPage]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setPage(0);
-  };
-
-  const handleDateFilterChange = (e) => {
-    setDateFilter(e.target.value);
-    setPage(0);
-  };
-
-  const handleActivityFilterChange = (e) => {
-    setActivityFilter(e.target.value);
     setPage(0);
   };
 
@@ -156,64 +108,33 @@ const ActivityFeed = () => {
       );
     }
 
-    if (activityFilter !== 'all') {
-      filtered = filtered.filter(activity =>
-        activity.activity_type === activityFilter
-      );
-    }
-
-    if (dateFilter !== 'all') {
-      const today = dayjs();
-      let startDate;
-
-      switch (dateFilter) {
-        case 'today':
-          startDate = today.startOf('day');
-          break;
-        case 'week':
-          startDate = today.subtract(7, 'day');
-          break;
-        case 'month':
-          startDate = today.subtract(30, 'day');
-          break;
-        default:
-          startDate = null;
-      }
-
-      if (startDate) {
-        filtered = filtered.filter(activity => {
-          const activityDate = dayjs(activity.timestamp);
-          return activityDate.isAfter(startDate) && activityDate.isBefore(today);
-        });
-      }
-    }
-
     return filtered.length;
   };
 
-  if (error) {
-    return (
-      <Box sx={{ p: isMobile ? 1 : 2, marginLeft: 'auto', width: isMobile ? '100%' : 'auto' }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ p: isMobile ? 1 : { xs: 1, sm: 2, md: 2, pr: 0 }, marginLeft: 'auto', width: isMobile ? '100%' : 'auto' }}>
+    <Box
+      sx={{
+        p: { xs: 0.5, sm: 2, md: 2, pr: 0 },
+        marginLeft: 'auto',
+        width: { xs: '100vw', sm: '100%', md: 'auto' },
+        minHeight: 0,
+        boxSizing: 'border-box',
+      }}
+    >
       <Typography
         variant={isMobile ? 'h6' : 'h5'}
         gutterBottom
-        sx={{ mb: 3, fontWeight: 'medium' }}
+        sx={{ mb: 2, fontWeight: 'medium', px: { xs: 1, sm: 0 } }}
       >
         Activity Feed
       </Typography>
 
       <Stack
-        direction={isMobile ? 'column' : 'row'}
+        direction="row"
         spacing={2}
-        alignItems={isMobile ? 'stretch' : 'center'}
-        mb={3}
+        alignItems="center"
+        mb={2}
+        sx={{ px: { xs: 1, sm: 0 } }}
       >
         <TextField
           variant="outlined"
@@ -221,7 +142,7 @@ const ActivityFeed = () => {
           value={searchTerm}
           onChange={handleSearchChange}
           size="small"
-          sx={{ minWidth: isMobile ? '100%' : 300 }}
+          sx={{ minWidth: { xs: '100%', sm: 220, md: 300 } }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -230,46 +151,11 @@ const ActivityFeed = () => {
             ),
           }}
         />
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Date</InputLabel>
-          <Select
-            value={dateFilter}
-            label="Date"
-            onChange={handleDateFilterChange}
-          >
-            <MenuItem value="all">All Time</MenuItem>
-            <MenuItem value="today">Today</MenuItem>
-            <MenuItem value="week">Last 7 Days</MenuItem>
-            <MenuItem value="month">Last 30 Days</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Activity</InputLabel>
-          <Select
-            value={activityFilter}
-            label="Activity"
-            onChange={handleActivityFilterChange}
-          >
-            <MenuItem value="all">All Activities</MenuItem>
-            <MenuItem value="login">Login</MenuItem>
-            <MenuItem value="logout">Logout</MenuItem>
-            <MenuItem value="password_change">Password Change</MenuItem>
-            <MenuItem value="profile_update">Profile Update</MenuItem>
-            <MenuItem value="system">System Event</MenuItem>
-          </Select>
-        </FormControl>
-        <IconButton
-          size="small"
-          sx={{
-            border: `1px solid ${theme.palette.divider}`,
-            display: isMobile ? 'none' : 'flex'
-          }}
-        >
-          <FilterIcon fontSize="small" />
-        </IconButton>
       </Stack>
 
-      {loading ? (
+      {error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+      ) : loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
         </Box>
@@ -280,10 +166,12 @@ const ActivityFeed = () => {
             sx={{
               border: `1px solid ${theme.palette.divider}`,
               borderRadius: 2,
-              p: isMobile ? 1 : 2,
-              maxHeight: 'calc(100vh - 250px)',
+              p: { xs: 1, sm: 2 },
+              maxHeight: { xs: '50vh', sm: 'calc(100vh - 250px)' },
               overflowY: 'auto',
-              backgroundColor: theme.palette.background.paper
+              backgroundColor: theme.palette.background.paper,
+              mb: 1,
+              mx: { xs: 1, sm: 0 }
             }}
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -300,10 +188,9 @@ const ActivityFeed = () => {
                     >
                       <Link
                         to={`/activity/${activity.id}`}
-                        sx={{
+                        style={{
                           color: theme.palette.primary.main,
-                          textDecoration: 'none',
-                          '&:hover': { textDecoration: 'underline' }
+                          textDecoration: 'none'
                         }}
                       >
                         {activity.user}
@@ -312,11 +199,10 @@ const ActivityFeed = () => {
                     {formatActivityType(activity.activity_type)} {formatTimestamp(activity.timestamp)}.{' '}
                     <Link
                       to={`/activity/${activity.id}`}
-                      sx={{
+                      style={{
                         color: theme.palette.primary.main,
                         textDecoration: 'none',
-                        fontSize: 'inherit',
-                        '&:hover': { textDecoration: 'underline' }
+                        fontSize: 'inherit'
                       }}
                     >
                       [View]
@@ -349,10 +235,16 @@ const ActivityFeed = () => {
             }}
             sx={{
               borderBottom: 'none',
+              px: { xs: 1, sm: 0 },
               '& .MuiTablePagination-toolbar': {
-                paddingLeft: 0
-              }}
-            }
+                paddingLeft: 0,
+                flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                minHeight: 40
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: { xs: '0.85rem', sm: '1rem' }
+              }
+            }}
           />
         </>
       )}

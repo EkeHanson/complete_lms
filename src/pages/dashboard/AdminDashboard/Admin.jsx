@@ -31,7 +31,7 @@ import PaymentSettings from './PaymentSettings';
 import WebsiteNotificationSettings from './WebsiteNotificationSettings';
 import WebsiteSettings from './WebsiteSettings';
 import QualityDashbaord from './QaulityAssuranceDashboard/QualityDashbaord';
-//import QualityAssuranceDashboard from './QaulityAssuranceDashboard/QualityAssuranceDashboard';
+//import QualityAssuranceDashboard from './QaulityAssuranceDashboard/QualityAssurance';
 // import QualityAssurance from './QaulityAssuranceDashboard/QualityAssurance';
 import CourseManagement from './courses/CourseManagement';
 import CourseDetailPage from './courses/CourseDetailPage';
@@ -44,6 +44,7 @@ import CertificateBuilderMain from './certificateBuilder/CertificateBuilderMain'
 import UserGroupsManagement from './UserGroupsManagement';
 import axios from 'axios';
 import { API_BASE_URL, CMVP_SITE_URL, CMVP_API_URL } from '../../../config';
+import AdminActivityFeed from './AdminActivityFeed';
 
 const drawerWidth = 280;
 const collapsedDrawerWidth = 60;
@@ -150,7 +151,7 @@ const handleLogout = () => {
     { 
       name: 'System Settings', 
       icon: <SystemSettingsIcon sx={{ mr: 2 }} />, 
-      onClick: () => console.log('System Settings clicked')
+     // onClick: () => console.log('System Settings clicked')
     },
     { 
       name: 'Website Settings', 
@@ -508,7 +509,7 @@ const handleLogout = () => {
           width: isMobile ? '100%' : `calc(100% - ${isCollapsed ? collapsedDrawerWidth : drawerWidth}px)`,
           overflowX: 'hidden',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           height: '100vh',
           transition: theme.transitions.create(['width'], {
             easing: theme.transitions.easing.sharp,
@@ -516,16 +517,20 @@ const handleLogout = () => {
           }),
         }}
       >
-        <Toolbar />
         <Box
           sx={{
-            flex: 1,
+            flex: 2,
             backgroundColor: theme.palette.background.paper,
             p: isMobile ? 1 : 2,
             overflowY: 'auto',
-            width: '100%'
+            width: '100%',
+            minWidth: 0,
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
+          <Toolbar />
           <Routes>
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/finance" element={<AdminFinancialDashboard />} />
@@ -553,7 +558,28 @@ const handleLogout = () => {
             <Route path="/learner-profile/:id" element={<LearnerProfile />} />
             <Route path="/builder" element={<CertificateBuilderMain />} />
             <Route path="/course-details/:id" element={<CourseDetailPage />} />
+            <Route path="/activity-feed" element={<AdminActivityFeed />} />
           </Routes>
+        </Box>
+        {/* Activity Feed on RHS */}
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 320,
+            maxWidth: 420,
+            p: isMobile ? 0 : '24px 0 24px 24px',
+            display: { xs: 'none', md: 'block' },
+            background: '#fff',
+            borderRadius: '18px',
+            boxShadow: '0 2px 12px 0 rgba(99,102,241,0.08)',
+            height: 'calc(100vh - 48px)',
+            position: 'sticky',
+            top: 0,
+            overflowY: 'auto'
+          }}
+          className="ad-activity-feed-container"
+        >
+          <AdminActivityFeed />
         </Box>
       </Box>
 

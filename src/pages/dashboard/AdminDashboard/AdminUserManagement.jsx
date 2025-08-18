@@ -833,7 +833,11 @@ const AdminUserManagement = () => {
                         </td>
                         <td><RoleChip role={user.role} /></td>
                         <td><StatusChip status={user.status} /></td>
-                        <td>{user.date_joined ? new Date(user.date_joined).toLocaleDateString() : '-'}</td>
+                        <td>
+                          {user.date_joined && !isNaN(new Date(user.date_joined))
+                            ? new Date(user.date_joined).toLocaleDateString()
+                            : '-'}
+                        </td>
                         <td>
                           {user.login_attempts > 0 ? (
                             <span
